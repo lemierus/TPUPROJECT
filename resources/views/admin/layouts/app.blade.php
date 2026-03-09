@@ -72,11 +72,11 @@
             <i class="bi bi-speedometer2 me-2"></i> Dashboard
         </a>
 
-        <a href="#">
+        <a href="/data-jenazah">
             <i class="bi bi-people-fill me-2"></i> Data Jenazah
         </a>
 
-        <a href="#">
+        <a href="/data-makam">
             <i class="bi bi-geo-alt-fill me-2"></i> Data Makam
         </a>
 
