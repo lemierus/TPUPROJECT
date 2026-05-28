@@ -441,8 +441,8 @@
                                     @endif
                                 </td>
                                 <td>
-                                    <a href="{{ route('petugas.master.permohonan.edit', $item) }}" class="btn btn-sm btn-outline-primary">
-                                        <i class="bi bi-pencil"></i>
+                                    <a href="{{ route('petugas.permohonan.show', $item) }}" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-eye"></i>
                                     </a>
                                 </td>
                             </tr>

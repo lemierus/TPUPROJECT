@@ -26,6 +26,11 @@
         <div class="alert alert-danger">{{ $errors->first() }}</div>
     @endif
 
+    <div class="alert alert-info border-2 border-dark shadow-sm mb-4">
+        <i class="bi bi-info-circle-fill me-2"></i>
+        <strong>Informasi:</strong> Anda memiliki waktu 24 jam untuk menyelesaikan dan mengirim form permohonan ini. Pastikan semua data sudah diisi dengan lengkap dan benar sebelum mengirim.
+    </div>
+
     <div class="card border-0 shadow-sm">
         <div class="card-body px-4 py-4">
             <form action="{{ route('user.permohonan.store') }}" method="POST" enctype="multipart/form-data">
@@ -64,13 +69,13 @@
                         </div>
 
                         <div class="col-md-6">
-                            <label class="form-label">NIK Jenazah</label>
-                            <input type="text" name="nik_jenazah" class="form-control" value="{{ old('nik_jenazah') }}">
+                            <label class="form-label">NIK Jenazah <span class="text-danger">*</span></label>
+                            <input type="text" name="nik_jenazah" class="form-control" value="{{ old('nik_jenazah') }}" required>
                         </div>
 
                         <div class="col-md-6">
-                            <label class="form-label">Nama Jenazah</label>
-                            <input type="text" name="nama_jenazah" class="form-control" value="{{ old('nama_jenazah') }}">
+                            <label class="form-label">Nama Jenazah <span class="text-danger">*</span></label>
+                            <input type="text" name="nama_jenazah" class="form-control" value="{{ old('nama_jenazah') }}" required>
                         </div>
 
                         <div class="col-md-6">

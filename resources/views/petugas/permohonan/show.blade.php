@@ -203,6 +203,18 @@
         </div>
     </div>
 
+    @if(session('success'))
+        <div class="alert alert-success border-2 border-dark shadow-sm mb-4">
+            <i class="bi bi-check-circle-fill me-2"></i>{{ session('success') }}
+        </div>
+    @endif
+
+    @if($errors->any())
+        <div class="alert alert-danger border-2 border-dark shadow-sm mb-4">
+            <i class="bi bi-exclamation-circle-fill me-2"></i>{{ $errors->first() }}
+        </div>
+    @endif
+
     <div class="detail-header d-flex justify-content-between align-items-start gap-3 flex-wrap">
         <div>
             <h3 class="mb-2">Detail Permohonan</h3>
@@ -234,6 +246,17 @@
             </span>
         </div>
     </div>
+
+    @if($permohonan->jenis_permohonan === 'makam_baru' && $permohonan->status === 'disetujui')
+        <div class="alert {{ $permohonan->jenazah_id ? 'alert-info' : 'alert-warning' }} border-2 border-dark shadow-sm mb-4">
+            <i class="bi {{ $permohonan->jenazah_id ? 'bi-info-circle-fill' : 'bi-exclamation-triangle-fill' }} me-2"></i>
+            @if($permohonan->jenazah_id)
+                <strong>Data Jenazah Tersimpan:</strong> Data jenazah sudah disimpan ke halaman data jenazah dengan ID: #{{ $permohonan->jenazah_id }}
+            @else
+                <strong>Data Jenazah Belum Tersimpan:</strong> Data jenazah belum disimpan. Pastikan NIK dan nama jenazah sudah diisi sebelum menyetujui permohonan ini.
+            @endif
+        </div>
+    @endif
 
     <!-- Jenis Permohonan -->
     <div class="detail-section">
@@ -337,6 +360,45 @@
                             -
                         @endif
                     </div>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    <!-- Status Integrasi Data Jenazah -->
+    @if($permohonan->jenis_permohonan === 'makam_baru')
+        <div class="detail-section">
+            <div class="detail-section-title">
+                <i class="bi bi-link-45deg"></i>
+                Status Integrasi Data Jenazah
+            </div>
+            <div class="detail-row">
+                <div>
+                    <div class="detail-label">Status Penyimpanan ke Database Jenazah</div>
+                    @if($permohonan->jenazah_id)
+                        <div class="detail-badge detail-badge-success">
+                            <i class="bi bi-check-circle"></i>
+                            Tersimpan (ID: #{{ $permohonan->jenazah_id }})
+                        </div>
+                        <p class="text-muted mt-2 mb-0">
+                            Data jenazah sudah berhasil disimpan ke database data jenazah TPU {{ $permohonan->tpu }}
+                            <a href="{{ route('petugas.data-jenazah') }}" class="fw-semibold">Lihat di Data Jenazah →</a>
+                        </p>
+                    @else
+                        <div class="detail-badge detail-badge-warning">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            Belum Tersimpan
+                        </div>
+                        <p class="text-muted mt-2 mb-0">
+                            @if(empty($permohonan->nama_jenazah) || empty($permohonan->nik_jenazah))
+                                ⚠️ Data jenazah tidak lengkap. Silahkan
+                                <a href="{{ route('petugas.permohonan.edit', $permohonan) }}" class="fw-semibold">edit permohonan</a>
+                                untuk mengisi NIK dan Nama Jenazah terlebih dahulu sebelum menyetujui.
+                            @else
+                                Data jenazah siap untuk disimpan. Tekan tombol "Setujui" untuk menyimpan data ke database jenazah.
+                            @endif
+                        </p>
+                    @endif
                 </div>
             </div>
         </div>

@@ -94,20 +94,41 @@ class PermohonanController extends Controller
             'catatan' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        DB::transaction(function () use ($request, $permohonan) {
-            $permohonan->status = 'disetujui';
-            if ($request->filled('catatan')) {
-                $permohonan->catatan = $request->catatan;
-            }
-            $permohonan->save();
+        try {
+            DB::transaction(function () use ($request, $permohonan) {
+                $permohonan->status = 'disetujui';
+                if ($request->filled('catatan')) {
+                    $permohonan->catatan = $request->catatan;
+                }
+                $permohonan->save();
 
-            if ($permohonan->jenis_permohonan === 'makam_baru' && !$permohonan->jenazah_id) {
-                $this->createJenazahFromPermohonan($permohonan);
-            }
-        });
+                \Log::info('Permohonan disetujui', [
+                    'id' => $permohonan->id,
+                    'jenis_permohonan' => $permohonan->jenis_permohonan,
+                    'jenazah_id' => $permohonan->jenazah_id,
+                    'nama_jenazah' => $permohonan->nama_jenazah,
+                    'nik_jenazah' => $permohonan->nik_jenazah,
+                ]);
+
+                if ($permohonan->jenis_permohonan === 'makam_baru' && !$permohonan->jenazah_id) {
+                    \Log::info('Memulai create jenazah dari permohonan', ['permohonan_id' => $permohonan->id]);
+                    $this->createJenazahFromPermohonan($permohonan);
+                    \Log::info('Jenazah berhasil dibuat', ['jenazah_id' => $permohonan->jenazah_id]);
+                }
+            });
+        } catch (ValidationException $e) {
+            \Log::warning('ValidationException saat approve', ['errors' => $e->errors(), 'permohonan_id' => $permohonan->id]);
+            return redirect()->route('petugas.permohonan.show', $permohonan)
+                ->withErrors($e->errors())
+                ->with('error', collect($e->errors())->flatten()->first() ?? 'Gagal menyetujui permohonan.');
+        } catch (\Exception $e) {
+            \Log::error('Error saat approve permohonan', ['message' => $e->getMessage(), 'permohonan_id' => $permohonan->id]);
+            return redirect()->route('petugas.permohonan.show', $permohonan)
+                ->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+        }
 
         return redirect()->route('petugas.permohonan')
-            ->with('success', 'Permohonan berhasil disetujui.');
+            ->with('success', 'Permohonan berhasil disetujui dan data jenazah tersimpan.');
     }
 
     public function reject(Request $request, Permohonan $permohonan)
@@ -138,9 +159,21 @@ class PermohonanController extends Controller
 
     private function createJenazahFromPermohonan(Permohonan $permohonan): void
     {
+        if (empty($permohonan->nik_jenazah)) {
+            throw ValidationException::withMessages([
+                'status' => 'Permohonan tidak bisa disetujui karena NIK jenazah belum diisi. Silahkan edit permohonan terlebih dahulu.',
+            ]);
+        }
+
         if (Jenazah::where('nik', $permohonan->nik_jenazah)->exists()) {
             throw ValidationException::withMessages([
                 'status' => 'Permohonan tidak bisa disetujui karena NIK jenazah sudah terdaftar di data jenazah.',
+            ]);
+        }
+
+        if (empty($permohonan->nama_jenazah)) {
+            throw ValidationException::withMessages([
+                'status' => 'Permohonan tidak bisa disetujui karena nama jenazah belum diisi. Silahkan edit permohonan terlebih dahulu.',
             ]);
         }
 
