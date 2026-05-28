@@ -1,5 +1,11 @@
-<x-layouts::app.sidebar :title="$title ?? null">
-    <flux:main>
-        {{ $slot }}
-    </flux:main>
-</x-layouts::app.sidebar>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>@yield('title', 'App')</title>
+</head>
+<body>
+
+@yield('content')
+
+</body>
+</html>

@@ -5,6 +5,8 @@ namespace Database\Seeders;
 use App\Models\User;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 
 class DatabaseSeeder extends Seeder
 {
@@ -13,11 +15,70 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        User::updateOrCreate(
+            ['email' => 'admin@tpu.test'],
+            [
+                'name' => 'Admin TPU',
+                'password' => Hash::make('password'),
+                'role' => User::ROLE_ADMIN,
+            ]
+        );
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        // Petugas untuk TPU Tunggul Hitam
+        $petugas1 = User::updateOrCreate(
+            ['email' => 'petugas1@tpu.test'],
+            [
+                'name' => 'Petugas Tunggul Hitam',
+                'password' => Hash::make('password'),
+                'role' => User::ROLE_PETUGAS,
+            ]
+        );
+        if (Schema::hasColumn('users', 'tpu')) {
+            $petugas1->update(['tpu' => 'TPU Tunggul Hitam']);
+        }
+
+        // Petugas untuk TPU Bungus Teluk Kabung
+        $petugas2 = User::updateOrCreate(
+            ['email' => 'petugas2@tpu.test'],
+            [
+                'name' => 'Petugas Bungus Teluk Kabung',
+                'password' => Hash::make('password'),
+                'role' => User::ROLE_PETUGAS,
+            ]
+        );
+        if (Schema::hasColumn('users', 'tpu')) {
+            $petugas2->update(['tpu' => 'TPU Bungus Teluk Kabung']);
+        }
+
+        // Petugas untuk TPU Air Dingin
+        $petugas3 = User::updateOrCreate(
+            ['email' => 'petugas3@tpu.test'],
+            [
+                'name' => 'Petugas Air Dingin',
+                'password' => Hash::make('password'),
+                'role' => User::ROLE_PETUGAS,
+            ]
+        );
+        if (Schema::hasColumn('users', 'tpu')) {
+            $petugas3->update(['tpu' => 'TPU Air Dingin']);
+        }
+
+        User::updateOrCreate(
+            ['email' => 'kepala@tpu.test'],
+            [
+                'name' => 'Kepala UPT',
+                'password' => Hash::make('password'),
+                'role' => User::ROLE_KEPALA,
+            ]
+        );
+
+        User::updateOrCreate(
+            ['email' => 'user@tpu.test'],
+            [
+                'name' => 'Ahli Waris',
+                'password' => Hash::make('password'),
+                'role' => User::ROLE_USER,
+            ]
+        );
     }
 }

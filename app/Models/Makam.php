@@ -12,6 +12,7 @@ class Makam extends Model
     protected $table = 'makams';
 
     protected $fillable = [
+        'tpu',
         'kode_makam',
         'blok',
         'zona',
@@ -30,5 +31,12 @@ class Makam extends Model
     public function permohonans()
     {
         return $this->hasMany(Permohonan::class, 'makam_id');
+    }
+
+    public function syncStatusFromJenazah(): void
+    {
+        $this->update([
+            'status' => $this->jenazahs()->exists() ? 'terisi' : 'kosong',
+        ]);
     }
 }
