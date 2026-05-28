@@ -22,7 +22,7 @@ class DataJenazahController extends Controller
         if (auth()->user()?->isPetugas()) {
             $permohonanQuery = Permohonan::with(['makam', 'user', 'jenazah'])
                 ->where('tpu', auth()->user()->tpu)
-                ->where('status', 'disetujui')
+                ->whereIn('status', ['menunggu', 'pending', 'disetujui'])
                 ->when($search, function ($query) use ($search) {
                     $query->where(function ($subQuery) use ($search) {
                         $subQuery->where('nama_jenazah', 'like', "%$search%")
@@ -71,8 +71,8 @@ class DataJenazahController extends Controller
             ->with('makam')
             ->when($search, function ($query) use ($search) {
                 $query->where('nama', 'like', "%$search%")
-                      ->orWhere('nik', 'like', "%$search%")
-                      ->orWhere('alamat', 'like', "%$search%");
+                    ->orWhere('nik', 'like', "%$search%")
+                    ->orWhere('alamat', 'like', "%$search%");
             })->latest()->get();
 
         return view('pages.master.data_jenazah', [
@@ -103,8 +103,13 @@ class DataJenazahController extends Controller
             'alamat' => ['nullable', 'string'],
             'keterangan' => ['nullable', 'string'],
             'makam_id' => ['nullable', 'exists:makams,id'],
+            'kode_makam' => ['nullable', 'string', 'max:255'],
+            'blok' => ['nullable', 'string', 'max:255'],
+            'zona' => ['nullable', 'string', 'max:255'],
+            'nomor_makam' => ['nullable', 'string', 'max:255'],
         ]);
 
+        $this->applyMakamSnapshot($request, $data);
         $this->validateAvailableMakam($request);
         $this->validateAccessibleMakam($request);
 
@@ -114,7 +119,7 @@ class DataJenazahController extends Controller
 
         Jenazah::create($data);
 
-        return redirect()->route($this->routePrefix().'.data-jenazah')
+        return redirect()->route($this->routePrefix() . '.data-jenazah')
             ->with('success', 'Data jenazah berhasil ditambahkan');
     }
 
@@ -144,12 +149,17 @@ class DataJenazahController extends Controller
             'alamat' => ['nullable', 'string'],
             'keterangan' => ['nullable', 'string'],
             'makam_id' => ['nullable', 'exists:makams,id'],
+            'kode_makam' => ['nullable', 'string', 'max:255'],
+            'blok' => ['nullable', 'string', 'max:255'],
+            'zona' => ['nullable', 'string', 'max:255'],
+            'nomor_makam' => ['nullable', 'string', 'max:255'],
             'nama_ahli_waris' => ['nullable', 'string', 'max:255'],
             'hubungan_keluarga' => ['nullable', 'string', 'max:100'],
             'no_hp_ahli_waris' => ['nullable', 'string', 'max:50'],
             'catatan' => ['nullable', 'string'],
         ]);
 
+        $this->applyMakamSnapshot($request, $data);
         $this->validateAvailableMakam($request, $jenazah);
         $this->validateAccessibleMakam($request);
 
@@ -165,7 +175,7 @@ class DataJenazahController extends Controller
             ]);
         }
 
-        return redirect()->route($this->routePrefix().'.data-jenazah')
+        return redirect()->route($this->routePrefix() . '.data-jenazah')
             ->with('success', 'Data berhasil diupdate');
     }
 
@@ -174,7 +184,7 @@ class DataJenazahController extends Controller
         $jenazah = $this->findAccessibleJenazahOrFail($id);
         $jenazah->delete();
 
-        return redirect()->route($this->routePrefix().'.data-jenazah')
+        return redirect()->route($this->routePrefix() . '.data-jenazah')
             ->with('success', 'Data berhasil dihapus');
     }
 
@@ -207,6 +217,29 @@ class DataJenazahController extends Controller
             })
             ->orderBy('kode_makam')
             ->get();
+    }
+
+    private function applyMakamSnapshot(Request $request, array &$data): void
+    {
+        $makam = $request->filled('makam_id') ? Makam::find($request->makam_id) : null;
+
+        if (! $makam) {
+            $data['kode_makam'] = $request->input('kode_makam');
+            $data['blok'] = $request->input('blok');
+            $data['zona'] = $request->input('zona');
+            $data['nomor_makam'] = $request->input('nomor_makam');
+
+            return;
+        }
+
+        $data['kode_makam'] = $makam->kode_makam;
+        $data['blok'] = $makam->blok;
+        $data['zona'] = $makam->zona;
+        $data['nomor_makam'] = $makam->nomor;
+
+        if ($request->filled('keterangan')) {
+            $data['keterangan'] = $request->input('keterangan');
+        }
     }
 
     private function validateAccessibleMakam(Request $request): void

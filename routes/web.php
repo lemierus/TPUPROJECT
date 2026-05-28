@@ -99,6 +99,8 @@ Route::middleware(['auth', 'petugas'])->prefix('petugas')->name('petugas.')->gro
     Route::get('/dashboard', [PetugasDashboardController::class, 'index'])->name('dashboard');
 
     Route::get('/permohonan', [PetugasPermohonanController::class, 'index'])->name('permohonan');
+    Route::get('/permohonan/create', [PetugasPermohonanController::class, 'create'])->name('permohonan.create');
+    Route::post('/permohonan', [PetugasPermohonanController::class, 'store'])->name('permohonan.store');
     Route::get('/permohonan/{permohonan}', [PetugasPermohonanController::class, 'show'])->name('permohonan.show');
     Route::get('/permohonan/{permohonan}/edit', [PetugasPermohonanController::class, 'edit'])->name('permohonan.edit');
     Route::put('/permohonan/{permohonan}', [PetugasPermohonanController::class, 'update'])->name('permohonan.update');
@@ -149,4 +151,4 @@ Route::middleware(['auth', 'user'])->prefix('user')->name('user.')->group(functi
     Route::put('/permohonan/{permohonan}', [UserPermohonanController::class, 'update'])->name('permohonan.update');
 });
 
-require __DIR__.'/settings.php';
+require __DIR__ . '/settings.php';

@@ -19,19 +19,23 @@ return new class extends Migration
             if (! Schema::hasColumn('permohonans', 'makam_id')) {
                 $table->foreignId('makam_id')
                     ->nullable()
-                    ->after('jenazah_id')
+                    ->after('user_id')
                     ->constrained('makams')
                     ->nullOnDelete();
             }
         });
 
-        DB::statement('ALTER TABLE permohonans MODIFY jenazah_id BIGINT UNSIGNED NULL');
+        if (Schema::hasColumn('permohonans', 'jenazah_id')) {
+            DB::statement('ALTER TABLE permohonans MODIFY jenazah_id BIGINT UNSIGNED NULL');
+        }
     }
 
     public function down(): void
     {
-        DB::table('permohonans')->whereNull('jenazah_id')->delete();
-        DB::statement('ALTER TABLE permohonans MODIFY jenazah_id BIGINT UNSIGNED NOT NULL');
+        if (Schema::hasColumn('permohonans', 'jenazah_id')) {
+            DB::table('permohonans')->whereNull('jenazah_id')->delete();
+            DB::statement('ALTER TABLE permohonans MODIFY jenazah_id BIGINT UNSIGNED NOT NULL');
+        }
 
         Schema::table('permohonans', function (Blueprint $table) {
             if (Schema::hasColumn('permohonans', 'makam_id')) {

@@ -12,7 +12,7 @@
         <div>
             <h4 class="fw-bold text-dark mb-1">Data Jenazah</h4>
             <p class="text-muted mb-0">
-                {{ $isPetugasView ? 'Data jenazah lengkap dari pengajuan ahli waris yang sudah disetujui' : 'Daftar data jenazah dalam sistem' }}
+                {{ $isPetugasView ? 'Data jenazah dari permohonan TPU ini, termasuk yang masih dalam proses' : 'Daftar data jenazah dalam sistem' }}
             </p>
         </div>
         <div class="d-flex align-items-center gap-2">

@@ -31,6 +31,11 @@ class Permohonan extends Model
         'surat_kematian',
         'jenazah_id',
         'makam_id',
+        'kode_makam',
+        'blok',
+        'zona',
+        'nomor_makam',
+        'keterangan',
         'no_makam',
         'blok_zona_makam',
         'tahun_pemakaman',
@@ -85,30 +90,100 @@ class Permohonan extends Model
 
     public function syncLinkedJenazahData(): void
     {
-        if ($this->jenis_permohonan !== 'perpanjangan') {
-            return;
-        }
-
         $jenazah = $this->resolveLinkedJenazah();
+        $makam = $this->makam ?: ($this->makam_id ? Makam::find($this->makam_id) : null);
 
-        if (! $jenazah) {
-            return;
+        $sync = [
+            'jenazah_id' => $jenazah?->id ?? $this->jenazah_id,
+            'nama_jenazah' => $jenazah?->nama ?? $this->nama_jenazah,
+            'nik_jenazah' => $jenazah?->nik ?? $this->nik_jenazah,
+            'tempat_lahir' => $jenazah?->tempat_lahir ?? $this->tempat_lahir,
+            'tanggal_lahir' => $jenazah?->tanggal_lahir ?? $this->tanggal_lahir,
+            'tanggal_wafat' => $jenazah?->tanggal_wafat ?? $this->tanggal_wafat,
+            'jenis_kelamin' => $jenazah?->jenis_kelamin ?? $this->jenis_kelamin,
+            'agama' => $jenazah?->agama ?? $this->agama,
+            'keterangan' => $jenazah?->keterangan ?? $this->keterangan,
+            'kode_makam' => $jenazah?->kode_makam ?? $makam?->kode_makam ?? $this->kode_makam,
+            'blok' => $jenazah?->blok ?? $makam?->blok ?? $this->blok,
+            'zona' => $jenazah?->zona ?? $makam?->zona ?? $this->zona,
+            'nomor_makam' => $jenazah?->nomor_makam ?? $makam?->nomor ?? $this->nomor_makam,
+        ];
+
+        if ($makam) {
+            $sync['makam_id'] = $makam->id;
+            $sync['no_makam'] = $makam->nomor ?? $this->no_makam;
+            $sync['blok_zona_makam'] = trim(implode(' / ', array_filter([$makam->blok, $makam->zona])), ' /') ?: $this->blok_zona_makam;
         }
 
-        $this->fill([
-            'jenazah_id' => $jenazah->id,
-            'nama_jenazah' => $jenazah->nama,
-            'nik_jenazah' => $jenazah->nik,
-            'tempat_lahir' => $jenazah->tempat_lahir,
-            'tanggal_lahir' => $jenazah->tanggal_lahir,
-            'tanggal_wafat' => $jenazah->tanggal_wafat,
-            'jenis_kelamin' => $jenazah->jenis_kelamin,
-            'agama' => $jenazah->agama,
-        ]);
+        $this->fill(array_filter($sync, fn($value) => ! is_null($value)));
 
         if ($this->exists && $this->isDirty()) {
             $this->save();
         }
+    }
+
+    public function persistJenazahRecord(): Jenazah
+    {
+        $makam = $this->resolveLinkedMakam();
+
+        $jenazah = $this->resolveLinkedJenazah() ?? Jenazah::where('nik', $this->nik_jenazah)->first();
+
+        if (! $jenazah) {
+            $jenazah = new Jenazah();
+        }
+
+        $jenazah->fill($this->buildJenazahPayload($makam));
+        $jenazah->save();
+
+        $sync = [
+            'jenazah_id' => $jenazah->id,
+        ];
+
+        if ($makam) {
+            $sync['makam_id'] = $makam->id;
+            $sync['kode_makam'] = $makam->kode_makam;
+            $sync['blok'] = $makam->blok;
+            $sync['zona'] = $makam->zona;
+            $sync['nomor_makam'] = $makam->nomor;
+            $sync['no_makam'] = $makam->nomor;
+            $sync['blok_zona_makam'] = trim(implode(' / ', array_filter([$makam->blok, $makam->zona])), ' /');
+        }
+
+        $this->fill($sync);
+        $this->save();
+
+        return $jenazah->fresh();
+    }
+
+    private function buildJenazahPayload(?Makam $makam = null): array
+    {
+        $payload = [
+            'nama' => $this->nama_jenazah,
+            'nik' => $this->nik_jenazah,
+            'jenis_kelamin' => $this->jenis_kelamin,
+            'agama' => $this->agama,
+            'tempat_lahir' => $this->tempat_lahir,
+            'tanggal_lahir' => $this->tanggal_lahir,
+            'tanggal_wafat' => $this->tanggal_wafat,
+            'alamat' => $this->alamat,
+            'keterangan' => $this->keterangan,
+            'tpu' => $this->tpu,
+        ];
+
+        if ($makam) {
+            $payload['makam_id'] = $makam->id;
+            $payload['kode_makam'] = $makam->kode_makam;
+            $payload['blok'] = $makam->blok;
+            $payload['zona'] = $makam->zona;
+            $payload['nomor_makam'] = $makam->nomor;
+        }
+
+        return array_filter($payload, fn($value) => ! is_null($value));
+    }
+
+    private function resolveLinkedMakam(): ?Makam
+    {
+        return $this->makam ?: ($this->makam_id ? Makam::find($this->makam_id) : null);
     }
 
     private function resolveLinkedJenazah(): ?Jenazah

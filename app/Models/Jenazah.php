@@ -23,6 +23,10 @@ class Jenazah extends Model
         'alamat',
         'keterangan',
         'makam_id',
+        'kode_makam',
+        'blok',
+        'zona',
+        'nomor_makam',
         'tpu',
     ];
 
@@ -45,8 +49,27 @@ class Jenazah extends Model
     protected static function booted(): void
     {
         static::saved(function (Jenazah $jenazah) {
-            if ($jenazah->makam_id) {
-                $jenazah->makam?->syncStatusFromJenazah();
+            $makam = $jenazah->makam()->first();
+
+            if ($makam) {
+                $updates = array_filter([
+                    'kode_makam' => $makam->kode_makam,
+                    'blok' => $makam->blok,
+                    'zona' => $makam->zona,
+                    'nomor_makam' => $makam->nomor,
+                ], fn($value) => ! is_null($value));
+
+                $syncNeeded = collect($updates)->contains(function ($value, $key) use ($jenazah) {
+                    return $jenazah->{$key} !== $value;
+                });
+
+                if ($syncNeeded) {
+                    $jenazah->withoutEvents(function () use ($jenazah, $updates) {
+                        $jenazah->forceFill($updates)->save();
+                    });
+                }
+
+                $makam->syncStatusFromJenazah();
             }
 
             if ($jenazah->wasChanged('makam_id') && $jenazah->getOriginal('makam_id')) {

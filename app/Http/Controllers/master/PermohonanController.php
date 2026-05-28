@@ -42,7 +42,7 @@ class PermohonanController extends Controller
     {
         Permohonan::create($this->validatedData($request));
 
-        return redirect()->route($this->routePrefix().'.master.permohonan')
+        return redirect()->route($this->routePrefix() . '.master.permohonan')
             ->with('success', 'Permohonan berhasil ditambahkan');
     }
 
@@ -64,7 +64,7 @@ class PermohonanController extends Controller
         $permohonan->update($this->validatedData($request));
         $permohonan->syncLinkedJenazahData();
 
-        return redirect()->route($this->routePrefix().'.master.permohonan')
+        return redirect()->route($this->routePrefix() . '.master.permohonan')
             ->with('success', 'Permohonan berhasil diperbarui');
     }
 
@@ -73,7 +73,7 @@ class PermohonanController extends Controller
         $permohonan = $this->findAccessiblePermohonanOrFail($permohonan->id);
         $permohonan->delete();
 
-        return redirect()->route($this->routePrefix().'.master.permohonan')
+        return redirect()->route($this->routePrefix() . '.master.permohonan')
             ->with('success', 'Permohonan berhasil dihapus');
     }
 
@@ -92,12 +92,12 @@ class PermohonanController extends Controller
             $permohonan->status = $request->status;
             $permohonan->save();
 
-            if ($request->status === 'disetujui' && $permohonan->jenis_permohonan === 'makam_baru' && ! $permohonan->jenazah_id) {
-                $this->createJenazahFromPermohonan($permohonan);
+            if ($request->status === 'disetujui' && in_array($permohonan->jenis_permohonan, ['makam_baru', 'pemindahan_makam', 'renovasi_makam']) && ! $permohonan->jenazah_id) {
+                $permohonan->persistJenazahRecord();
             }
         });
 
-        return redirect()->route($this->routePrefix().'.master.permohonan')
+        return redirect()->route($this->routePrefix() . '.master.permohonan')
             ->with('success', 'Status permohonan berhasil diperbarui');
     }
 
@@ -134,29 +134,5 @@ class PermohonanController extends Controller
     private function findAccessiblePermohonanOrFail(int $id): Permohonan
     {
         return $this->accessiblePermohonans()->findOrFail($id);
-    }
-
-    private function createJenazahFromPermohonan(Permohonan $permohonan): void
-    {
-        if (Jenazah::where('nik', $permohonan->nik_jenazah)->exists()) {
-            throw ValidationException::withMessages([
-                'status' => 'Permohonan tidak bisa disetujui karena NIK jenazah sudah terdaftar di data jenazah.',
-            ]);
-        }
-
-        $jenazah = Jenazah::create([
-            'nama' => $permohonan->nama_jenazah,
-            'nik' => $permohonan->nik_jenazah,
-            'jenis_kelamin' => $permohonan->jenis_kelamin,
-            'agama' => $permohonan->agama,
-            'tempat_lahir' => $permohonan->tempat_lahir,
-            'tanggal_lahir' => $permohonan->tanggal_lahir,
-            'tanggal_wafat' => $permohonan->tanggal_wafat,
-            'tpu' => $permohonan->tpu,
-        ]);
-
-        $permohonan->update([
-            'jenazah_id' => $jenazah->id,
-        ]);
     }
 }

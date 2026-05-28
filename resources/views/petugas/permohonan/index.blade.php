@@ -217,9 +217,9 @@
     </div>
 
     @if(session('success'))
-        <div class="alert alert-success border-2 border-dark shadow-sm mb-4">
-            <i class="bi bi-check-circle-fill me-2"></i>{{ session('success') }}
-        </div>
+    <div class="alert alert-success border-2 border-dark shadow-sm mb-4">
+        <i class="bi bi-check-circle-fill me-2"></i>{{ session('success') }}
+    </div>
     @endif
 
     <!-- Stats Row -->
@@ -292,10 +292,15 @@
                 <h4 class="petugas-section-title">Daftar Permohonan</h4>
                 <p class="text-muted mb-0">Kelola semua pengajuan makam dari ahli waris.</p>
             </div>
-            <span class="petugas-pill petugas-pill-warning">
-                <i class="bi bi-file-earmark-text"></i>
-                {{ $stats['total'] }} permohonan
-            </span>
+            <div class="d-flex align-items-center gap-2">
+                <a href="{{ route('petugas.permohonan.create') }}" class="btn btn-sm" style="background-color:#1E3E62;color:#fff;">
+                    <i class="bi bi-plus-circle"></i> Buat Permohonan
+                </a>
+                <span class="petugas-pill petugas-pill-warning">
+                    <i class="bi bi-file-earmark-text"></i>
+                    {{ $stats['total'] }} permohonan
+                </span>
+            </div>
         </div>
 
         <div class="p-3 p-lg-4">
@@ -314,67 +319,67 @@
                     </thead>
                     <tbody>
                         @forelse($permohonans as $item)
-                            @php
-                                $status = strtolower($item->status ?? '');
-                                $statusLabel = match($status) {
-                                    'disetujui' => 'Disetujui',
-                                    'ditolak' => 'Ditolak',
-                                    default => 'Menunggu'
-                                };
-                            @endphp
-                            <tr>
-                                <td class="fw-semibold">{{ $loop->iteration }}</td>
-                                <td>
-                                    @if($item->jenis_permohonan === 'perpanjangan')
-                                        <span class="petugas-pill petugas-pill-warning">
-                                            <i class="bi bi-arrow-repeat"></i>
-                                            Perpanjangan
-                                        </span>
-                                    @else
-                                        <span class="petugas-pill petugas-pill-success">
-                                            <i class="bi bi-plus-circle"></i>
-                                            Makam Baru
-                                        </span>
-                                    @endif
-                                </td>
-                                <td>
-                                    @if($item->jenis_permohonan === 'perpanjangan')
-                                        <small class="text-muted">Makam:</small><br>
-                                        {{ $item->makam?->kode_makam ?? '-' }}
-                                    @else
-                                        <small class="text-muted">Jenazah:</small><br>
-                                        {{ $item->nama_jenazah ?? 'N/A' }}
-                                    @endif
-                                </td>
-                                <td>
-                                    <div class="fw-semibold">{{ $item->user?->name ?? '-' }}</div>
-                                    <small class="text-muted">{{ $item->nama_ahli_waris ?? '-' }}</small>
-                                </td>
-                                <td>{{ $item->created_at?->format('d-m-Y') }}</td>
-                                <td>
-                                    @if($status === 'disetujui')
-                                        <span class="petugas-pill petugas-pill-success">{{ $statusLabel }}</span>
-                                    @elseif($status === 'ditolak')
-                                        <span class="petugas-pill petugas-pill-danger">{{ $statusLabel }}</span>
-                                    @else
-                                        <span class="petugas-pill petugas-pill-warning">{{ $statusLabel }}</span>
-                                    @endif
-                                </td>
-                                <td>
-                                    <a href="{{ route('petugas.permohonan.show', $item) }}" class="btn btn-sm btn-outline-primary">
-                                        <i class="bi bi-eye"></i> Detail
-                                    </a>
-                                </td>
-                            </tr>
+                        @php
+                        $status = strtolower($item->status ?? '');
+                        $statusLabel = match($status) {
+                        'disetujui' => 'Disetujui',
+                        'ditolak' => 'Ditolak',
+                        default => 'Menunggu'
+                        };
+                        @endphp
+                        <tr>
+                            <td class="fw-semibold">{{ $loop->iteration }}</td>
+                            <td>
+                                @if($item->jenis_permohonan === 'perpanjangan')
+                                <span class="petugas-pill petugas-pill-warning">
+                                    <i class="bi bi-arrow-repeat"></i>
+                                    Perpanjangan
+                                </span>
+                                @else
+                                <span class="petugas-pill petugas-pill-success">
+                                    <i class="bi bi-plus-circle"></i>
+                                    Makam Baru
+                                </span>
+                                @endif
+                            </td>
+                            <td>
+                                @if($item->jenis_permohonan === 'perpanjangan')
+                                <small class="text-muted">Makam:</small><br>
+                                {{ $item->makam?->kode_makam ?? '-' }}
+                                @else
+                                <small class="text-muted">Jenazah:</small><br>
+                                {{ $item->nama_jenazah ?? 'N/A' }}
+                                @endif
+                            </td>
+                            <td>
+                                <div class="fw-semibold">{{ $item->user?->name ?? '-' }}</div>
+                                <small class="text-muted">{{ $item->nama_ahli_waris ?? '-' }}</small>
+                            </td>
+                            <td>{{ $item->created_at?->format('d-m-Y') }}</td>
+                            <td>
+                                @if($status === 'disetujui')
+                                <span class="petugas-pill petugas-pill-success">{{ $statusLabel }}</span>
+                                @elseif($status === 'ditolak')
+                                <span class="petugas-pill petugas-pill-danger">{{ $statusLabel }}</span>
+                                @else
+                                <span class="petugas-pill petugas-pill-warning">{{ $statusLabel }}</span>
+                                @endif
+                            </td>
+                            <td>
+                                <a href="{{ route('petugas.permohonan.show', $item) }}" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-eye"></i> Detail
+                                </a>
+                            </td>
+                        </tr>
                         @empty
-                            <tr>
-                                <td colspan="7">
-                                    <div class="petugas-empty-state text-center">
-                                        <i class="bi bi-inbox fs-2 d-block mb-2"></i>
-                                        Belum ada permohonan untuk TPU Anda
-                                    </div>
-                                </td>
-                            </tr>
+                        <tr>
+                            <td colspan="7">
+                                <div class="petugas-empty-state text-center">
+                                    <i class="bi bi-inbox fs-2 d-block mb-2"></i>
+                                    Belum ada permohonan untuk TPU Anda
+                                </div>
+                            </td>
+                        </tr>
                         @endforelse
                     </tbody>
                 </table>

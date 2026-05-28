@@ -16,7 +16,10 @@ class LaporanController extends Controller
         $start  = $request->start;
         $end    = $request->end;
 
-        $query = Jenazah::with('makam');
+        $query = Jenazah::with('makam')
+            ->when(auth()->user()?->isPetugas(), function ($query) {
+                $query->where('tpu', auth()->user()->tpu);
+            });
 
         if ($filter == 'harian') {
             $query->whereDate('tanggal_wafat', Carbon::today());
@@ -58,7 +61,7 @@ class LaporanController extends Controller
     {
         Laporan::create($this->validatedData($request));
 
-        return redirect()->route($this->routePrefix().'.master.laporan')
+        return redirect()->route($this->routePrefix() . '.master.laporan')
             ->with('success', 'Laporan berhasil ditambahkan');
     }
 
@@ -71,7 +74,7 @@ class LaporanController extends Controller
     {
         $laporan->update($this->validatedData($request));
 
-        return redirect()->route($this->routePrefix().'.master.laporan')
+        return redirect()->route($this->routePrefix() . '.master.laporan')
             ->with('success', 'Laporan berhasil diperbarui');
     }
 
@@ -79,7 +82,7 @@ class LaporanController extends Controller
     {
         $laporan->delete();
 
-        return redirect()->route($this->routePrefix().'.master.laporan')
+        return redirect()->route($this->routePrefix() . '.master.laporan')
             ->with('success', 'Laporan berhasil dihapus');
     }
 
