@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\User;
+use Carbon\CarbonInterface;
+use Illuminate\Support\Carbon;
 
 class Permohonan extends Model
 {
@@ -41,8 +43,19 @@ class Permohonan extends Model
         'tahun_pemakaman',
         'bukti_pembayaran_retribusi',
         'status',
+        'approved_at',
+        'jenazah_deleted_at',
         'petugas_id',
         'catatan',
+    ];
+
+    protected $casts = [
+        'tanggal_lahir' => 'date',
+        'tanggal_wafat' => 'date',
+        'approved_at' => 'datetime',
+        'jenazah_deleted_at' => 'datetime',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
     ];
 
     public function user()
@@ -122,6 +135,70 @@ class Permohonan extends Model
         }
     }
 
+    public function hasCompleteJenazahData(): bool
+    {
+        return $this->jenis_permohonan === 'makam_baru'
+            && filled($this->nama_jenazah)
+            && filled($this->nik_jenazah)
+            && filled($this->jenis_kelamin)
+            && filled($this->tanggal_wafat);
+    }
+
+    public function approvedAt(): ?CarbonInterface
+    {
+        if ($this->approved_at) {
+            return $this->approved_at;
+        }
+
+        if ($this->status === 'disetujui' && $this->updated_at) {
+            return $this->updated_at;
+        }
+
+        return null;
+    }
+
+    public function renewalDueAt(): ?CarbonInterface
+    {
+        if ($this->jenis_permohonan !== 'makam_baru' || $this->status !== 'disetujui') {
+            return null;
+        }
+
+        if ($this->relationLoaded('jenazah') && $this->jenazah?->renewalDueAt()) {
+            return $this->jenazah->renewalDueAt();
+        }
+
+        if ($this->jenazah_id) {
+            $jenazah = Jenazah::find($this->jenazah_id);
+
+            if ($jenazah?->renewalDueAt()) {
+                return $jenazah->renewalDueAt();
+            }
+        }
+
+        $approvedAt = $this->approvedAt();
+
+        return $approvedAt?->copy()->addYearsNoOverflow(2);
+    }
+
+    public function renewalAlertLevel(int $warningDays = 90): ?string
+    {
+        $dueAt = $this->renewalDueAt();
+
+        if (! $dueAt) {
+            return null;
+        }
+
+        if ($dueAt->isPast()) {
+            return 'expired';
+        }
+
+        if (Carbon::now()->diffInDays($dueAt) <= $warningDays) {
+            return 'soon';
+        }
+
+        return 'safe';
+    }
+
     public function persistJenazahRecord(): Jenazah
     {
         $makam = $this->resolveLinkedMakam();
@@ -132,7 +209,7 @@ class Permohonan extends Model
             $jenazah = new Jenazah();
         }
 
-        $jenazah->fill($this->buildJenazahPayload($makam));
+        $jenazah->fill($this->buildJenazahPayload($makam, $jenazah));
         $jenazah->save();
 
         $sync = [
@@ -155,7 +232,7 @@ class Permohonan extends Model
         return $jenazah->fresh();
     }
 
-    private function buildJenazahPayload(?Makam $makam = null): array
+    private function buildJenazahPayload(?Makam $makam = null, ?Jenazah $jenazah = null): array
     {
         $payload = [
             'nama' => $this->nama_jenazah,
@@ -217,5 +294,25 @@ class Permohonan extends Model
         }
 
         return null;
+    }
+
+    protected static function booted(): void
+    {
+        static::saved(function (Permohonan $permohonan) {
+            if (
+                $permohonan->status === 'disetujui'
+                && $permohonan->wasChanged('status')
+                && $permohonan->hasCompleteJenazahData()
+                && ! $permohonan->jenazah_id
+            ) {
+            $permohonan->persistJenazahRecord();
+        }
+    });
+
+        static::saving(function (Permohonan $permohonan) {
+            if ($permohonan->jenazah_deleted_at && $permohonan->isDirty('jenazah_deleted_at')) {
+                $permohonan->jenazah_id = null;
+            }
+        });
     }
 }

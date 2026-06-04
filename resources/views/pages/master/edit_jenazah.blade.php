@@ -5,6 +5,8 @@
 @section('content')
 @php
     $routePrefix = request()->routeIs('petugas.*') ? 'petugas' : 'admin';
+    $selectedMakamId = old('makam_id', $jenazah->makam_id);
+    $selectedMakam = $jenazah->relationLoaded('makam') ? $jenazah->makam : null;
 @endphp
 
 <div class="container-fluid pt-2 pb-4">
@@ -58,6 +60,121 @@
                         @enderror
                     </div>
 
+                    {{-- Alamat --}}
+                    <div class="col-12">
+                        <label class="form-label">Alamat</label>
+                        <textarea name="alamat"
+                                  class="form-control @error('alamat') is-invalid @enderror"
+                                  rows="3"
+                                  placeholder="Masukkan alamat lengkap">{{ old('alamat', $jenazah->alamat) }}</textarea>
+
+                        @error('alamat')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    {{-- Makam --}}
+                    <div class="col-md-6">
+                        <label class="form-label">Makam</label>
+                        <select id="makam_id" name="makam_id"
+                                class="form-select @error('makam_id') is-invalid @enderror">
+                            <option value="">Belum dipilih</option>
+                            @foreach($makams as $makam)
+                                <option value="{{ $makam->id }}"
+                                    @selected($selectedMakamId == $makam->id)
+                                    data-kode-makam="{{ $makam->kode_makam }}"
+                                    data-blok="{{ $makam->blok }}"
+                                    data-zona="{{ $makam->zona }}"
+                                    data-nomor-makam="{{ $makam->nomor }}"
+                                    data-keterangan="{{ $makam->keterangan }}">
+                                    {{ $makam->kode_makam }} - {{ $makam->blok ?? '-' }} / {{ $makam->zona ?? '-' }}
+                                </option>
+                            @endforeach
+                        </select>
+
+                        @error('makam_id')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    {{-- Kode Makam --}}
+                    <div class="col-md-6">
+                        <label class="form-label">Kode Makam</label>
+                        <input type="text" id="kode_makam" name="kode_makam"
+                               class="form-control @error('kode_makam') is-invalid @enderror"
+                               value="{{ old('kode_makam', $jenazah->kode_makam ?? $selectedMakam?->kode_makam) }}"
+                               placeholder="Otomatis terisi saat makam dipilih">
+
+                        @error('kode_makam')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    {{-- Blok --}}
+                    <div class="col-md-4">
+                        <label class="form-label">Blok</label>
+                        <input type="text" id="blok" name="blok"
+                               class="form-control @error('blok') is-invalid @enderror"
+                               value="{{ old('blok', $jenazah->blok ?? $selectedMakam?->blok) }}"
+                               placeholder="Otomatis terisi saat makam dipilih">
+
+                        @error('blok')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    {{-- Zona --}}
+                    <div class="col-md-4">
+                        <label class="form-label">Zona</label>
+                        <input type="text" id="zona" name="zona"
+                               class="form-control @error('zona') is-invalid @enderror"
+                               value="{{ old('zona', $jenazah->zona ?? $selectedMakam?->zona) }}"
+                               placeholder="Otomatis terisi saat makam dipilih">
+
+                        @error('zona')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    {{-- Nomor --}}
+                    <div class="col-md-4">
+                        <label class="form-label">Nomor</label>
+                        <input type="text" id="nomor_makam" name="nomor_makam"
+                               class="form-control @error('nomor_makam') is-invalid @enderror"
+                               value="{{ old('nomor_makam', $jenazah->nomor_makam ?? $selectedMakam?->nomor) }}"
+                               placeholder="Otomatis terisi saat makam dipilih">
+
+                        @error('nomor_makam')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    {{-- Keterangan --}}
+                    <div class="col-12">
+                        <label class="form-label">Keterangan Makam</label>
+                        <textarea id="keterangan" name="keterangan"
+                                  class="form-control @error('keterangan') is-invalid @enderror"
+                                  rows="3"
+                                  placeholder="Otomatis terisi saat makam dipilih">{{ old('keterangan', $jenazah->keterangan ?? $selectedMakam?->keterangan) }}</textarea>
+
+                        @error('keterangan')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Tenggat Masa Sewa Makam</label>
+                        <input type="date" name="tenggat_sewa_makam"
+                               class="form-control @error('tenggat_sewa_makam') is-invalid @enderror"
+                               value="{{ old('tenggat_sewa_makam', optional($jenazah->renewalDueAt())->format('Y-m-d')) }}">
+
+                        <small class="text-muted d-block mt-1">Tanggal ini dipakai sebagai batas akhir sewa makam untuk data jenazah ini.</small>
+
+                        @error('tenggat_sewa_makam')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+
                     {{-- Jenis Kelamin --}}
                     <div class="col-md-6">
                         <label class="form-label">Jenis Kelamin</label>
@@ -90,20 +207,6 @@
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
-
-                    {{-- Alamat --}}
-                    <div class="col-12">
-                        <label class="form-label">Alamat</label>
-                        <textarea name="alamat"
-                                  class="form-control @error('alamat') is-invalid @enderror"
-                                  rows="3"
-                                  placeholder="Masukkan alamat lengkap">{{ old('alamat', $jenazah->alamat) }}</textarea>
-
-                        @error('alamat')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-
                 </div>
 
                 {{-- BUTTON --}}
@@ -131,4 +234,36 @@
 @endsection
 
 @push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const makamSelect = document.getElementById('makam_id');
+    if (!makamSelect) {
+        return;
+    }
+
+    const fields = {
+        kodeMakam: document.getElementById('kode_makam'),
+        blok: document.getElementById('blok'),
+        zona: document.getElementById('zona'),
+        nomorMakam: document.getElementById('nomor_makam'),
+        keterangan: document.getElementById('keterangan'),
+    };
+
+    const fillFields = () => {
+        const option = makamSelect.selectedOptions[0];
+        if (!option || !makamSelect.value) {
+            return;
+        }
+
+        if (fields.kodeMakam) fields.kodeMakam.value = option.dataset.kodeMakam || '';
+        if (fields.blok) fields.blok.value = option.dataset.blok || '';
+        if (fields.zona) fields.zona.value = option.dataset.zona || '';
+        if (fields.nomorMakam) fields.nomorMakam.value = option.dataset.nomorMakam || '';
+        if (fields.keterangan) fields.keterangan.value = option.dataset.keterangan || '';
+    };
+
+    makamSelect.addEventListener('change', fillFields);
+    fillFields();
+});
+</script>
 @endpush

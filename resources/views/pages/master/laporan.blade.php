@@ -27,6 +27,162 @@
         <div class="alert alert-success">{{ session('success') }}</div>
     @endif
 
+    @if($isPetugasReport ?? false)
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+            <div>
+                <h4 class="fw-bold text-dark mb-1">Laporan Petugas TPU</h4>
+                <p class="text-muted mb-0">Gabungan data permohonan dan data jenazah untuk TPU {{ auth()->user()->tpu }}</p>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <a href="{{ $printRoute }}" target="_blank" class="btn btn-outline-dark btn-sm">
+                    <i class="bi bi-printer"></i> Cetak PDF
+                </a>
+                <a href="{{ $exportExcelRoute }}" class="btn btn-success btn-sm">
+                    <i class="bi bi-file-earmark-excel"></i> Export Excel
+                </a>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0 rounded-4 mb-4">
+            <div class="card-body">
+                <form method="GET" action="{{ request()->url() }}">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-3">
+                            <label class="form-label">Jenis Laporan</label>
+                            <select name="filter" class="form-select">
+                                <option value="harian" @selected(($filter ?? 'harian') === 'harian')>Harian</option>
+                                <option value="mingguan" @selected(($filter ?? 'harian') === 'mingguan')>Mingguan</option>
+                                <option value="bulanan" @selected(($filter ?? 'harian') === 'bulanan')>Bulanan</option>
+                                <option value="tahunan" @selected(($filter ?? 'harian') === 'tahunan')>Tahunan</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Tanggal Mulai</label>
+                            <input type="date" name="start" value="{{ $start ?? request('start') }}" class="form-control">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Tanggal Akhir</label>
+                            <input type="date" name="end" value="{{ $end ?? request('end') }}" class="form-control">
+                        </div>
+                        <div class="col-md-3">
+                            <button class="btn w-100" style="background-color:#1E3E62;color:white;">
+                                <i class="bi bi-filter"></i> Tampilkan
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-md-3">
+                <div class="card shadow-sm border-0 rounded-4">
+                    <div class="card-body">
+                        <p class="text-muted mb-1">Total Data</p>
+                        <h4 class="fw-bold">{{ $total ?? 0 }}</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card shadow-sm border-0 rounded-4">
+                    <div class="card-body">
+                        <p class="text-muted mb-1">Permohonan Masuk</p>
+                        <h4 class="fw-bold">{{ $totalPermohonan ?? 0 }}</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card shadow-sm border-0 rounded-4">
+                    <div class="card-body">
+                        <p class="text-muted mb-1">Data Jenazah</p>
+                        <h4 class="fw-bold">{{ $totalJenazah ?? 0 }}</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card shadow-sm border-0 rounded-4">
+                    <div class="card-body">
+                        <p class="text-muted mb-1">Makam Terhubung</p>
+                        <h4 class="fw-bold">{{ $totalMakamTerhubung ?? 0 }}</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0 rounded-4">
+            <div class="card-header bg-white border-0 py-3 px-4">
+                <h6 class="fw-bold mb-0">Data Pemakaman Gabungan</h6>
+                <small class="text-muted">Memuat data permohonan dan data jenazah yang masuk untuk TPU ini</small>
+            </div>
+            <div class="card-body px-4 pb-4">
+                <div class="table-responsive">
+                    <table class="table table-bordered align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>No</th>
+                                <th>Sumber</th>
+                                <th>Nama Jenazah</th>
+                                <th>NIK</th>
+                                <th>Jenis Kelamin</th>
+                                <th>Tanggal Input</th>
+                                <th>Tanggal Wafat</th>
+                                <th>Kode Makam</th>
+                                <th>Blok</th>
+                                <th>Zona</th>
+                                <th>Nomor</th>
+                                <th>Status Permohonan</th>
+                                <th>Status Makam</th>
+                                <th>Catatan</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($reportRows as $row)
+                                <tr>
+                                    <td>{{ $loop->iteration }}</td>
+                                    <td>
+                                        <span class="badge {{ $row['source'] === 'permohonan' ? 'bg-primary' : 'bg-success' }}">
+                                            {{ $row['source_label'] }}
+                                        </span>
+                                    </td>
+                                    <td>{{ $row['nama'] }}</td>
+                                    <td>{{ $row['nik'] }}</td>
+                                    <td>{{ $row['jenis_kelamin'] }}</td>
+                                    <td>{{ $row['tanggal_input_label'] }}</td>
+                                    <td>{{ $row['tanggal_wafat_label'] }}</td>
+                                    <td>{{ $row['kode_makam'] }}</td>
+                                    <td>{{ $row['blok'] }}</td>
+                                    <td>{{ $row['zona'] }}</td>
+                                    <td>{{ $row['nomor_makam'] }}</td>
+                                    <td>
+                                        @if($row['source'] === 'permohonan')
+                                            <span class="badge {{ $row['status_permohonan'] === 'disetujui' ? 'bg-success' : ($row['status_permohonan'] === 'ditolak' ? 'bg-danger' : 'bg-warning text-dark') }}">
+                                                {{ ucfirst($row['status_permohonan'] ?? '-') }}
+                                            </span>
+                                        @else
+                                            <span class="text-muted">-</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @php $statusMakam = $row['status_makam'] ?? null; @endphp
+                                        <span class="badge {{ $statusMakam === 'kosong' ? 'bg-secondary' : ($statusMakam ? 'bg-success' : 'bg-warning text-dark') }}">
+                                            {{ $statusMakam ? ucfirst($statusMakam) : 'Belum Ada' }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <small>{{ $row['source'] === 'permohonan' ? ($row['nama_ahli_waris'] !== '-' ? 'Ahli waris: '.$row['nama_ahli_waris'].' | ' : '') : '' }}{{ $row['catatan'] }}</small>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="14" class="text-center text-muted">Tidak ada data laporan</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    @else
     {{-- Filter --}}
     <div class="card shadow-sm border-0 rounded-4 mb-4">
         <div class="card-body">
@@ -175,4 +331,5 @@
     </div>
 
 </div>
+    @endif
 @endsection

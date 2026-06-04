@@ -35,6 +35,21 @@ class DashboardController extends Controller
             ->take(10)
             ->get();
 
+        $perpanjanganPerluDiingatkan = Permohonan::with(['user', 'jenazah', 'makam'])
+            ->where('tpu', $petugas->tpu)
+            ->where('status', 'disetujui')
+            ->where('jenis_permohonan', 'makam_baru')
+            ->get()
+            ->filter(function (Permohonan $permohonan) {
+                $level = $permohonan->renewalAlertLevel();
+
+                return in_array($level, ['soon', 'expired'], true);
+            })
+            ->sortBy(function (Permohonan $permohonan) {
+                return $permohonan->renewalDueAt()?->timestamp ?? PHP_INT_MAX;
+            })
+            ->values();
+
         // Total jenazah dan makam untuk informasi sistem (filtered by TPU)
         $totalJenazah = Jenazah::where('tpu', $petugas->tpu)->count();
         $totalMakam = Makam::where('tpu', $petugas->tpu)->count();
@@ -46,6 +61,7 @@ class DashboardController extends Controller
             'totalPermohonan',
             'permohonanMenunggu',
             'permohonanTerbaru',
+            'perpanjanganPerluDiingatkan',
             'totalJenazah',
             'totalMakam'
         ));

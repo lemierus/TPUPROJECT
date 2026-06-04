@@ -222,6 +222,25 @@
     </div>
     @endif
 
+    @if(isset($perpanjanganPerluDiingatkan) && $perpanjanganPerluDiingatkan->isNotEmpty())
+        <div class="alert alert-warning border-2 border-dark shadow-sm mb-4">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-2">
+                <div>
+                    <div class="fw-bold mb-1">
+                        <i class="bi bi-bell-fill me-2"></i>Pengingat perpanjangan sewa makam
+                    </div>
+                    <div class="mb-0">
+                        Ada {{ $perpanjanganPerluDiingatkan->count() }} permohonan makam baru yang akan mencapai batas 2 tahun sejak disetujui.
+                        Mohon informasikan kepada ahli waris terkait perpanjangan sewa makam.
+                    </div>
+                </div>
+                <a href="{{ route('petugas.dashboard') }}#top" class="btn btn-sm btn-outline-dark">
+                    Lihat Dashboard
+                </a>
+            </div>
+        </div>
+    @endif
+
     <!-- Stats Row -->
     <div class="row g-3 g-lg-4 mb-4">
         <div class="col-md-6 col-xl-3">
@@ -314,6 +333,7 @@
                             <th>Pemohon</th>
                             <th style="width: 140px;">Tanggal</th>
                             <th style="width: 130px;">Status</th>
+                            <th style="width: 170px;">Tenggat Sewa</th>
                             <th style="width: 180px;">Aksi</th>
                         </tr>
                     </thead>
@@ -366,6 +386,24 @@
                                 @endif
                             </td>
                             <td>
+                                @php
+                                    $dueAt = $item->renewalDueAt();
+                                    $level = $item->renewalAlertLevel();
+                                @endphp
+                                @if($dueAt)
+                                    <div class="fw-semibold {{ $level === 'expired' ? 'text-danger' : ($level === 'soon' ? 'text-warning' : 'text-success') }}">
+                                        {{ $dueAt->format('d-m-Y') }}
+                                    </div>
+                                    @if($level === 'expired')
+                                        <span class="petugas-pill petugas-pill-danger">Lewat batas</span>
+                                    @elseif($level === 'soon')
+                                        <span class="petugas-pill petugas-pill-warning">Mendekati batas</span>
+                                    @endif
+                                @else
+                                    <span class="text-muted">-</span>
+                                @endif
+                            </td>
+                            <td>
                                 <a href="{{ route('petugas.permohonan.show', $item) }}" class="btn btn-sm btn-outline-primary">
                                     <i class="bi bi-eye"></i> Detail
                                 </a>
@@ -373,7 +411,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="7">
+                            <td colspan="8">
                                 <div class="petugas-empty-state text-center">
                                     <i class="bi bi-inbox fs-2 d-block mb-2"></i>
                                     Belum ada permohonan untuk TPU Anda

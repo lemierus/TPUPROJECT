@@ -90,9 +90,12 @@ class PermohonanController extends Controller
 
         DB::transaction(function () use ($request, $permohonan) {
             $permohonan->status = $request->status;
+            if ($request->status === 'disetujui' && ! $permohonan->approved_at) {
+                $permohonan->approved_at = now();
+            }
             $permohonan->save();
 
-            if ($request->status === 'disetujui' && in_array($permohonan->jenis_permohonan, ['makam_baru', 'pemindahan_makam', 'renovasi_makam']) && ! $permohonan->jenazah_id) {
+            if ($request->status === 'disetujui' && $permohonan->hasCompleteJenazahData() && ! $permohonan->jenazah_id) {
                 $permohonan->persistJenazahRecord();
             }
         });

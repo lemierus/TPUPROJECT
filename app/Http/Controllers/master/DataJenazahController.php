@@ -7,9 +7,10 @@ use Illuminate\Http\Request;
 use App\Models\Jenazah;
 use App\Models\Makam;
 use App\Models\Permohonan;
-use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Schema;
 
 class DataJenazahController extends Controller
 {
@@ -20,59 +21,17 @@ class DataJenazahController extends Controller
         $filter = $request->filter ?? 'harian';
 
         if (auth()->user()?->isPetugas()) {
-            $permohonanQuery = Permohonan::with(['makam', 'user', 'jenazah'])
-                ->where('tpu', auth()->user()->tpu)
-                ->whereIn('status', ['menunggu', 'pending', 'disetujui'])
-                ->when($search, function ($query) use ($search) {
-                    $query->where(function ($subQuery) use ($search) {
-                        $subQuery->where('nama_jenazah', 'like', "%$search%")
-                            ->orWhere('nik_jenazah', 'like', "%$search%")
-                            ->orWhere('nama_ahli_waris', 'like', "%$search%")
-                            ->orWhere('no_hp_ahli_waris', 'like', "%$search%")
-                            ->orWhere('hubungan_keluarga', 'like', "%$search%");
-                    });
-                });
-
-            if ($filter === 'mingguan') {
-                $permohonanQuery->whereBetween('created_at', [
-                    Carbon::now()->startOfWeek(),
-                    Carbon::now()->endOfWeek(),
-                ]);
-            } elseif ($filter === 'bulanan') {
-                $permohonanQuery->whereMonth('created_at', Carbon::now()->month)
-                    ->whereYear('created_at', Carbon::now()->year);
-            } else {
-                $permohonanQuery->whereDate('created_at', Carbon::today());
-            }
-
-            $permohonanJenazah = $permohonanQuery
-                ->latest()
-                ->get()
-                ->groupBy(function ($item) use ($filter) {
-                    if ($filter === 'mingguan') {
-                        return Carbon::parse($item->created_at)->startOfWeek()->format('Y-m-d');
-                    }
-
-                    if ($filter === 'bulanan') {
-                        return Carbon::parse($item->created_at)->format('Y-m');
-                    }
-
-                    return Carbon::parse($item->created_at)->format('Y-m-d');
-                });
-
-            return view('pages.master.data_jenazah', [
-                'permohonanJenazah' => $permohonanJenazah,
-                'isPetugasView' => true,
-                'filter' => $filter,
-            ]);
+            $this->syncApprovedPermohonanJenazah();
         }
 
         $jenazah = $this->accessibleJenazah()
-            ->with('makam')
+            ->with(['makam', 'permohonan'])
             ->when($search, function ($query) use ($search) {
-                $query->where('nama', 'like', "%$search%")
-                    ->orWhere('nik', 'like', "%$search%")
-                    ->orWhere('alamat', 'like', "%$search%");
+                $query->where(function ($subQuery) use ($search) {
+                    $subQuery->where('nama', 'like', "%$search%")
+                        ->orWhere('nik', 'like', "%$search%")
+                        ->orWhere('alamat', 'like', "%$search%");
+                });
             })->latest()->get();
 
         return view('pages.master.data_jenazah', [
@@ -107,11 +66,13 @@ class DataJenazahController extends Controller
             'blok' => ['nullable', 'string', 'max:255'],
             'zona' => ['nullable', 'string', 'max:255'],
             'nomor_makam' => ['nullable', 'string', 'max:255'],
+            'tenggat_sewa_makam' => ['nullable', 'date'],
         ]);
 
         $this->applyMakamSnapshot($request, $data);
         $this->validateAvailableMakam($request);
         $this->validateAccessibleMakam($request);
+        $this->syncTenggatSewaField($data);
 
         if (auth()->user()?->isPetugas()) {
             $data['tpu'] = auth()->user()->tpu;
@@ -126,7 +87,7 @@ class DataJenazahController extends Controller
     public function edit($id)
     {
         $jenazah = $this->findAccessibleJenazahOrFail($id);
-        $jenazah->load('permohonan');
+        $jenazah->load(['permohonan', 'makam']);
 
         return view('pages.master.form_jenazah', [
             'jenazah' => $jenazah,
@@ -153,6 +114,7 @@ class DataJenazahController extends Controller
             'blok' => ['nullable', 'string', 'max:255'],
             'zona' => ['nullable', 'string', 'max:255'],
             'nomor_makam' => ['nullable', 'string', 'max:255'],
+            'tenggat_sewa_makam' => ['nullable', 'date'],
             'nama_ahli_waris' => ['nullable', 'string', 'max:255'],
             'hubungan_keluarga' => ['nullable', 'string', 'max:100'],
             'no_hp_ahli_waris' => ['nullable', 'string', 'max:50'],
@@ -162,6 +124,7 @@ class DataJenazahController extends Controller
         $this->applyMakamSnapshot($request, $data);
         $this->validateAvailableMakam($request, $jenazah);
         $this->validateAccessibleMakam($request);
+        $this->syncTenggatSewaField($data);
 
         $jenazah->load('permohonan');
         $jenazah->update($data);
@@ -182,7 +145,21 @@ class DataJenazahController extends Controller
     public function destroy($id)
     {
         $jenazah = $this->findAccessibleJenazahOrFail($id);
-        $jenazah->delete();
+
+        DB::transaction(function () use ($jenazah) {
+            Permohonan::where('jenazah_id', $jenazah->id)->delete();
+
+            Permohonan::where('tpu', $jenazah->tpu)
+                ->where('jenis_permohonan', 'makam_baru')
+                ->where('status', 'disetujui')
+                ->where(function ($query) use ($jenazah) {
+                    $query->where('nik_jenazah', $jenazah->nik)
+                        ->orWhere('nama_jenazah', $jenazah->nama);
+                })
+                ->delete();
+
+            $jenazah->delete();
+        });
 
         return redirect()->route($this->routePrefix() . '.data-jenazah')
             ->with('success', 'Data berhasil dihapus');
@@ -228,6 +205,7 @@ class DataJenazahController extends Controller
             $data['blok'] = $request->input('blok');
             $data['zona'] = $request->input('zona');
             $data['nomor_makam'] = $request->input('nomor_makam');
+            $data['keterangan'] = $request->input('keterangan');
 
             return;
         }
@@ -236,10 +214,7 @@ class DataJenazahController extends Controller
         $data['blok'] = $makam->blok;
         $data['zona'] = $makam->zona;
         $data['nomor_makam'] = $makam->nomor;
-
-        if ($request->filled('keterangan')) {
-            $data['keterangan'] = $request->input('keterangan');
-        }
+        $data['keterangan'] = $makam->keterangan;
     }
 
     private function validateAccessibleMakam(Request $request): void
@@ -270,5 +245,34 @@ class DataJenazahController extends Controller
                 'makam_id' => 'Makam yang dipilih sudah terisi.',
             ]);
         }
+    }
+
+    private function syncTenggatSewaField(array &$data): void
+    {
+        if (! Schema::hasColumn('jenazah', 'tenggat_sewa_makam')) {
+            unset($data['tenggat_sewa_makam']);
+            return;
+        }
+
+        $data['tenggat_sewa_makam'] = $data['tenggat_sewa_makam'] ?? null;
+    }
+
+    private function syncApprovedPermohonanJenazah(): void
+    {
+        Permohonan::with(['jenazah', 'makam'])
+            ->where('tpu', auth()->user()->tpu)
+            ->where('status', 'disetujui')
+            ->where('jenis_permohonan', 'makam_baru')
+            ->whereNotNull('nama_jenazah')
+            ->whereNotNull('nik_jenazah')
+            ->whereNotNull('jenis_kelamin')
+            ->whereNotNull('tanggal_wafat')
+            ->when(Schema::hasColumn('permohonans', 'jenazah_deleted_at'), function ($query) {
+                $query->whereNull('jenazah_deleted_at');
+            })
+            ->get()
+            ->each(function (Permohonan $permohonan) {
+                $permohonan->persistJenazahRecord();
+            });
     }
 }

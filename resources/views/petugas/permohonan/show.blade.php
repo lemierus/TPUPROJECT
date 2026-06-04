@@ -258,6 +258,55 @@
         </div>
     @endif
 
+    @php
+        $renewalDueAt = $permohonan->renewalDueAt();
+        $renewalLevel = $permohonan->renewalAlertLevel();
+        $renewalTextClass = $renewalLevel === 'expired'
+            ? 'text-danger'
+            : ($renewalLevel === 'soon' ? 'text-warning' : 'text-success');
+    @endphp
+
+    @if($renewalDueAt)
+        @php
+            $renewalClass = $renewalLevel === 'expired'
+                ? 'alert-danger'
+                : ($renewalLevel === 'soon' ? 'alert-warning' : 'alert-success');
+            $renewalTitle = $renewalLevel === 'expired'
+                ? 'Masa sewa makam sudah melewati batas 2 tahun'
+                : ($renewalLevel === 'soon'
+                    ? 'Masa sewa makam mendekati batas 2 tahun'
+                    : 'Masa sewa makam masih aman');
+        @endphp
+        <div class="alert {{ $renewalClass }} border-2 border-dark shadow-sm mb-4">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-2">
+                <div>
+                    <div class="fw-bold mb-1">
+                        <i class="bi bi-calendar-event me-2"></i>{{ $renewalTitle }}
+                    </div>
+                    <div class="mb-0">
+                        Tenggat sewa makam untuk permohonan ini adalah <strong>{{ $renewalDueAt->format('d-m-Y') }}</strong>.
+                        @if($renewalLevel === 'expired')
+                            Segera informasikan ke ahli waris agar melakukan perpanjangan.
+                        @elseif($renewalLevel === 'soon')
+                            Mohon ingatkan ahli waris agar menyiapkan perpanjangan sebelum batas berakhir.
+                        @else
+                            Tenggat masih jauh, cukup dipantau secara berkala.
+                        @endif
+                    </div>
+                </div>
+                <div class="text-md-end">
+                    @if($renewalLevel === 'expired')
+                        <span class="detail-badge detail-badge-danger">Lewat batas</span>
+                    @elseif($renewalLevel === 'soon')
+                        <span class="detail-badge detail-badge-warning">Mendekati batas</span>
+                    @else
+                        <span class="detail-badge detail-badge-success">Aman</span>
+                    @endif
+                </div>
+            </div>
+        </div>
+    @endif
+
     <!-- Jenis Permohonan -->
     <div class="detail-section">
         <div class="detail-section-title">
@@ -312,6 +361,23 @@
                     <div class="detail-label">Tahun Pemakaman</div>
                     <div class="detail-value">{{ $permohonan->tahun_pemakaman ?? '-' }}</div>
                 </div>
+                <div>
+                    <div class="detail-label">Tenggat Sewa Makam</div>
+                    <div class="detail-value">
+                        @if($renewalDueAt)
+                            <span class="{{ $renewalTextClass }}">{{ $renewalDueAt->format('d-m-Y') }}</span>
+                            @if($renewalLevel === 'expired')
+                                <span class="detail-badge detail-badge-danger ms-2">Lewat batas</span>
+                            @elseif($renewalLevel === 'soon')
+                                <span class="detail-badge detail-badge-warning ms-2">Mendekati batas</span>
+                            @else
+                                <span class="detail-badge detail-badge-success ms-2">Aman</span>
+                            @endif
+                        @else
+                            -
+                        @endif
+                    </div>
+                </div>
             </div>
         </div>
     @else
@@ -356,6 +422,23 @@
                     <div class="detail-value">
                         @if($permohonan->tanggal_wafat)
                             {{ \Carbon\Carbon::parse($permohonan->tanggal_wafat)->format('d F Y') }}
+                        @else
+                            -
+                        @endif
+                    </div>
+                </div>
+                <div>
+                    <div class="detail-label">Tenggat Sewa Makam</div>
+                    <div class="detail-value">
+                        @if($renewalDueAt)
+                            <span class="{{ $renewalTextClass }}">{{ $renewalDueAt->format('d-m-Y') }}</span>
+                            @if($renewalLevel === 'expired')
+                                <span class="detail-badge detail-badge-danger ms-2">Lewat batas</span>
+                            @elseif($renewalLevel === 'soon')
+                                <span class="detail-badge detail-badge-warning ms-2">Mendekati batas</span>
+                            @else
+                                <span class="detail-badge detail-badge-success ms-2">Aman</span>
+                            @endif
                         @else
                             -
                         @endif

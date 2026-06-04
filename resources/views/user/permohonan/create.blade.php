@@ -117,34 +117,101 @@
                 <div id="section-perpanjangan" class="jenis-section" style="display: {{ $isPerpanjangan ? 'block' : 'none' }};">
                     <div class="row g-3 mt-3">
                         <div class="col-12">
-                            <h6 class="fw-bold mb-0">Data Makam Lama</h6>
+                            <h6 class="fw-bold mb-0">Ringkasan Data Pemakaman</h6>
                         </div>
 
                         <div class="col-md-6">
-                            <label class="form-label">Pilih Makam</label>
-                            <select name="makam_id" class="form-select">
-                                <option value="">Pilih makam lama</option>
-                                @foreach($makams as $makam)
-                                    <option value="{{ $makam->id }}" @selected(old('makam_id') == $makam->id)>
-                                        {{ $makam->kode_makam }} - Blok {{ $makam->blok ?? '-' }} - Zona {{ $makam->zona ?? '-' }} - No {{ $makam->nomor ?? '-' }}
+                            <label class="form-label">Pilih Nama Jenazah</label>
+                            <select name="jenazah_id" id="renewal-jenazah" class="form-select" onchange="fillRenewalFields(this)">
+                                <option value="">Pilih jenazah</option>
+                                @foreach($perpanjanganJenazahs as $item)
+                                    <option value="{{ $item->jenazah_id }}" 
+                                            @selected((string) old('jenazah_id') === (string) $item->jenazah_id)
+                                            data-makam-id="{{ $item->makam_id }}"
+                                            data-nama-jenazah="{{ $item->nama_jenazah ?? $item->jenazah?->nama ?? '' }}"
+                                            data-nik-jenazah="{{ $item->nik_jenazah ?? $item->jenazah?->nik ?? '' }}"
+                                            data-tempat-lahir="{{ $item->tempat_lahir ?? $item->jenazah?->tempat_lahir ?? '' }}"
+                                            data-tanggal-lahir="{{ ! empty($item->tanggal_lahir ?? $item->jenazah?->tanggal_lahir) ? \Illuminate\Support\Carbon::parse($item->tanggal_lahir ?? $item->jenazah?->tanggal_lahir)->format('Y-m-d') : '' }}"
+                                            data-tanggal-wafat="{{ ! empty($item->tanggal_wafat ?? $item->jenazah?->tanggal_wafat) ? \Illuminate\Support\Carbon::parse($item->tanggal_wafat ?? $item->jenazah?->tanggal_wafat)->format('Y-m-d') : '' }}"
+                                            data-jenis-kelamin="{{ $item->jenis_kelamin ?? $item->jenazah?->jenis_kelamin ?? '' }}"
+                                            data-agama="{{ $item->agama ?? $item->jenazah?->agama ?? '' }}"
+                                            data-alamat="{{ $item->alamat ?? $item->jenazah?->alamat ?? '' }}"
+                                            data-no-makam="{{ $item->makam?->nomor ?? '' }}"
+                                            data-blok="{{ $item->makam?->blok ?? '' }}"
+                                            data-zona="{{ $item->makam?->zona ?? '' }}"
+                                            data-blok-zona="{{ trim(($item->makam?->blok ?? '') . ' / ' . ($item->makam?->zona ?? ''), ' /') }}"
+                                            data-tenggat="{{ optional($item->renewalDueAt())->format('Y-m-d') }}"
+                                            data-tahun-pemakaman="{{ $item->tahun_pemakaman ?? '' }}">
+                                        {{ $item->nama_jenazah ?? $item->jenazah?->nama }}
+                                        @if($item->makam)
+                                            - {{ $item->makam->kode_makam }} / {{ $item->makam->blok ?? '-' }} / {{ $item->makam->zona ?? '-' }} / No {{ $item->makam->nomor ?? '-' }}
+                                        @endif
                                     </option>
                                 @endforeach
                             </select>
+                            <small class="text-muted d-block mt-1">Pilih nama jenazah untuk menampilkan data jenazah dan tenggat sewa makam secara otomatis.</small>
+                            @if(empty($perpanjanganJenazahs) || $perpanjanganJenazahs->isEmpty())
+                                <small class="text-muted d-block mt-1">Belum ada jenazah yang bisa diperpanjang untuk TPU ini.</small>
+                            @endif
                         </div>
 
-                        <div class="col-md-6">
-                            <label class="form-label">No Makam</label>
-                            <input type="text" name="no_makam" class="form-control" value="{{ old('no_makam') }}">
-                        </div>
-
-                        <div class="col-md-6">
-                            <label class="form-label">Blok / Zona Makam</label>
-                            <input type="text" name="blok_zona_makam" class="form-control" value="{{ old('blok_zona_makam') }}">
-                        </div>
-
-                        <div class="col-md-6">
-                            <label class="form-label">Tahun Pemakaman</label>
-                            <input type="number" name="tahun_pemakaman" class="form-control" value="{{ old('tahun_pemakaman') }}" min="1900" max="{{ now()->year }}">
+                        <div class="col-12">
+                            <div class="border rounded-3 bg-light p-3">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <div class="small text-muted">No Makam</div>
+                                        <div class="fw-semibold" id="renewal-no-makam">-</div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="small text-muted">Nama Jenazah</div>
+                                        <div class="fw-semibold" id="renewal-nama-jenazah">-</div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="small text-muted">NIK Jenazah</div>
+                                        <div class="fw-semibold" id="renewal-nik-jenazah">-</div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="small text-muted">Tempat Lahir</div>
+                                        <div class="fw-semibold" id="renewal-tempat-lahir">-</div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="small text-muted">Tanggal Lahir</div>
+                                        <div class="fw-semibold" id="renewal-tanggal-lahir">-</div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="small text-muted">Tanggal Wafat</div>
+                                        <div class="fw-semibold" id="renewal-tanggal-wafat">-</div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="small text-muted">Jenis Kelamin</div>
+                                        <div class="fw-semibold" id="renewal-jenis-kelamin">-</div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="small text-muted">Agama</div>
+                                        <div class="fw-semibold" id="renewal-agama">-</div>
+                                    </div>
+                                    <div class="col-12">
+                                        <div class="small text-muted">Alamat Jenazah</div>
+                                        <div class="fw-semibold" id="renewal-alamat">-</div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="small text-muted">Blok Makam</div>
+                                        <div class="fw-semibold" id="renewal-blok">-</div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="small text-muted">Zona Makam</div>
+                                        <div class="fw-semibold" id="renewal-zona">-</div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="small text-muted">Tenggat Sewa</div>
+                                        <div class="fw-semibold" id="renewal-tenggat">-</div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="small text-muted">Tahun Pemakaman</div>
+                                        <div class="fw-semibold" id="renewal-tahun-pemakaman">-</div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -224,6 +291,57 @@
                         buktiRetribusi.style.display = 'none';
                     }
                 }
+
+                function fillRenewalFields(select) {
+                    const option = select.options[select.selectedIndex];
+
+                    const fields = {
+                        'renewal-no-makam': option?.dataset.noMakam || '-',
+                        'renewal-nama-jenazah': option?.dataset.namaJenazah || '-',
+                        'renewal-nik-jenazah': option?.dataset.nikJenazah || '-',
+                        'renewal-tempat-lahir': option?.dataset.tempatLahir || '-',
+                        'renewal-tanggal-lahir': formatRenewalDate(option?.dataset.tanggalLahir || ''),
+                        'renewal-tanggal-wafat': formatRenewalDate(option?.dataset.tanggalWafat || ''),
+                        'renewal-jenis-kelamin': option?.dataset.jenisKelamin || '-',
+                        'renewal-agama': option?.dataset.agama || '-',
+                        'renewal-alamat': option?.dataset.alamat || '-',
+                        'renewal-blok': option?.dataset.blok || '-',
+                        'renewal-zona': option?.dataset.zona || '-',
+                        'renewal-tenggat': formatRenewalDate(option?.dataset.tenggat || ''),
+                        'renewal-tahun-pemakaman': option?.dataset.tahunPemakaman || '-',
+                    };
+
+                    Object.entries(fields).forEach(([id, value]) => {
+                        const element = document.getElementById(id);
+                        if (element) {
+                            element.textContent = value || '-';
+                        }
+                    });
+                }
+
+                function formatRenewalDate(value) {
+                    if (! value) {
+                        return '-';
+                    }
+
+                    const date = new Date(value);
+                    if (Number.isNaN(date.getTime())) {
+                        return value;
+                    }
+
+                    return date.toLocaleDateString('id-ID', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                    });
+                }
+
+                document.addEventListener('DOMContentLoaded', function () {
+                    const renewalSelect = document.getElementById('renewal-jenazah');
+                    if (renewalSelect) {
+                        fillRenewalFields(renewalSelect);
+                    }
+                });
             </script>
         </div>
     </div>

@@ -195,13 +195,14 @@
                 <div class="table-responsive">
                     <table class="table table-sm align-middle compact-table mb-0">
                         <thead>
-                            <tr>
-                                <th width="50">No</th>
-                                <th>Informasi Jenazah</th>
-                                <th>Makam</th>
-                                <th>Alamat</th>
-                                <th width="180">Aksi</th>
-                            </tr>
+                                <tr>
+                                    <th width="50">No</th>
+                                    <th>Informasi Jenazah</th>
+                                    <th>Makam</th>
+                                    <th width="170">Tenggat Sewa</th>
+                                    <th>Alamat</th>
+                                    <th width="180">Aksi</th>
+                                </tr>
                         </thead>
                         <tbody>
                             @forelse($jenazah as $item)
@@ -229,6 +230,24 @@
                                             {{ $item->makam->blok ?? '-' }} / {{ $item->makam->zona ?? '-' }}
                                         </div>
                                     </td>
+                                    <td>
+                                        @php
+                                            $dueAt = $item->renewalDueAt();
+                                            $level = $item->renewalAlertLevel();
+                                        @endphp
+                                        @if($dueAt)
+                                            <div class="fw-semibold {{ $level === 'expired' ? 'text-danger' : ($level === 'soon' ? 'text-warning' : 'text-success') }}">
+                                                {{ $dueAt->format('d-m-Y') }}
+                                            </div>
+                                            @if($level === 'expired')
+                                                <span class="badge rounded-pill bg-danger">Lewat batas</span>
+                                            @elseif($level === 'soon')
+                                                <span class="badge rounded-pill bg-warning text-dark">Mendekati batas</span>
+                                            @endif
+                                        @else
+                                            <span class="text-muted">-</span>
+                                        @endif
+                                    </td>
                                     <td class="small text-muted">{{ $item->alamat ?: '-' }}</td>
                                     <td>
                                         <div class="d-flex flex-wrap gap-1">
@@ -250,7 +269,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="5" class="text-center text-muted py-4">
+                                    <td colspan="6" class="text-center text-muted py-4">
                                         Data tidak ditemukan
                                     </td>
                                 </tr>

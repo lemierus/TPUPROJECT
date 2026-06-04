@@ -28,6 +28,21 @@ class PermohonanController extends Controller
             $permohonan->syncLinkedJenazahData();
         });
 
+        $perpanjanganPerluDiingatkan = Permohonan::with(['user', 'jenazah', 'makam'])
+            ->where('tpu', $petugas->tpu)
+            ->where('status', 'disetujui')
+            ->where('jenis_permohonan', 'makam_baru')
+            ->get()
+            ->filter(function (Permohonan $permohonan) {
+                $level = $permohonan->renewalAlertLevel();
+
+                return in_array($level, ['soon', 'expired'], true);
+            })
+            ->sortBy(function (Permohonan $permohonan) {
+                return $permohonan->renewalDueAt()?->timestamp ?? PHP_INT_MAX;
+            })
+            ->values();
+
         $stats = [
             'menunggu' => Permohonan::where('tpu', $petugas->tpu)
                 ->whereIn('status', ['pending', 'menunggu'])
@@ -41,7 +56,7 @@ class PermohonanController extends Controller
             'total' => Permohonan::where('tpu', $petugas->tpu)->count(),
         ];
 
-        return view('petugas.permohonan.index', compact('permohonans', 'stats', 'petugas'));
+        return view('petugas.permohonan.index', compact('permohonans', 'stats', 'petugas', 'perpanjanganPerluDiingatkan'));
     }
 
     public function create()
@@ -61,7 +76,7 @@ class PermohonanController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'jenis_permohonan' => ['required', Rule::in(['makam_baru', 'perpanjangan', 'pemindahan_makam', 'renovasi_makam'])],
+            'jenis_permohonan' => ['required', Rule::in(['makam_baru', 'perpanjangan'])],
             'nama_jenazah' => ['nullable', 'string', 'max:255'],
             'nik_jenazah' => ['nullable', 'string', 'max:255'],
             'tempat_lahir' => ['nullable', 'string', 'max:255'],
@@ -90,7 +105,7 @@ class PermohonanController extends Controller
         ]);
 
         $validator->sometimes(['nama_jenazah', 'nik_jenazah', 'tanggal_wafat', 'jenis_kelamin', 'agama', 'tempat_lahir', 'tanggal_lahir', 'alamat'], 'required', function ($input) {
-            return in_array($input->jenis_permohonan, ['makam_baru', 'pemindahan_makam', 'renovasi_makam']);
+            return $input->jenis_permohonan === 'makam_baru';
         });
 
         $validator->sometimes(['makam_id', 'no_makam', 'blok_zona_makam'], 'required', function ($input) {
@@ -159,7 +174,7 @@ class PermohonanController extends Controller
         $this->authorizePermohonan($permohonan);
 
         $validator = Validator::make($request->all(), [
-            'jenis_permohonan' => ['required', Rule::in(['makam_baru', 'perpanjangan', 'pemindahan_makam', 'renovasi_makam'])],
+            'jenis_permohonan' => ['required', Rule::in(['makam_baru', 'perpanjangan'])],
             'nama_jenazah' => ['nullable', 'string', 'max:255'],
             'nik_jenazah' => ['nullable', 'string', 'max:255'],
             'tempat_lahir' => ['nullable', 'string', 'max:255'],
@@ -188,7 +203,7 @@ class PermohonanController extends Controller
         ]);
 
         $validator->sometimes(['nama_jenazah', 'nik_jenazah', 'tanggal_wafat', 'jenis_kelamin', 'agama', 'tempat_lahir', 'tanggal_lahir', 'alamat'], 'required', function ($input) {
-            return in_array($input->jenis_permohonan, ['makam_baru', 'pemindahan_makam', 'renovasi_makam']);
+            return $input->jenis_permohonan === 'makam_baru';
         });
 
         $validator->sometimes(['makam_id', 'no_makam', 'blok_zona_makam'], 'required', function ($input) {
@@ -233,6 +248,7 @@ class PermohonanController extends Controller
         try {
             DB::transaction(function () use ($request, $permohonan) {
                 $permohonan->status = 'disetujui';
+                $permohonan->approved_at = now();
                 if ($request->filled('catatan')) {
                     $permohonan->catatan = $request->catatan;
                 }
@@ -246,7 +262,7 @@ class PermohonanController extends Controller
                     'nik_jenazah' => $permohonan->nik_jenazah,
                 ]);
 
-                if (in_array($permohonan->jenis_permohonan, ['makam_baru', 'pemindahan_makam', 'renovasi_makam']) && ! $permohonan->jenazah_id) {
+                if ($permohonan->hasCompleteJenazahData() && ! $permohonan->jenazah_id) {
                     \Log::info('Memulai create jenazah dari permohonan', ['permohonan_id' => $permohonan->id]);
                     $permohonan->persistJenazahRecord();
                     \Log::info('Jenazah berhasil dibuat', ['jenazah_id' => $permohonan->jenazah_id]);

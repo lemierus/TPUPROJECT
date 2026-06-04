@@ -35,6 +35,15 @@ class DashboardController extends Controller
             ->latest()
             ->get();
 
+        $pengingatSewaMakam = $permohonanSaya
+            ->filter(function (Permohonan $permohonan) {
+                return in_array($permohonan->renewalAlertLevel(), ['soon', 'expired'], true);
+            })
+            ->sortBy(function (Permohonan $permohonan) {
+                return $permohonan->renewalDueAt()?->timestamp ?? PHP_INT_MAX;
+            })
+            ->values();
+
         $totalPermohonan = Permohonan::where('user_id', auth()->id())->count();
         $permohonanMenunggu = Permohonan::where('user_id', auth()->id())->where('status', 'menunggu')->count();
         $permohonanDisetujui = Permohonan::where('user_id', auth()->id())->where('status', 'disetujui')->count();
@@ -42,6 +51,7 @@ class DashboardController extends Controller
         return view('user.dashboard', compact(
             'daftarTpu',
             'permohonanSaya',
+            'pengingatSewaMakam',
             'totalPermohonan',
             'permohonanMenunggu',
             'permohonanDisetujui'

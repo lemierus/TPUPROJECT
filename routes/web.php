@@ -88,6 +88,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::delete('/master/permohonan/{permohonan}', [PermohonanController::class, 'destroy'])->name('master.permohonan.destroy');
 
     Route::get('/master/laporan', [LaporanController::class, 'index'])->name('master.laporan');
+    Route::get('/master/laporan/print', [LaporanController::class, 'print'])->name('master.laporan.print');
+    Route::get('/master/laporan/excel', [LaporanController::class, 'excel'])->name('master.laporan.excel');
     Route::get('/master/laporan/create', [LaporanController::class, 'create'])->name('master.laporan.create');
     Route::post('/master/laporan', [LaporanController::class, 'store'])->name('master.laporan.store');
     Route::get('/master/laporan/{laporan}/edit', [LaporanController::class, 'edit'])->name('master.laporan.edit');
@@ -130,6 +132,8 @@ Route::middleware(['auth', 'petugas'])->prefix('petugas')->name('petugas.')->gro
     Route::delete('/master/permohonan/{permohonan}', [PermohonanController::class, 'destroy'])->name('master.permohonan.destroy');
 
     Route::get('/master/laporan', [LaporanController::class, 'index'])->name('master.laporan');
+    Route::get('/master/laporan/print', [LaporanController::class, 'print'])->name('master.laporan.print');
+    Route::get('/master/laporan/excel', [LaporanController::class, 'excel'])->name('master.laporan.excel');
     Route::get('/master/laporan/create', [LaporanController::class, 'create'])->name('master.laporan.create');
     Route::post('/master/laporan', [LaporanController::class, 'store'])->name('master.laporan.store');
     Route::get('/master/laporan/{laporan}/edit', [LaporanController::class, 'edit'])->name('master.laporan.edit');
@@ -147,6 +151,7 @@ Route::middleware(['auth', 'user'])->prefix('user')->name('user.')->group(functi
 
     Route::get('/permohonan/create', [UserPermohonanController::class, 'create'])->name('permohonan.create');
     Route::post('/permohonan', [UserPermohonanController::class, 'store'])->name('permohonan.store');
+    Route::get('/permohonan/{permohonan}/ringkasan', [UserPermohonanController::class, 'summary'])->name('permohonan.summary');
     Route::get('/permohonan/{permohonan}/edit', [UserPermohonanController::class, 'edit'])->name('permohonan.edit');
     Route::put('/permohonan/{permohonan}', [UserPermohonanController::class, 'update'])->name('permohonan.update');
 });

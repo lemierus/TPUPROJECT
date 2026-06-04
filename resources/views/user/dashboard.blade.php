@@ -217,6 +217,16 @@
         color: #344054;
     }
 
+    .user-pill-warning {
+        background: #fef3c7;
+        color: #b45309;
+    }
+
+    .user-pill-danger {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
     .user-empty-state {
         padding: 2rem 1rem;
         color: #667085;
@@ -235,6 +245,28 @@
         font-weight: 800;
         border-radius: 14px;
         box-shadow: 0 8px 0 rgba(17, 24, 39, 0.08);
+    }
+
+    .user-notice-card {
+        border: 2px solid #111827;
+        border-radius: 22px;
+        background: #fff;
+        box-shadow: 0 12px 0 rgba(17, 24, 39, 0.08);
+        overflow: hidden;
+    }
+
+    .user-notice-header {
+        background: #fff7ed;
+        border-bottom: 2px solid #111827;
+        padding: 1rem 1.15rem;
+    }
+
+    .user-notice-item {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1rem 0;
+        border-top: 1px solid #e4e7ec;
     }
 
     .user-divider {
@@ -304,6 +336,59 @@
     @if(session('success'))
         <div class="alert alert-success border-2 border-dark shadow-sm mb-4">
             <i class="bi bi-check-circle-fill me-2"></i>{{ session('success') }}
+        </div>
+    @endif
+
+    @if(isset($pengingatSewaMakam) && $pengingatSewaMakam->isNotEmpty())
+        <div class="user-notice-card mb-4">
+            <div class="user-notice-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div>
+                    <h4 class="user-section-title mb-1">Pengingat Perpanjangan Sewa Makam</h4>
+                    <p class="text-muted mb-0">Permohonan makam baru Anda yang akan mencapai batas 2 tahun.</p>
+                </div>
+                <span class="user-pill user-pill-warning">
+                    <i class="bi bi-bell-fill"></i>
+                    {{ $pengingatSewaMakam->count() }} pengingat
+                </span>
+            </div>
+
+            <div class="p-3 p-lg-4">
+                @foreach($pengingatSewaMakam as $item)
+                    @php
+                        $dueAt = $item->renewalDueAt();
+                        $level = $item->renewalAlertLevel();
+                    @endphp
+                    <div class="user-notice-item {{ $loop->first ? '' : '' }}">
+                        <div class="flex-grow-1">
+                            <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                                <strong class="text-dark">{{ $item->nama_jenazah ?? '-' }}</strong>
+                                @if($level === 'expired')
+                                    <span class="user-pill user-pill-danger">
+                                        <i class="bi bi-exclamation-octagon"></i>
+                                        Lewat batas
+                                    </span>
+                                @else
+                                    <span class="user-pill user-pill-warning">
+                                        <i class="bi bi-exclamation-triangle"></i>
+                                        Mendekati batas
+                                    </span>
+                                @endif
+                            </div>
+                            <div class="text-muted small">
+                                TPU: {{ $item->tpu ?? '-' }} · Kode makam: {{ $item->kode_makam ?? $item->makam?->kode_makam ?? '-' }}
+                            </div>
+                            <div class="text-muted small">
+                                Batas perpanjangan: {{ $dueAt?->format('d-m-Y') ?? '-' }}
+                            </div>
+                        </div>
+                        <div class="text-end">
+                            <a href="{{ route('user.permohonan.summary', $item) }}" class="btn btn-sm btn-outline-dark">
+                                Lihat Ringkasan
+                            </a>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
         </div>
     @endif
 
@@ -481,7 +566,12 @@
                                 </td>
                                 <td>{{ $item->catatan ?? '-' }}</td>
                                 <td>
-                                    <a href="{{ route('user.permohonan.edit', $item) }}" class="btn btn-sm btn-outline-primary">Detail / Edit</a>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        @if($item->jenis_permohonan === 'makam_baru' && $status === 'disetujui')
+                                            <a href="{{ route('user.permohonan.summary', $item) }}" class="btn btn-sm btn-success">Lihat Ringkasan</a>
+                                        @endif
+                                        <a href="{{ route('user.permohonan.edit', $item) }}" class="btn btn-sm btn-outline-primary">Detail / Edit</a>
+                                    </div>
                                 </td>
                             </tr>
                         @empty

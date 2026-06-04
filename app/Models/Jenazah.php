@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Permohonan;
+use Carbon\CarbonInterface;
 
 class Jenazah extends Model
 {
@@ -27,12 +28,14 @@ class Jenazah extends Model
         'blok',
         'zona',
         'nomor_makam',
+        'tenggat_sewa_makam',
         'tpu',
     ];
 
     protected $casts = [
         'tanggal_lahir' => 'date',
         'tanggal_wafat' => 'date',
+        'tenggat_sewa_makam' => 'date',
     ];
 
     // Relasi: Jenazah punya 1 makam
@@ -44,6 +47,34 @@ class Jenazah extends Model
     public function permohonan()
     {
         return $this->hasOne(Permohonan::class, 'jenazah_id')->latestOfMany();
+    }
+
+    public function renewalDueAt(): ?CarbonInterface
+    {
+        if ($this->tenggat_sewa_makam) {
+            return $this->tenggat_sewa_makam;
+        }
+
+        return $this->permohonan?->renewalDueAt();
+    }
+
+    public function renewalAlertLevel(int $warningDays = 90): ?string
+    {
+        $dueAt = $this->renewalDueAt();
+
+        if (! $dueAt) {
+            return null;
+        }
+
+        if ($dueAt->isPast()) {
+            return 'expired';
+        }
+
+        if (now()->diffInDays($dueAt) <= $warningDays) {
+            return 'soon';
+        }
+
+        return 'safe';
     }
 
     protected static function booted(): void

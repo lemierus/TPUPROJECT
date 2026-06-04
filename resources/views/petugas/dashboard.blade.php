@@ -273,6 +273,79 @@
         </div>
     @endif
 
+    @if(isset($perpanjanganPerluDiingatkan) && $perpanjanganPerluDiingatkan->isNotEmpty())
+        <div class="petugas-section-card mb-4">
+            <div class="petugas-section-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div>
+                    <h4 class="petugas-section-title">Pengingat Perpanjangan Sewa Makam</h4>
+                    <p class="text-muted mb-0">
+                        Permohonan makam baru yang sudah disetujui dan akan memasuki batas 2 tahun.
+                    </p>
+                </div>
+                <span class="petugas-pill petugas-pill-warning">
+                    <i class="bi bi-bell-fill"></i>
+                    {{ $perpanjanganPerluDiingatkan->count() }} pengingat
+                </span>
+            </div>
+
+            <div class="p-3 p-lg-4">
+                <div class="table-responsive">
+                    <table class="table petugas-table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th style="width: 60px;">No</th>
+                                <th>Ahli Waris</th>
+                                <th>Jenazah</th>
+                                <th>TPU / Makam</th>
+                                <th style="width: 150px;">Batas 2 Tahun</th>
+                                <th style="width: 140px;">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($perpanjanganPerluDiingatkan as $item)
+                                @php
+                                    $dueAt = $item->renewalDueAt();
+                                    $level = $item->renewalAlertLevel();
+                                @endphp
+                                <tr>
+                                    <td class="fw-semibold">{{ $loop->iteration }}</td>
+                                    <td>
+                                        <div class="fw-semibold">{{ $item->nama_ahli_waris ?? '-' }}</div>
+                                        <small class="text-muted">{{ $item->no_hp_ahli_waris ?? '-' }}</small>
+                                    </td>
+                                    <td>{{ $item->nama_jenazah ?? $item->jenazah?->nama ?? '-' }}</td>
+                                    <td>
+                                        <div class="fw-semibold">{{ $item->tpu ?? '-' }}</div>
+                                        <small class="text-muted">{{ $item->kode_makam ?? $item->makam?->kode_makam ?? '-' }}</small>
+                                    </td>
+                                    <td class="text-nowrap">{{ $dueAt?->format('d-m-Y') ?? '-' }}</td>
+                                    <td>
+                                        @if($level === 'expired')
+                                            <span class="petugas-pill petugas-pill-danger">
+                                                <i class="bi bi-exclamation-octagon"></i>
+                                                Lewat batas
+                                            </span>
+                                        @elseif($level === 'soon')
+                                            <span class="petugas-pill petugas-pill-warning">
+                                                <i class="bi bi-exclamation-triangle"></i>
+                                                Mendekat
+                                            </span>
+                                        @else
+                                            <span class="petugas-pill petugas-pill-success">
+                                                <i class="bi bi-check2-circle"></i>
+                                                Aman
+                                            </span>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    @endif
+
     <!-- Stats Cards -->
     <div class="row g-3 g-lg-4 mb-4">
         <div class="col-md-6 col-xl-3">
@@ -382,7 +455,7 @@
                 <h4 class="petugas-section-title">Permohonan Terbaru</h4>
                 <p class="text-muted mb-0">Daftar permohonan yang masuk ke TPU Anda</p>
             </div>
-            <a href="{{ route('petugas.master.permohonan') }}" class="petugas-btn-process">
+            <a href="{{ route('petugas.permohonan') }}" class="petugas-btn-process">
                 <i class="bi bi-arrow-right me-2"></i>Proses Permohonan
             </a>
         </div>
