@@ -51,12 +51,29 @@ Route::post('/register', [AuthController::class, 'prosesRegister'])->name('regis
 
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard', function () {
-        return match (auth()->user()->role) {
-            'admin' => redirect()->route('admin.dashboard'),
-            'petugas' => redirect()->route('petugas.dashboard'),
-            'kepala' => redirect()->route('kepala.dashboard'),
-            default => redirect()->route('user.dashboard'),
-        };
+        $user = auth()->user();
+
+        if ($user?->role === 'admin') {
+            return redirect()->route('admin.dashboard');
+        }
+
+        if ($user?->role === 'petugas') {
+            return redirect()->route('petugas.dashboard');
+        }
+
+        if ($user?->role === 'kepala') {
+            return redirect()->route('kepala.dashboard');
+        }
+
+        if ($user?->role === 'user') {
+            return redirect()->route('user.dashboard');
+        }
+
+        auth()->logout();
+        request()->session()->invalidate();
+        request()->session()->regenerateToken();
+
+        return redirect()->route('login')->with('error', 'Role akun tidak valid. Silakan login ulang.');
     })->name('dashboard');
 });
 

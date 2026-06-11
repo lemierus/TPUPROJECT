@@ -248,7 +248,7 @@
         <div class="petugas-hero-copy">
             <div class="d-flex flex-column flex-lg-row justify-content-between align-items-start gap-3">
                 <div class="pe-lg-4">
-                    <h1 class="petugas-hero-title mb-2">Dashboard Petugas TPU {{ $petugas->tpu ?? 'N/A' }}</h1>
+                    <h1 class="petugas-hero-title mb-2">Dashboard Petugas {{ $petugas->tpu ?? 'N/A' }}</h1>
                     <p class="petugas-hero-text mb-0">
                         Kelola permohonan pemakaman, pantau status pengajuan, dan proses berkas dengan efisien.
                     </p>

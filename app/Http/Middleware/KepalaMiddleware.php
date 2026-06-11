@@ -15,7 +15,7 @@ class KepalaMiddleware
         }
 
         if (! auth()->user()->isKepala()) {
-            return redirect()->route('dashboard')->with('error', 'Anda tidak memiliki akses ke halaman kepala UPT.');
+            return redirect()->route('login')->with('error', 'Akun Anda tidak memiliki akses ke halaman kepala UPT.');
         }
 
         return $next($request);

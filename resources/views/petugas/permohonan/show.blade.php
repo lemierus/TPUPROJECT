@@ -264,6 +264,16 @@
         $renewalTextClass = $renewalLevel === 'expired'
             ? 'text-danger'
             : ($renewalLevel === 'soon' ? 'text-warning' : 'text-success');
+        $linkedJenazah = $permohonan->jenazah;
+        $linkedMakam = $permohonan->makam ?? $linkedJenazah?->makam;
+        $displayMakamKode = $permohonan->kode_makam ?? $linkedMakam?->kode_makam ?? '-';
+        $displayMakamBlokZona = $permohonan->blok_zona_makam ?? trim(implode(' / ', array_filter([$linkedMakam?->blok, $linkedMakam?->zona])), ' /');
+        if (empty($displayMakamBlokZona)) {
+            $displayMakamBlokZona = '-';
+        }
+        $displayMakamNomor = $permohonan->no_makam ?? $linkedMakam?->nomor ?? '-';
+        $displayMakamTahun = $permohonan->tahun_pemakaman ?? '-';
+        $displayMakamKeterangan = $permohonan->keterangan ?? $linkedMakam?->keterangan ?? '-';
     @endphp
 
     @if($renewalDueAt)
@@ -338,115 +348,100 @@
     </div>
 
     <!-- Data Jenazah / Makam -->
-    @if($permohonan->jenis_permohonan === 'perpanjangan')
-        <div class="detail-section">
-            <div class="detail-section-title">
-                <i class="bi bi-tree"></i>
-                Data Makam
+    <div class="detail-section">
+        <div class="detail-section-title">
+            <i class="bi bi-person"></i>
+            Data Jenazah
+        </div>
+        <div class="detail-row">
+            <div>
+                <div class="detail-label">Nama</div>
+                <div class="detail-value">{{ $permohonan->nama_jenazah ?? $linkedJenazah?->nama ?? '-' }}</div>
             </div>
-            <div class="detail-row">
-                <div>
-                    <div class="detail-label">Kode Makam</div>
-                    <div class="detail-value">{{ $permohonan->makam?->kode_makam ?? '-' }}</div>
+            <div>
+                <div class="detail-label">NIK</div>
+                <div class="detail-value">{{ $permohonan->nik_jenazah ?? $linkedJenazah?->nik ?? '-' }}</div>
+            </div>
+            <div>
+                <div class="detail-label">Jenis Kelamin</div>
+                <div class="detail-value">{{ $permohonan->jenis_kelamin ?? $linkedJenazah?->jenis_kelamin ?? '-' }}</div>
+            </div>
+            <div>
+                <div class="detail-label">Agama</div>
+                <div class="detail-value">{{ $permohonan->agama ?? $linkedJenazah?->agama ?? '-' }}</div>
+            </div>
+            <div>
+                <div class="detail-label">Tempat Lahir</div>
+                <div class="detail-value">{{ $permohonan->tempat_lahir ?? $linkedJenazah?->tempat_lahir ?? '-' }}</div>
+            </div>
+            <div>
+                <div class="detail-label">Tanggal Lahir</div>
+                <div class="detail-value">
+                    @if($permohonan->tanggal_lahir || $linkedJenazah?->tanggal_lahir)
+                        {{ \Carbon\Carbon::parse($permohonan->tanggal_lahir ?? $linkedJenazah?->tanggal_lahir)->format('d F Y') }}
+                    @else
+                        -
+                    @endif
                 </div>
-                <div>
-                    <div class="detail-label">Blok / Zona</div>
-                    <div class="detail-value">{{ $permohonan->blok_zona_makam ?? '-' }}</div>
+            </div>
+            <div>
+                <div class="detail-label">Tanggal Wafat</div>
+                <div class="detail-value">
+                    @if($permohonan->tanggal_wafat || $linkedJenazah?->tanggal_wafat)
+                        {{ \Carbon\Carbon::parse($permohonan->tanggal_wafat ?? $linkedJenazah?->tanggal_wafat)->format('d F Y') }}
+                    @else
+                        -
+                    @endif
                 </div>
-                <div>
-                    <div class="detail-label">Nomor Makam</div>
-                    <div class="detail-value">{{ $permohonan->no_makam ?? '-' }}</div>
-                </div>
-                <div>
-                    <div class="detail-label">Tahun Pemakaman</div>
-                    <div class="detail-value">{{ $permohonan->tahun_pemakaman ?? '-' }}</div>
-                </div>
-                <div>
-                    <div class="detail-label">Tenggat Sewa Makam</div>
-                    <div class="detail-value">
-                        @if($renewalDueAt)
-                            <span class="{{ $renewalTextClass }}">{{ $renewalDueAt->format('d-m-Y') }}</span>
-                            @if($renewalLevel === 'expired')
-                                <span class="detail-badge detail-badge-danger ms-2">Lewat batas</span>
-                            @elseif($renewalLevel === 'soon')
-                                <span class="detail-badge detail-badge-warning ms-2">Mendekati batas</span>
-                            @else
-                                <span class="detail-badge detail-badge-success ms-2">Aman</span>
-                            @endif
+            </div>
+            <div>
+                <div class="detail-label">Tenggat Sewa Makam</div>
+                <div class="detail-value">
+                    @if($renewalDueAt)
+                        <span class="{{ $renewalTextClass }}">{{ $renewalDueAt->format('d-m-Y') }}</span>
+                        @if($renewalLevel === 'expired')
+                            <span class="detail-badge detail-badge-danger ms-2">Lewat batas</span>
+                        @elseif($renewalLevel === 'soon')
+                            <span class="detail-badge detail-badge-warning ms-2">Mendekati batas</span>
                         @else
-                            -
+                            <span class="detail-badge detail-badge-success ms-2">Aman</span>
                         @endif
-                    </div>
+                    @else
+                        -
+                    @endif
                 </div>
             </div>
         </div>
-    @else
-        <div class="detail-section">
-            <div class="detail-section-title">
-                <i class="bi bi-person"></i>
-                Data Jenazah
+    </div>
+
+    <div class="detail-section">
+        <div class="detail-section-title">
+            <i class="bi bi-tree"></i>
+            Data Makam
+        </div>
+        <div class="detail-row">
+            <div>
+                <div class="detail-label">Kode Makam</div>
+                <div class="detail-value">{{ $displayMakamKode ?? '-' }}</div>
             </div>
-            <div class="detail-row">
-                <div>
-                    <div class="detail-label">Nama</div>
-                    <div class="detail-value">{{ $permohonan->nama_jenazah ?? '-' }}</div>
-                </div>
-                <div>
-                    <div class="detail-label">NIK</div>
-                    <div class="detail-value">{{ $permohonan->nik_jenazah ?? '-' }}</div>
-                </div>
-                <div>
-                    <div class="detail-label">Jenis Kelamin</div>
-                    <div class="detail-value">{{ $permohonan->jenis_kelamin ?? '-' }}</div>
-                </div>
-                <div>
-                    <div class="detail-label">Agama</div>
-                    <div class="detail-value">{{ $permohonan->agama ?? '-' }}</div>
-                </div>
-                <div>
-                    <div class="detail-label">Tempat Lahir</div>
-                    <div class="detail-value">{{ $permohonan->tempat_lahir ?? '-' }}</div>
-                </div>
-                <div>
-                    <div class="detail-label">Tanggal Lahir</div>
-                    <div class="detail-value">
-                        @if($permohonan->tanggal_lahir)
-                            {{ \Carbon\Carbon::parse($permohonan->tanggal_lahir)->format('d F Y') }}
-                        @else
-                            -
-                        @endif
-                    </div>
-                </div>
-                <div>
-                    <div class="detail-label">Tanggal Wafat</div>
-                    <div class="detail-value">
-                        @if($permohonan->tanggal_wafat)
-                            {{ \Carbon\Carbon::parse($permohonan->tanggal_wafat)->format('d F Y') }}
-                        @else
-                            -
-                        @endif
-                    </div>
-                </div>
-                <div>
-                    <div class="detail-label">Tenggat Sewa Makam</div>
-                    <div class="detail-value">
-                        @if($renewalDueAt)
-                            <span class="{{ $renewalTextClass }}">{{ $renewalDueAt->format('d-m-Y') }}</span>
-                            @if($renewalLevel === 'expired')
-                                <span class="detail-badge detail-badge-danger ms-2">Lewat batas</span>
-                            @elseif($renewalLevel === 'soon')
-                                <span class="detail-badge detail-badge-warning ms-2">Mendekati batas</span>
-                            @else
-                                <span class="detail-badge detail-badge-success ms-2">Aman</span>
-                            @endif
-                        @else
-                            -
-                        @endif
-                    </div>
-                </div>
+            <div>
+                <div class="detail-label">Blok / Zona</div>
+                <div class="detail-value">{{ $displayMakamBlokZona }}</div>
+            </div>
+            <div>
+                <div class="detail-label">Nomor Makam</div>
+                <div class="detail-value">{{ $displayMakamNomor }}</div>
+            </div>
+            <div>
+                <div class="detail-label">Tahun Pemakaman</div>
+                <div class="detail-value">{{ $displayMakamTahun }}</div>
+            </div>
+            <div>
+                <div class="detail-label">Keterangan Makam</div>
+                <div class="detail-value">{{ $displayMakamKeterangan }}</div>
             </div>
         </div>
-    @endif
+    </div>
 
     <!-- Status Integrasi Data Jenazah -->
     @if($permohonan->jenis_permohonan === 'makam_baru')
@@ -630,6 +625,11 @@
                 @csrf
                 <div class="modal-body">
                     <p class="text-muted mb-3">Anda akan menyetujui permohonan ini. Apakah ada catatan untuk ahli waris?</p>
+                    <div class="mb-3">
+                        <label class="form-label">Tenggat Sewa Baru</label>
+                        <input type="date" name="tenggat_sewa_makam" class="form-control form-control-custom" value="{{ old('tenggat_sewa_makam', optional($permohonan->tenggat_sewa_makam ?? $renewalDueAt)->format('Y-m-d')) }}">
+                        <small class="text-muted d-block mt-1">Isi tanggal tenggat baru jika ini permohonan perpanjangan makam lama.</small>
+                    </div>
                     <div class="mb-3">
                         <label class="form-label">Catatan (Opsional)</label>
                         <textarea name="catatan" class="form-control form-control-custom" rows="3" placeholder="Masukkan catatan..."></textarea>

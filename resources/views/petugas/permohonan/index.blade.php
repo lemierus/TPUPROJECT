@@ -330,23 +330,11 @@
                             <th style="width: 70px;">No</th>
                             <th>Jenis</th>
                             <th>Detail</th>
-                            <th>Pemohon</th>
-                            <th style="width: 140px;">Tanggal</th>
-                            <th style="width: 130px;">Status</th>
-                            <th style="width: 170px;">Tenggat Sewa</th>
                             <th style="width: 180px;">Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($permohonans as $item)
-                        @php
-                        $status = strtolower($item->status ?? '');
-                        $statusLabel = match($status) {
-                        'disetujui' => 'Disetujui',
-                        'ditolak' => 'Ditolak',
-                        default => 'Menunggu'
-                        };
-                        @endphp
                         <tr>
                             <td class="fw-semibold">{{ $loop->iteration }}</td>
                             <td>
@@ -372,38 +360,6 @@
                                 @endif
                             </td>
                             <td>
-                                <div class="fw-semibold">{{ $item->user?->name ?? '-' }}</div>
-                                <small class="text-muted">{{ $item->nama_ahli_waris ?? '-' }}</small>
-                            </td>
-                            <td>{{ $item->created_at?->format('d-m-Y') }}</td>
-                            <td>
-                                @if($status === 'disetujui')
-                                <span class="petugas-pill petugas-pill-success">{{ $statusLabel }}</span>
-                                @elseif($status === 'ditolak')
-                                <span class="petugas-pill petugas-pill-danger">{{ $statusLabel }}</span>
-                                @else
-                                <span class="petugas-pill petugas-pill-warning">{{ $statusLabel }}</span>
-                                @endif
-                            </td>
-                            <td>
-                                @php
-                                    $dueAt = $item->renewalDueAt();
-                                    $level = $item->renewalAlertLevel();
-                                @endphp
-                                @if($dueAt)
-                                    <div class="fw-semibold {{ $level === 'expired' ? 'text-danger' : ($level === 'soon' ? 'text-warning' : 'text-success') }}">
-                                        {{ $dueAt->format('d-m-Y') }}
-                                    </div>
-                                    @if($level === 'expired')
-                                        <span class="petugas-pill petugas-pill-danger">Lewat batas</span>
-                                    @elseif($level === 'soon')
-                                        <span class="petugas-pill petugas-pill-warning">Mendekati batas</span>
-                                    @endif
-                                @else
-                                    <span class="text-muted">-</span>
-                                @endif
-                            </td>
-                            <td>
                                 <a href="{{ route('petugas.permohonan.show', $item) }}" class="btn btn-sm btn-outline-primary">
                                     <i class="bi bi-eye"></i> Detail
                                 </a>
@@ -411,7 +367,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="8">
+                            <td colspan="4">
                                 <div class="petugas-empty-state text-center">
                                     <i class="bi bi-inbox fs-2 d-block mb-2"></i>
                                     Belum ada permohonan untuk TPU Anda

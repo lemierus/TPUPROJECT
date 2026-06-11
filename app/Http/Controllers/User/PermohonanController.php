@@ -51,13 +51,6 @@ class PermohonanController extends Controller
             'hubungan_keluarga' => ['required', 'string', 'max:255'],
             'alamat' => ['nullable', 'string'],
             'makam_id' => ['nullable', 'exists:makams,id'],
-            'kode_makam' => ['nullable', 'string', 'max:255'],
-            'blok' => ['nullable', 'string', 'max:255'],
-            'zona' => ['nullable', 'string', 'max:255'],
-            'nomor_makam' => ['nullable', 'string', 'max:255'],
-            'keterangan' => ['nullable', 'string'],
-            'no_makam' => ['nullable', 'string', 'max:255'],
-            'blok_zona_makam' => ['nullable', 'string', 'max:255'],
             'tahun_pemakaman' => ['nullable', 'digits:4'],
             'catatan' => ['nullable', 'string'],
             'scan_ktp_ahli_waris' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
@@ -93,7 +86,7 @@ class PermohonanController extends Controller
                 }
                 $selectedMakam = $renewalSource->makam;
             } else {
-                $selectedMakam = $data['makam_id'] ? Makam::find($data['makam_id']) : null;
+                $selectedMakam = ($data['makam_id'] ?? null) ? Makam::find($data['makam_id']) : null;
             }
 
             $permohonan = Permohonan::create([
@@ -117,14 +110,7 @@ class PermohonanController extends Controller
                 'scan_ktp_ahli_waris' => $ktpPath,
                 'scan_kk' => $kkPath,
                 'surat_kematian' => $suratPath,
-                'makam_id' => $selectedMakam?->id ?? $data['makam_id'] ?? null,
-                'kode_makam' => $selectedMakam?->kode_makam ?? $data['kode_makam'] ?? null,
-                'blok' => $selectedMakam?->blok ?? $data['blok'] ?? null,
-                'zona' => $selectedMakam?->zona ?? $data['zona'] ?? null,
-                'nomor_makam' => $selectedMakam?->nomor ?? $data['nomor_makam'] ?? null,
-                'keterangan' => $data['keterangan'] ?? $selectedMakam?->keterangan ?? null,
-                'no_makam' => $selectedMakam?->nomor ?? $data['no_makam'] ?? null,
-                'blok_zona_makam' => $selectedMakam ? trim(implode(' / ', array_filter([$selectedMakam->blok, $selectedMakam->zona])), ' /') : ($data['blok_zona_makam'] ?? null),
+                'makam_id' => $selectedMakam?->id ?? ($data['makam_id'] ?? null),
                 'tahun_pemakaman' => $renewalSource?->tahun_pemakaman ?? $data['tahun_pemakaman'] ?? null,
                 'bukti_pembayaran_retribusi' => $buktiRetribusiPath,
                 'status' => 'menunggu',
@@ -191,13 +177,6 @@ class PermohonanController extends Controller
             'hubungan_keluarga' => ['required', 'string', 'max:255'],
             'alamat' => ['nullable', 'string'],
             'makam_id' => ['nullable', 'exists:makams,id'],
-            'kode_makam' => ['nullable', 'string', 'max:255'],
-            'blok' => ['nullable', 'string', 'max:255'],
-            'zona' => ['nullable', 'string', 'max:255'],
-            'nomor_makam' => ['nullable', 'string', 'max:255'],
-            'keterangan' => ['nullable', 'string'],
-            'no_makam' => ['nullable', 'string', 'max:255'],
-            'blok_zona_makam' => ['nullable', 'string', 'max:255'],
             'tahun_pemakaman' => ['nullable', 'digits:4'],
             'catatan' => ['nullable', 'string'],
             'scan_ktp_ahli_waris' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
@@ -226,7 +205,7 @@ class PermohonanController extends Controller
                 }
                 $selectedMakam = $renewalSource->makam;
             } else {
-                $selectedMakam = $data['makam_id'] ? Makam::find($data['makam_id']) : null;
+                $selectedMakam = ($data['makam_id'] ?? null) ? Makam::find($data['makam_id']) : null;
             }
 
             $permohonan->fill([
@@ -243,14 +222,7 @@ class PermohonanController extends Controller
                 'no_hp_ahli_waris' => $data['no_hp_ahli_waris'],
                 'hubungan_keluarga' => $data['hubungan_keluarga'],
                 'alamat' => $data['alamat'] ?? null,
-                'makam_id' => $selectedMakam?->id ?? $data['makam_id'] ?? null,
-                'kode_makam' => $selectedMakam?->kode_makam ?? $data['kode_makam'] ?? null,
-                'blok' => $selectedMakam?->blok ?? $data['blok'] ?? null,
-                'zona' => $selectedMakam?->zona ?? $data['zona'] ?? null,
-                'nomor_makam' => $selectedMakam?->nomor ?? $data['nomor_makam'] ?? null,
-                'keterangan' => $data['keterangan'] ?? $selectedMakam?->keterangan ?? null,
-                'no_makam' => $selectedMakam?->nomor ?? $data['no_makam'] ?? null,
-                'blok_zona_makam' => $selectedMakam ? trim(implode(' / ', array_filter([$selectedMakam->blok, $selectedMakam->zona])), ' /') : ($data['blok_zona_makam'] ?? null),
+                'makam_id' => $selectedMakam?->id ?? ($data['makam_id'] ?? null),
                 'tahun_pemakaman' => $renewalSource?->tahun_pemakaman ?? $data['tahun_pemakaman'] ?? null,
                 'catatan' => $data['catatan'] ?? null,
             ]);

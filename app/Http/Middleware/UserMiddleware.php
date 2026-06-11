@@ -15,7 +15,7 @@ class UserMiddleware
         }
 
         if (! auth()->user()->isUser()) {
-            return redirect()->route('dashboard')->with('error', 'Anda tidak memiliki akses ke halaman pengguna.');
+            return redirect()->route('login')->with('error', 'Akun Anda tidak memiliki akses ke halaman pengguna.');
         }
 
         return $next($request);

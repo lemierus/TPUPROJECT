@@ -4,7 +4,7 @@
 
 @section('content')
 @php
-    $isPerpanjangan = $permohonan->jenis_permohonan === 'perpanjangan';
+    $isPerpanjangan = false;
 @endphp
 
 <div class="container-fluid py-4">

@@ -7,6 +7,8 @@
     $routePrefix = request()->routeIs('petugas.*') ? 'petugas' : 'admin';
     $selectedMakamId = old('makam_id', $jenazah->makam_id);
     $selectedMakam = $jenazah->relationLoaded('makam') ? $jenazah->makam : null;
+    $linkedPermohonan = $jenazah->relationLoaded('permohonan') ? $jenazah->permohonan : $jenazah->permohonan;
+    $displayRenewalAt = $jenazah->renewalDueAt();
 @endphp
 
 <div class="container-fluid pt-2 pb-4">
@@ -27,6 +29,77 @@
     {{-- FORM --}}
     <div class="card shadow-sm border-0 rounded-4">
         <div class="card-body px-4 py-4">
+
+            <div class="row g-3 mb-4">
+                <div class="col-12">
+                    <div class="p-3 rounded-4" style="background:#f8fafc;border:1px solid #d0d5dd;">
+                        <div class="fw-bold text-dark mb-3">Ringkasan Data Terkait</div>
+                        <div class="row g-3">
+                            <div class="col-lg-4">
+                                <div class="p-3 bg-white rounded-3 h-100 border">
+                                    <div class="fw-semibold mb-2">Data Jenazah</div>
+                                    <div class="small text-muted">Nama</div>
+                                    <div class="mb-2">{{ $jenazah->nama ?? '-' }}</div>
+                                    <div class="small text-muted">NIK</div>
+                                    <div class="mb-2">{{ $jenazah->nik ?? '-' }}</div>
+                                    <div class="small text-muted">Jenis Kelamin</div>
+                                    <div class="mb-2">{{ $jenazah->jenis_kelamin ?? '-' }}</div>
+                                    <div class="small text-muted">Agama</div>
+                                    <div class="mb-2">{{ $jenazah->agama ?? '-' }}</div>
+                                    <div class="small text-muted">Tempat Lahir</div>
+                                    <div class="mb-2">{{ $jenazah->tempat_lahir ?? '-' }}</div>
+                                    <div class="small text-muted">Tanggal Lahir</div>
+                                    <div class="mb-2">{{ $jenazah->tanggal_lahir ? \Carbon\Carbon::parse($jenazah->tanggal_lahir)->format('d F Y') : '-' }}</div>
+                                    <div class="small text-muted">Tanggal Wafat</div>
+                                    <div>{{ $jenazah->tanggal_wafat ? \Carbon\Carbon::parse($jenazah->tanggal_wafat)->format('d F Y') : '-' }}</div>
+                                </div>
+                            </div>
+
+                            <div class="col-lg-4">
+                                <div class="p-3 bg-white rounded-3 h-100 border">
+                                    <div class="fw-semibold mb-2">Data Ahli Waris</div>
+                                    <div class="small text-muted">Nama</div>
+                                    <div class="mb-2">{{ $linkedPermohonan?->nama_ahli_waris ?? '-' }}</div>
+                                    <div class="small text-muted">No HP</div>
+                                    <div class="mb-2">{{ $linkedPermohonan?->no_hp_ahli_waris ?? '-' }}</div>
+                                    <div class="small text-muted">Hubungan Keluarga</div>
+                                    <div class="mb-2">{{ $linkedPermohonan?->hubungan_keluarga ?? '-' }}</div>
+                                    <div class="small text-muted">Akun Pemohon</div>
+                                    <div class="mb-2">{{ $linkedPermohonan?->user?->name ?? '-' }}</div>
+                                    <div class="small text-muted">TPU</div>
+                                    <div class="mb-2">{{ $linkedPermohonan?->tpu ?? $jenazah->tpu ?? '-' }}</div>
+                                    <div class="small text-muted">Status Permohonan</div>
+                                    <div>{{ $linkedPermohonan?->status ?? '-' }}</div>
+                                </div>
+                            </div>
+
+                            <div class="col-lg-4">
+                                <div class="p-3 bg-white rounded-3 h-100 border">
+                                    <div class="fw-semibold mb-2">Data Makam</div>
+                                    <div class="small text-muted">Kode Makam</div>
+                                    <div class="mb-2">{{ $selectedMakam?->kode_makam ?? $jenazah->kode_makam ?? '-' }}</div>
+                                    <div class="small text-muted">Blok</div>
+                                    <div class="mb-2">{{ $selectedMakam?->blok ?? $jenazah->blok ?? '-' }}</div>
+                                    <div class="small text-muted">Zona</div>
+                                    <div class="mb-2">{{ $selectedMakam?->zona ?? $jenazah->zona ?? '-' }}</div>
+                                    <div class="small text-muted">Nomor</div>
+                                    <div class="mb-2">{{ $selectedMakam?->nomor ?? $jenazah->nomor_makam ?? '-' }}</div>
+                                    <div class="small text-muted">Keterangan</div>
+                                    <div class="mb-2">{{ $selectedMakam?->keterangan ?? $jenazah->keterangan ?? '-' }}</div>
+                                    <div class="small text-muted">Tenggat Sewa Makam</div>
+                                    <div>
+                                        @if($displayRenewalAt)
+                                            {{ $displayRenewalAt->format('d F Y') }}
+                                        @else
+                                            -
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             <form action="{{ route($routePrefix.'.data-jenazah.update', $jenazah->id) }}" method="POST">
                 @csrf

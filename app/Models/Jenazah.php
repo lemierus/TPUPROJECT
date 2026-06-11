@@ -55,7 +55,23 @@ class Jenazah extends Model
             return $this->tenggat_sewa_makam;
         }
 
-        return $this->permohonan?->renewalDueAt();
+        $permohonan = $this->relationLoaded('permohonan')
+            ? $this->permohonan
+            : $this->permohonan()->first();
+
+        if ($permohonan?->tenggat_sewa_makam) {
+            return $permohonan->tenggat_sewa_makam;
+        }
+
+        if ($permohonan?->approved_at) {
+            return $permohonan->approved_at->copy()->addYearsNoOverflow(2);
+        }
+
+        if ($permohonan?->status === 'disetujui' && $permohonan->updated_at) {
+            return $permohonan->updated_at->copy()->addYearsNoOverflow(2);
+        }
+
+        return null;
     }
 
     public function renewalAlertLevel(int $warningDays = 90): ?string

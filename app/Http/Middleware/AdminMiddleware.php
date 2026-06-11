@@ -15,7 +15,7 @@ class AdminMiddleware
         }
 
         if (! auth()->user()->isAdmin()) {
-            return redirect()->route('dashboard')->with('error', 'Anda tidak memiliki akses ke halaman admin.');
+            return redirect()->route('login')->with('error', 'Akun Anda tidak memiliki akses ke halaman admin.');
         }
 
         return $next($request);
