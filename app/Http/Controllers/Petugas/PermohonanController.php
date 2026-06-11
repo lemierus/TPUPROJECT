@@ -9,6 +9,7 @@ use App\Models\Jenazah;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -61,22 +62,16 @@ class PermohonanController extends Controller
 
     public function create()
     {
-        $petugas = auth()->user();
-
-        $makams = Makam::where('tpu', $petugas->tpu)
-            ->orderBy('kode_makam')
-            ->get();
-
         return view('petugas.permohonan.create', [
-            'petugas' => $petugas,
-            'makams' => $makams,
+            'petugas' => auth()->user(),
         ]);
     }
 
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'jenis_permohonan' => ['required', Rule::in(['makam_baru', 'perpanjangan'])],
+            'jenis_permohonan' => ['required', Rule::in(['makam_baru'])],
+            'jenazah_id' => ['nullable', 'exists:jenazah,id'],
             'nama_jenazah' => ['nullable', 'string', 'max:255'],
             'nik_jenazah' => ['nullable', 'string', 'max:255'],
             'tempat_lahir' => ['nullable', 'string', 'max:255'],
@@ -89,14 +84,8 @@ class PermohonanController extends Controller
             'no_hp_ahli_waris' => ['required', 'string', 'max:30'],
             'hubungan_keluarga' => ['required', 'string', 'max:255'],
             'makam_id' => ['nullable', 'exists:makams,id'],
-            'kode_makam' => ['nullable', 'string', 'max:255'],
-            'blok' => ['nullable', 'string', 'max:255'],
-            'zona' => ['nullable', 'string', 'max:255'],
-            'nomor_makam' => ['nullable', 'string', 'max:255'],
-            'keterangan' => ['nullable', 'string'],
-            'no_makam' => ['nullable', 'string', 'max:255'],
-            'blok_zona_makam' => ['nullable', 'string', 'max:255'],
             'tahun_pemakaman' => ['nullable', 'string', 'max:255'],
+            'tenggat_sewa_makam' => ['nullable', 'date'],
             'scan_ktp_ahli_waris' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
             'scan_kk' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
             'surat_kematian' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
@@ -108,14 +97,13 @@ class PermohonanController extends Controller
             return $input->jenis_permohonan === 'makam_baru';
         });
 
-        $validator->sometimes(['makam_id', 'no_makam', 'blok_zona_makam'], 'required', function ($input) {
-            return $input->jenis_permohonan === 'perpanjangan';
-        });
-
         $data = $validator->validate();
 
         $petugas = auth()->user();
-        $selectedMakam = $data['makam_id'] ? Makam::find($data['makam_id']) : null;
+        $selectedMakam = null;
+        $selectedMakam = ! empty($data['makam_id'] ?? null)
+            ? Makam::find($data['makam_id'])
+            : null;
 
         $paths = [
             'scan_ktp_ahli_waris' => $request->file('scan_ktp_ahli_waris')->store('permohonan/ktp', 'public'),
@@ -136,15 +124,18 @@ class PermohonanController extends Controller
             'surat_kematian' => $paths['surat_kematian'],
             'bukti_pembayaran_retribusi' => $paths['bukti_pembayaran_retribusi'],
             'status' => 'menunggu',
+            'jenazah_id' => null,
+            'nama_jenazah' => $data['nama_jenazah'] ?? null,
+            'nik_jenazah' => $data['nik_jenazah'] ?? null,
+            'tempat_lahir' => $data['tempat_lahir'] ?? null,
+            'tanggal_lahir' => $data['tanggal_lahir'] ?? null,
+            'tanggal_wafat' => $data['tanggal_wafat'] ?? null,
+            'jenis_kelamin' => $data['jenis_kelamin'] ?? null,
+            'agama' => $data['agama'] ?? null,
+            'alamat' => $data['alamat'] ?? null,
             'makam_id' => $selectedMakam?->id ?? null,
-            'kode_makam' => $selectedMakam?->kode_makam ?? $data['kode_makam'] ?? null,
-            'blok' => $selectedMakam?->blok ?? $data['blok'] ?? null,
-            'zona' => $selectedMakam?->zona ?? $data['zona'] ?? null,
-            'nomor_makam' => $selectedMakam?->nomor ?? $data['nomor_makam'] ?? null,
-            'keterangan' => $data['keterangan'] ?? $selectedMakam?->keterangan ?? null,
-            'no_makam' => $selectedMakam?->nomor ?? $data['no_makam'] ?? null,
-            'blok_zona_makam' => $selectedMakam ? trim(implode(' / ', array_filter([$selectedMakam->blok, $selectedMakam->zona])), ' /') : ($data['blok_zona_makam'] ?? null),
             'tahun_pemakaman' => $data['tahun_pemakaman'] ?? null,
+            'tenggat_sewa_makam' => null,
         ]));
 
         return redirect()->route('petugas.permohonan.show', $permohonan)
@@ -154,6 +145,7 @@ class PermohonanController extends Controller
     public function show(Permohonan $permohonan)
     {
         $this->authorizePermohonan($permohonan);
+        $permohonan->loadMissing(['user', 'makam', 'jenazah.makam']);
         $permohonan->syncLinkedJenazahData();
 
         return view('petugas.permohonan.show', compact('permohonan'));
@@ -162,11 +154,10 @@ class PermohonanController extends Controller
     public function edit(Permohonan $permohonan)
     {
         $this->authorizePermohonan($permohonan);
+        $permohonan->loadMissing(['user', 'makam', 'jenazah.makam']);
         $permohonan->syncLinkedJenazahData();
 
-        $makams = Makam::where('tpu', $permohonan->tpu)->orderBy('kode_makam')->get();
-
-        return view('petugas.permohonan.edit', compact('permohonan', 'makams'));
+        return view('petugas.permohonan.edit', compact('permohonan'));
     }
 
     public function update(Request $request, Permohonan $permohonan)
@@ -187,14 +178,8 @@ class PermohonanController extends Controller
             'no_hp_ahli_waris' => ['nullable', 'string', 'max:30'],
             'hubungan_keluarga' => ['nullable', 'string', 'max:255'],
             'makam_id' => ['nullable', 'exists:makams,id'],
-            'kode_makam' => ['nullable', 'string', 'max:255'],
-            'blok' => ['nullable', 'string', 'max:255'],
-            'zona' => ['nullable', 'string', 'max:255'],
-            'nomor_makam' => ['nullable', 'string', 'max:255'],
-            'keterangan' => ['nullable', 'string'],
-            'no_makam' => ['nullable', 'string', 'max:255'],
-            'blok_zona_makam' => ['nullable', 'string', 'max:255'],
             'tahun_pemakaman' => ['nullable', 'string', 'max:255'],
+            'tenggat_sewa_makam' => ['nullable', 'date'],
             'scan_ktp_ahli_waris' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
             'scan_kk' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
             'surat_kematian' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
@@ -206,12 +191,18 @@ class PermohonanController extends Controller
             return $input->jenis_permohonan === 'makam_baru';
         });
 
-        $validator->sometimes(['makam_id', 'no_makam', 'blok_zona_makam'], 'required', function ($input) {
+        $validator->sometimes(['tenggat_sewa_makam'], 'required', function ($input) {
             return $input->jenis_permohonan === 'perpanjangan';
         });
 
         $data = $validator->validate();
-        $selectedMakam = $data['makam_id'] ? Makam::find($data['makam_id']) : null;
+        $selectedMakam = ! empty($data['makam_id'] ?? null) ? Makam::find($data['makam_id']) : null;
+
+        if ($data['jenis_permohonan'] === 'perpanjangan') {
+            $data['jenazah_id'] = $permohonan->jenazah_id;
+            $data['makam_id'] = $permohonan->makam_id;
+            $data['tahun_pemakaman'] = $permohonan->tahun_pemakaman;
+        }
 
         foreach (['scan_ktp_ahli_waris', 'scan_kk', 'surat_kematian', 'bukti_pembayaran_retribusi'] as $fileKey) {
             if ($request->hasFile($fileKey)) {
@@ -220,18 +211,31 @@ class PermohonanController extends Controller
         }
 
         $permohonan->fill(array_merge($data, [
-            'makam_id' => $selectedMakam?->id ?? null,
-            'kode_makam' => $selectedMakam?->kode_makam ?? $data['kode_makam'] ?? null,
-            'blok' => $selectedMakam?->blok ?? $data['blok'] ?? null,
-            'zona' => $selectedMakam?->zona ?? $data['zona'] ?? null,
-            'nomor_makam' => $selectedMakam?->nomor ?? $data['nomor_makam'] ?? null,
-            'keterangan' => $data['keterangan'] ?? $selectedMakam?->keterangan ?? null,
-            'no_makam' => $selectedMakam?->nomor ?? $data['no_makam'] ?? null,
-            'blok_zona_makam' => $selectedMakam ? trim(implode(' / ', array_filter([$selectedMakam->blok, $selectedMakam->zona])), ' /') : ($data['blok_zona_makam'] ?? null),
-            'tahun_pemakaman' => $data['tahun_pemakaman'] ?? null,
+            'jenazah_id' => $data['jenazah_id'] ?? $permohonan->jenazah_id,
+            'nama_jenazah' => $data['nama_jenazah'] ?? null,
+            'nik_jenazah' => $data['nik_jenazah'] ?? null,
+            'tempat_lahir' => $data['tempat_lahir'] ?? null,
+            'tanggal_lahir' => $data['tanggal_lahir'] ?? null,
+            'tanggal_wafat' => $data['tanggal_wafat'] ?? null,
+            'jenis_kelamin' => $data['jenis_kelamin'] ?? null,
+            'agama' => $data['agama'] ?? null,
+            'alamat' => $data['alamat'] ?? null,
+            'makam_id' => $selectedMakam?->id ?? $permohonan->makam_id,
+            'tahun_pemakaman' => $data['tahun_pemakaman'] ?? $permohonan->tahun_pemakaman,
+            'tenggat_sewa_makam' => $data['tenggat_sewa_makam'] ?? $permohonan->tenggat_sewa_makam ?? null,
         ]));
         $permohonan->save();
         $permohonan->syncLinkedJenazahData();
+
+        if ($permohonan->jenis_permohonan === 'perpanjangan' && $permohonan->tenggat_sewa_makam) {
+            $permohonan->loadMissing('jenazah');
+
+            if ($permohonan->jenazah) {
+                $permohonan->jenazah->update([
+                    'tenggat_sewa_makam' => $permohonan->tenggat_sewa_makam,
+                ]);
+            }
+        }
 
         return redirect()->route('petugas.permohonan.show', $permohonan)
             ->with('success', 'Data permohonan berhasil diperbarui.');
@@ -242,6 +246,7 @@ class PermohonanController extends Controller
         $this->authorizePermohonan($permohonan);
 
         $request->validate([
+            'tenggat_sewa_makam' => ['nullable', 'date'],
             'catatan' => ['nullable', 'string', 'max:1000'],
         ]);
 
@@ -251,6 +256,9 @@ class PermohonanController extends Controller
                 $permohonan->approved_at = now();
                 if ($request->filled('catatan')) {
                     $permohonan->catatan = $request->catatan;
+                }
+                if ($request->filled('tenggat_sewa_makam')) {
+                    $permohonan->tenggat_sewa_makam = $request->tenggat_sewa_makam;
                 }
                 $permohonan->save();
 
@@ -266,6 +274,15 @@ class PermohonanController extends Controller
                     \Log::info('Memulai create jenazah dari permohonan', ['permohonan_id' => $permohonan->id]);
                     $permohonan->persistJenazahRecord();
                     \Log::info('Jenazah berhasil dibuat', ['jenazah_id' => $permohonan->jenazah_id]);
+                }
+
+                if ($permohonan->tenggat_sewa_makam) {
+                    $permohonan->loadMissing('jenazah');
+                    if ($permohonan->jenazah) {
+                        $permohonan->jenazah->update([
+                            'tenggat_sewa_makam' => $permohonan->tenggat_sewa_makam,
+                        ]);
+                    }
                 }
             });
         } catch (ValidationException $e) {
@@ -307,5 +324,48 @@ class PermohonanController extends Controller
             403,
             'Anda tidak memiliki akses ke permohonan ini.'
         );
+    }
+
+    private function eligibleRenewalJenazahs(string $tpu)
+    {
+        $query = Permohonan::with(['jenazah', 'makam', 'user'])
+            ->where('tpu', $tpu)
+            ->where('status', 'disetujui')
+            ->where('jenis_permohonan', 'makam_baru')
+            ->whereNotNull('jenazah_id');
+
+        if (Schema::hasColumn('permohonans', 'approved_at')) {
+            $query->orderByDesc('approved_at');
+        } else {
+            $query->orderByDesc('updated_at');
+        }
+
+        return $query->get()
+            ->filter(function (Permohonan $permohonan) {
+                return $permohonan->jenazah && $permohonan->makam;
+            })
+            ->values();
+    }
+
+    private function resolveRenewalSource($jenazahId, ?string $namaJenazah, string $tpu): ?Permohonan
+    {
+        $query = Permohonan::with(['jenazah', 'makam', 'user'])
+            ->where('tpu', $tpu)
+            ->where('status', 'disetujui')
+            ->where('jenis_permohonan', 'makam_baru')
+            ->whereNotNull('jenazah_id');
+
+        if ($jenazahId) {
+            $query->where('jenazah_id', $jenazahId);
+        } elseif ($namaJenazah) {
+            $query->where(function ($subQuery) use ($namaJenazah) {
+                $subQuery->where('nama_jenazah', $namaJenazah)
+                    ->orWhereHas('jenazah', function ($jenazahQuery) use ($namaJenazah) {
+                        $jenazahQuery->where('nama', $namaJenazah);
+                    });
+            });
+        }
+
+        return $query->first();
     }
 }

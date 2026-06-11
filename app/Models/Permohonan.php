@@ -33,14 +33,8 @@ class Permohonan extends Model
         'surat_kematian',
         'jenazah_id',
         'makam_id',
-        'kode_makam',
-        'blok',
-        'zona',
-        'nomor_makam',
-        'keterangan',
-        'no_makam',
-        'blok_zona_makam',
         'tahun_pemakaman',
+        'tenggat_sewa_makam',
         'bukti_pembayaran_retribusi',
         'status',
         'approved_at',
@@ -52,6 +46,7 @@ class Permohonan extends Model
     protected $casts = [
         'tanggal_lahir' => 'date',
         'tanggal_wafat' => 'date',
+        'tenggat_sewa_makam' => 'date',
         'approved_at' => 'datetime',
         'jenazah_deleted_at' => 'datetime',
         'created_at' => 'datetime',
@@ -115,17 +110,11 @@ class Permohonan extends Model
             'tanggal_wafat' => $jenazah?->tanggal_wafat ?? $this->tanggal_wafat,
             'jenis_kelamin' => $jenazah?->jenis_kelamin ?? $this->jenis_kelamin,
             'agama' => $jenazah?->agama ?? $this->agama,
-            'keterangan' => $jenazah?->keterangan ?? $this->keterangan,
-            'kode_makam' => $jenazah?->kode_makam ?? $makam?->kode_makam ?? $this->kode_makam,
-            'blok' => $jenazah?->blok ?? $makam?->blok ?? $this->blok,
-            'zona' => $jenazah?->zona ?? $makam?->zona ?? $this->zona,
-            'nomor_makam' => $jenazah?->nomor_makam ?? $makam?->nomor ?? $this->nomor_makam,
+            'tenggat_sewa_makam' => $this->tenggat_sewa_makam ?? $jenazah?->tenggat_sewa_makam,
         ];
 
         if ($makam) {
             $sync['makam_id'] = $makam->id;
-            $sync['no_makam'] = $makam->nomor ?? $this->no_makam;
-            $sync['blok_zona_makam'] = trim(implode(' / ', array_filter([$makam->blok, $makam->zona])), ' /') ?: $this->blok_zona_makam;
         }
 
         $this->fill(array_filter($sync, fn($value) => ! is_null($value)));
@@ -159,20 +148,24 @@ class Permohonan extends Model
 
     public function renewalDueAt(): ?CarbonInterface
     {
-        if ($this->jenis_permohonan !== 'makam_baru' || $this->status !== 'disetujui') {
-            return null;
+        if ($this->tenggat_sewa_makam) {
+            return $this->tenggat_sewa_makam;
         }
 
-        if ($this->relationLoaded('jenazah') && $this->jenazah?->renewalDueAt()) {
-            return $this->jenazah->renewalDueAt();
+        if ($this->relationLoaded('jenazah') && $this->jenazah?->tenggat_sewa_makam) {
+            return $this->jenazah->tenggat_sewa_makam;
         }
 
         if ($this->jenazah_id) {
             $jenazah = Jenazah::find($this->jenazah_id);
 
-            if ($jenazah?->renewalDueAt()) {
-                return $jenazah->renewalDueAt();
+            if ($jenazah?->tenggat_sewa_makam) {
+                return $jenazah->tenggat_sewa_makam;
             }
+        }
+
+        if ($this->jenis_permohonan !== 'makam_baru' || $this->status !== 'disetujui') {
+            return null;
         }
 
         $approvedAt = $this->approvedAt();
@@ -218,12 +211,6 @@ class Permohonan extends Model
 
         if ($makam) {
             $sync['makam_id'] = $makam->id;
-            $sync['kode_makam'] = $makam->kode_makam;
-            $sync['blok'] = $makam->blok;
-            $sync['zona'] = $makam->zona;
-            $sync['nomor_makam'] = $makam->nomor;
-            $sync['no_makam'] = $makam->nomor;
-            $sync['blok_zona_makam'] = trim(implode(' / ', array_filter([$makam->blok, $makam->zona])), ' /');
         }
 
         $this->fill($sync);
@@ -243,16 +230,11 @@ class Permohonan extends Model
             'tanggal_lahir' => $this->tanggal_lahir,
             'tanggal_wafat' => $this->tanggal_wafat,
             'alamat' => $this->alamat,
-            'keterangan' => $this->keterangan,
             'tpu' => $this->tpu,
         ];
 
         if ($makam) {
             $payload['makam_id'] = $makam->id;
-            $payload['kode_makam'] = $makam->kode_makam;
-            $payload['blok'] = $makam->blok;
-            $payload['zona'] = $makam->zona;
-            $payload['nomor_makam'] = $makam->nomor;
         }
 
         return array_filter($payload, fn($value) => ! is_null($value));
