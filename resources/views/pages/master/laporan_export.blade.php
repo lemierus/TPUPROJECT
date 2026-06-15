@@ -4,6 +4,60 @@
     <meta charset="UTF-8">
 </head>
 <body>
+    <table border="0" style="margin-bottom: 12px;">
+        <tr>
+            <td><strong>Laporan Pemakaman TPU {{ auth()->user()->tpu }}</strong></td>
+        </tr>
+        <tr>
+            <td>
+                {{ ($isKepalaReport ?? false) ? 'Gabungan data pemakaman, permohonan, dan jenazah.' : 'Gabungan data permohonan dan data jenazah.' }}
+            </td>
+        </tr>
+        <tr>
+            <td>Periode: {{ $filter ?? 'harian' }}</td>
+        </tr>
+    </table>
+
+    @if($isKepalaReport ?? false)
+        <table border="1" cellpadding="4" cellspacing="0" style="margin-bottom: 12px; width: 100%;">
+            <tr>
+                <th>Total Pemakaman</th>
+                <th>Permohonan Masuk</th>
+                <th>Laki-laki</th>
+                <th>Perempuan</th>
+                <th>Total Data</th>
+                <th>Menunggu</th>
+                <th>Disetujui</th>
+                <th>Ditolak</th>
+            </tr>
+            <tr>
+                <td>{{ $totalPemakaman ?? 0 }}</td>
+                <td>{{ $totalPermohonan ?? 0 }}</td>
+                <td>{{ $laki ?? 0 }}</td>
+                <td>{{ $perempuan ?? 0 }}</td>
+                <td>{{ $total ?? 0 }}</td>
+                <td>{{ $permohonanMenunggu ?? 0 }}</td>
+                <td>{{ $permohonanDisetujui ?? 0 }}</td>
+                <td>{{ $permohonanDitolak ?? 0 }}</td>
+            </tr>
+        </table>
+    @else
+        <table border="1" cellpadding="4" cellspacing="0" style="margin-bottom: 12px; width: 100%;">
+            <tr>
+                <th>Total Data</th>
+                <th>Permohonan Masuk</th>
+                <th>Data Jenazah</th>
+                <th>Makam Terhubung</th>
+            </tr>
+            <tr>
+                <td>{{ $total ?? 0 }}</td>
+                <td>{{ $totalPermohonan ?? 0 }}</td>
+                <td>{{ $totalJenazah ?? 0 }}</td>
+                <td>{{ $totalMakamTerhubung ?? 0 }}</td>
+            </tr>
+        </table>
+    @endif
+
     <table border="1">
         <thead>
             <tr>

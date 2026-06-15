@@ -72,6 +72,21 @@
             </div>
         </div>
 
+        <div class="col-lg-3 col-md-6">
+            <div class="card shadow-sm border-0 rounded-4">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <p class="text-muted mb-1">Total Permohonan</p>
+                        <h4 class="fw-bold mb-0">{{ $totalPermohonan ?? 0 }}</h4>
+                        <small class="text-muted">Seluruh data sistem</small>
+                    </div>
+                    <div class="bg-warning text-white rounded-circle d-flex align-items-center justify-content-center" style="width:50px;height:50px;">
+                        <i class="bi bi-envelope-paper-fill"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         {{-- KHUSUS KEPALA --}}
         @if($role == 'kepala')
         <div class="col-lg-3 col-md-6">
@@ -105,6 +120,49 @@
         </div>
         @endif
 
+    </div>
+
+    <div class="card shadow-sm border-0 rounded-4 mb-4">
+        <div class="card-header bg-white border-0 py-3 px-4 d-flex justify-content-between align-items-center">
+            <div>
+                <h6 class="fw-bold mb-0">Ringkasan Per TPU</h6>
+                <small class="text-muted">Total jenazah, makam, dan permohonan dari masing-masing TPU.</small>
+            </div>
+        </div>
+        <div class="card-body px-4">
+            <div class="table-responsive">
+                <table class="table table-bordered align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>TPU</th>
+                            <th>Total Jenazah</th>
+                            <th>Total Makam</th>
+                            <th>Total Permohonan</th>
+                            <th>Menunggu</th>
+                            <th>Disetujui</th>
+                            <th>Ditolak</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($perTpuStats ?? [] as $item)
+                        <tr>
+                            <td class="fw-semibold">{{ $item['tpu'] }}</td>
+                            <td>{{ $item['totalJenazah'] }}</td>
+                            <td>{{ $item['totalMakam'] }}</td>
+                            <td>{{ $item['totalPermohonan'] }}</td>
+                            <td>{{ $item['permohonanPending'] }}</td>
+                            <td class="text-success">{{ $item['permohonanDisetujui'] }}</td>
+                            <td class="text-danger">{{ $item['permohonanDitolak'] }}</td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td colspan="7" class="text-center text-muted">Belum ada data TPU</td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
     {{-- CHART + INFO --}}

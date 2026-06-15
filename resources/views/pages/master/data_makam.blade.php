@@ -4,7 +4,11 @@
 
 @section('content')
 @php
-    $routePrefix = request()->routeIs('petugas.*') ? 'petugas' : 'admin';
+    $routePrefix = request()->routeIs('petugas.*')
+        ? 'petugas'
+        : (request()->routeIs('kepala.*') ? 'kepala' : 'admin');
+    $canManage = auth()->user()?->isAdmin() || auth()->user()?->isPetugas();
+    $isAdmin = auth()->user()?->isAdmin();
 @endphp
 
 <div class="container-fluid pt-2 pb-4">
@@ -15,10 +19,12 @@
             <h4 class="fw-bold text-dark mb-1">Data Makam</h4>
             <p class="text-muted mb-0">Daftar data makam dalam sistem</p>
         </div>
-        <div>
-            <a href="{{ route($routePrefix.'.data-makam.create') }}" class="btn btn-sm me-2" style="background-color:#1E3E62;color:white;">
-                <i class="bi bi-plus-circle"></i> Tambah Makam
-            </a>
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            @if($canManage)
+                <a href="{{ route($routePrefix.'.data-makam.create', request()->only('tpu')) }}" class="btn btn-sm me-2" style="background-color:#1E3E62;color:white;">
+                    <i class="bi bi-plus-circle"></i> Tambah Makam
+                </a>
+            @endif
             <span class="badge px-3 py-2" style="background-color: #1E3E62; color: white;">
                 {{ now()->translatedFormat('l, d F Y') }}
             </span>
@@ -34,12 +40,22 @@
         <div class="card-body">
             <form method="GET" action="{{ route($routePrefix.'.data-makam') }}">
                 <div class="row g-2">
-                    <div class="col-md-10">
+                    @if($isAdmin)
+                        <div class="col-md-3">
+                            <select name="tpu" class="form-select">
+                                <option value="">Semua TPU</option>
+                                @foreach($tpuOptions ?? [] as $tpu)
+                                    <option value="{{ $tpu }}" @selected(($selectedTpu ?? '') === $tpu)>{{ $tpu }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    @endif
+                    <div class="{{ $isAdmin ? 'col-md-7' : 'col-md-10' }}">
                         <input type="text" name="search" class="form-control"
                                placeholder="Cari kode, blok, zona..."
                                value="{{ request('search') }}">
                     </div>
-                    <div class="col-md-2">
+                    <div class="{{ $isAdmin ? 'col-md-2' : 'col-md-2' }}">
                         <button class="btn w-100" style="background-color:#1E3E62;color:white;">
                             <i class="bi bi-search"></i> Cari
                         </button>
@@ -64,7 +80,9 @@
                             <th>Nomor</th>
                             <th>Status</th>
                             <th>Keterangan</th>
-                            <th width="180">Aksi</th>
+                            @if($canManage)
+                                <th width="180">Aksi</th>
+                            @endif
                         </tr>
                     </thead>
 
@@ -83,28 +101,30 @@
                                 </span>
                             </td>
                             <td>{{ $makam->keterangan ?? '-' }}</td>
-                            <td>
-                                <div class="d-flex gap-2">
-                                    <a href="{{ route($routePrefix.'.data-makam.edit', $makam) }}" class="btn btn-warning btn-sm d-flex align-items-center gap-1">
-                                        <i class="bi bi-pencil-square"></i>
-                                        Edit
-                                    </a>
+                            @if($canManage)
+                                <td>
+                                    <div class="d-flex gap-2">
+                                        <a href="{{ route($routePrefix.'.data-makam.edit', $makam) }}" class="btn btn-warning btn-sm d-flex align-items-center gap-1">
+                                            <i class="bi bi-pencil-square"></i>
+                                            Edit
+                                        </a>
 
-                                    <form action="{{ route($routePrefix.'.data-makam.destroy', $makam) }}" method="POST" onsubmit="return confirm('Yakin hapus data?')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button class="btn btn-danger btn-sm d-flex align-items-center gap-1">
-                                            <i class="bi bi-trash"></i>
-                                            Hapus
-                                        </button>
-                                    </form>
+                                        <form action="{{ route($routePrefix.'.data-makam.destroy', $makam) }}" method="POST" onsubmit="return confirm('Yakin hapus data?')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button class="btn btn-danger btn-sm d-flex align-items-center gap-1">
+                                                <i class="bi bi-trash"></i>
+                                                Hapus
+                                            </button>
+                                        </form>
 
-                                </div>
-                            </td>
+                                    </div>
+                                </td>
+                            @endif
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="9" class="text-center text-muted">
+                            <td colspan="{{ $canManage ? 9 : 8 }}" class="text-center text-muted">
                                 Data tidak ditemukan
                             </td>
                         </tr>

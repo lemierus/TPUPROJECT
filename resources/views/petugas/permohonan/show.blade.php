@@ -272,7 +272,6 @@
             $displayMakamBlokZona = '-';
         }
         $displayMakamNomor = $permohonan->no_makam ?? $linkedMakam?->nomor ?? '-';
-        $displayMakamTahun = $permohonan->tahun_pemakaman ?? '-';
         $displayMakamKeterangan = $permohonan->keterangan ?? $linkedMakam?->keterangan ?? '-';
     @endphp
 
@@ -431,10 +430,6 @@
             <div>
                 <div class="detail-label">Nomor Makam</div>
                 <div class="detail-value">{{ $displayMakamNomor }}</div>
-            </div>
-            <div>
-                <div class="detail-label">Tahun Pemakaman</div>
-                <div class="detail-value">{{ $displayMakamTahun }}</div>
             </div>
             <div>
                 <div class="detail-label">Keterangan Makam</div>

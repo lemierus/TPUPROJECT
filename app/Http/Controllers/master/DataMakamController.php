@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Master;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Makam;
+use App\Models\User;
 use Illuminate\Validation\Rule;
 
 class DataMakamController extends Controller
@@ -12,22 +13,32 @@ class DataMakamController extends Controller
     public function index(Request $request)
     {
         $search = $request->search;
+        $selectedTpu = $request->tpu;
+        $tpuOptions = User::tpuOptions();
 
-        $makams = $this->accessibleMakams()->when($search, function ($query) use ($search) {
+        $makamQuery = $this->accessibleMakams()
+            ->when(auth()->user()?->isAdmin() && filled($selectedTpu) && in_array($selectedTpu, $tpuOptions, true), function ($query) use ($selectedTpu) {
+                $query->where('tpu', $selectedTpu);
+            })
+            ->when($search, function ($query) use ($search) {
             $query->where('tpu', 'like', "%$search%")
                 ->orWhere('kode_makam', 'like', "%$search%")
                 ->orWhere('blok', 'like', "%$search%")
                 ->orWhere('zona', 'like', "%$search%")
                 ->orWhere('nomor', 'like', "%$search%");
-        })->latest()->get();
+        });
 
-        return view('pages.master.data_makam', compact('makams'));
+        $makams = $makamQuery->latest()->get();
+
+        return view('pages.master.data_makam', compact('makams', 'selectedTpu', 'tpuOptions'));
     }
 
     public function create()
     {
         return view('pages.master.form_makam', [
             'makam' => new Makam(),
+            'selectedTpu' => request()->tpu,
+            'tpuOptions' => User::tpuOptions(),
         ]);
     }
 
@@ -43,7 +54,11 @@ class DataMakamController extends Controller
     {
         $makam = $this->findAccessibleMakamOrFail($makam->id);
 
-        return view('pages.master.form_makam', compact('makam'));
+        return view('pages.master.form_makam', [
+            'makam' => $makam,
+            'selectedTpu' => request()->tpu,
+            'tpuOptions' => User::tpuOptions(),
+        ]);
     }
 
     public function update(Request $request, Makam $makam)
@@ -76,7 +91,7 @@ class DataMakamController extends Controller
             'keterangan' => ['nullable', 'string'],
         ]);
 
-        if (auth()->user()?->isPetugas()) {
+        if (auth()->user()?->isPetugas() || auth()->user()?->isKepala()) {
             $data['tpu'] = auth()->user()->tpu;
         }
 
@@ -85,12 +100,20 @@ class DataMakamController extends Controller
 
     private function routePrefix(): string
     {
-        return request()->routeIs('petugas.*') ? 'petugas' : 'admin';
+        if (request()->routeIs('petugas.*')) {
+            return 'petugas';
+        }
+
+        if (request()->routeIs('kepala.*')) {
+            return 'kepala';
+        }
+
+        return 'admin';
     }
 
     private function accessibleMakams()
     {
-        return Makam::query()->when(auth()->user()?->isPetugas(), function ($query) {
+        return Makam::query()->when(auth()->user()?->isPetugas() || auth()->user()?->isKepala(), function ($query) {
             $query->where('tpu', auth()->user()->tpu);
         });
     }

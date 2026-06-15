@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\Jenazah;
 use App\Models\Makam;
 use App\Models\Permohonan;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -19,25 +20,34 @@ class DataJenazahController extends Controller
     {
         $search = $request->search;
         $filter = $request->filter ?? 'harian';
+        $selectedTpu = $request->tpu;
+        $tpuOptions = User::tpuOptions();
 
-        if (auth()->user()?->isPetugas()) {
+        if (auth()->user()?->isPetugas() || auth()->user()?->isKepala()) {
             $this->syncApprovedPermohonanJenazah();
         }
 
-        $jenazah = $this->accessibleJenazah()
+        $jenazahQuery = $this->accessibleJenazah()
             ->with(['makam', 'permohonan'])
+            ->when(auth()->user()?->isAdmin() && filled($selectedTpu) && in_array($selectedTpu, $tpuOptions, true), function ($query) use ($selectedTpu) {
+                $query->where('tpu', $selectedTpu);
+            })
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($subQuery) use ($search) {
                     $subQuery->where('nama', 'like', "%$search%")
                         ->orWhere('nik', 'like', "%$search%")
                         ->orWhere('alamat', 'like', "%$search%");
                 });
-            })->latest()->get();
+            });
+
+        $jenazah = $jenazahQuery->latest()->get();
 
         return view('pages.master.data_jenazah', [
             'jenazah' => $jenazah,
             'isPetugasView' => false,
             'filter' => $filter,
+            'selectedTpu' => $selectedTpu,
+            'tpuOptions' => $tpuOptions,
         ]);
     }
 
@@ -46,12 +56,14 @@ class DataJenazahController extends Controller
         return view('pages.master.form_jenazah', [
             'jenazah' => new Jenazah(),
             'makams' => $this->getAccessibleMakams(),
+            'selectedTpu' => request()->tpu,
+            'tpuOptions' => User::tpuOptions(),
         ]);
     }
 
     public function store(Request $request)
     {
-        $data = $request->validate([
+        $rules = [
             'nik' => ['required', 'string', 'max:255', 'unique:jenazah,nik'],
             'nama' => ['required', 'string', 'max:255'],
             'jenis_kelamin' => ['required', Rule::in(['Laki-laki', 'Perempuan'])],
@@ -61,21 +73,30 @@ class DataJenazahController extends Controller
             'tanggal_wafat' => ['required', 'date'],
             'alamat' => ['nullable', 'string'],
             'keterangan' => ['nullable', 'string'],
+            'tpu' => ['nullable', Rule::in(User::tpuOptions())],
             'makam_id' => ['nullable', 'exists:makams,id'],
             'kode_makam' => ['nullable', 'string', 'max:255'],
             'blok' => ['nullable', 'string', 'max:255'],
             'zona' => ['nullable', 'string', 'max:255'],
             'nomor_makam' => ['nullable', 'string', 'max:255'],
             'tenggat_sewa_makam' => ['nullable', 'date'],
-        ]);
+        ];
+
+        if (auth()->user()?->isAdmin()) {
+            $rules['tpu'] = ['required', Rule::in(User::tpuOptions())];
+        }
+
+        $data = $request->validate($rules);
 
         $this->applyMakamSnapshot($request, $data);
         $this->validateAvailableMakam($request);
         $this->validateAccessibleMakam($request);
         $this->syncTenggatSewaField($data);
 
-        if (auth()->user()?->isPetugas()) {
+        if (auth()->user()?->isPetugas() || auth()->user()?->isKepala()) {
             $data['tpu'] = auth()->user()->tpu;
+        } elseif (auth()->user()?->isAdmin()) {
+            $data['tpu'] = $data['tpu'] ?? $request->input('tpu');
         }
 
         Jenazah::create($data);
@@ -92,6 +113,8 @@ class DataJenazahController extends Controller
         return view('pages.master.form_jenazah', [
             'jenazah' => $jenazah,
             'makams' => $this->getAccessibleMakams($jenazah),
+            'selectedTpu' => request()->tpu,
+            'tpuOptions' => User::tpuOptions(),
         ]);
     }
 
@@ -99,7 +122,7 @@ class DataJenazahController extends Controller
     {
         $jenazah = $this->findAccessibleJenazahOrFail($id);
 
-        $data = $request->validate([
+        $rules = [
             'nik' => ['required', 'string', 'max:255', Rule::unique('jenazah', 'nik')->ignore($id)],
             'nama' => ['required', 'string', 'max:255'],
             'jenis_kelamin' => ['required', Rule::in(['Laki-laki', 'Perempuan'])],
@@ -109,6 +132,7 @@ class DataJenazahController extends Controller
             'tanggal_wafat' => ['required', 'date'],
             'alamat' => ['nullable', 'string'],
             'keterangan' => ['nullable', 'string'],
+            'tpu' => ['nullable', Rule::in(User::tpuOptions())],
             'makam_id' => ['nullable', 'exists:makams,id'],
             'kode_makam' => ['nullable', 'string', 'max:255'],
             'blok' => ['nullable', 'string', 'max:255'],
@@ -119,24 +143,39 @@ class DataJenazahController extends Controller
             'hubungan_keluarga' => ['nullable', 'string', 'max:100'],
             'no_hp_ahli_waris' => ['nullable', 'string', 'max:50'],
             'catatan' => ['nullable', 'string'],
-        ]);
+        ];
+
+        if (auth()->user()?->isAdmin()) {
+            $rules['tpu'] = ['required', Rule::in(User::tpuOptions())];
+        }
+
+        $data = $request->validate($rules);
 
         $this->applyMakamSnapshot($request, $data);
         $this->validateAvailableMakam($request, $jenazah);
         $this->validateAccessibleMakam($request);
         $this->syncTenggatSewaField($data);
 
-        $jenazah->load('permohonan');
-        $jenazah->update($data);
-
-        if ($permohonan = $jenazah->permohonan) {
-            $permohonan->update([
-                'nama_ahli_waris' => $data['nama_ahli_waris'] ?? null,
-                'hubungan_keluarga' => $data['hubungan_keluarga'] ?? null,
-                'no_hp_ahli_waris' => $data['no_hp_ahli_waris'] ?? null,
-                'catatan' => $data['catatan'] ?? null,
-            ]);
+        if (auth()->user()?->isPetugas() || auth()->user()?->isKepala()) {
+            $data['tpu'] = auth()->user()->tpu;
+        } elseif (auth()->user()?->isAdmin()) {
+            $data['tpu'] = $data['tpu'] ?? $request->input('tpu');
         }
+
+        DB::transaction(function () use ($jenazah, $data) {
+            $jenazah->load('permohonan');
+            $jenazah->update($data);
+
+            if ($permohonan = $jenazah->permohonan) {
+                $permohonan->update([
+                    'nama_ahli_waris' => $data['nama_ahli_waris'] ?? null,
+                    'hubungan_keluarga' => $data['hubungan_keluarga'] ?? null,
+                    'no_hp_ahli_waris' => $data['no_hp_ahli_waris'] ?? null,
+                    'catatan' => $data['catatan'] ?? null,
+                    'tenggat_sewa_makam' => $data['tenggat_sewa_makam'] ?? null,
+                ]);
+            }
+        });
 
         return redirect()->route($this->routePrefix() . '.data-jenazah')
             ->with('success', 'Data berhasil diupdate');
@@ -167,12 +206,20 @@ class DataJenazahController extends Controller
 
     private function routePrefix(): string
     {
-        return request()->routeIs('petugas.*') ? 'petugas' : 'admin';
+        if (request()->routeIs('petugas.*')) {
+            return 'petugas';
+        }
+
+        if (request()->routeIs('kepala.*')) {
+            return 'kepala';
+        }
+
+        return 'admin';
     }
 
     private function accessibleJenazah()
     {
-        return Jenazah::query()->when(auth()->user()?->isPetugas(), function ($query) {
+        return Jenazah::query()->when(auth()->user()?->isPetugas() || auth()->user()?->isKepala(), function ($query) {
             $query->where('tpu', auth()->user()->tpu);
         });
     }
@@ -185,7 +232,7 @@ class DataJenazahController extends Controller
     private function getAccessibleMakams(?Jenazah $jenazah = null)
     {
         return Makam::query()
-            ->when(auth()->user()?->isPetugas(), function ($query) {
+            ->when(auth()->user()?->isPetugas() || auth()->user()?->isKepala(), function ($query) {
                 $query->where('tpu', auth()->user()->tpu);
             })
             ->where('status', 'kosong')
@@ -219,15 +266,21 @@ class DataJenazahController extends Controller
 
     private function validateAccessibleMakam(Request $request): void
     {
-        if (! $request->filled('makam_id') || ! auth()->user()?->isPetugas()) {
+        if (! $request->filled('makam_id')) {
             return;
         }
 
         $makam = Makam::findOrFail($request->makam_id);
 
-        if ($makam->tpu !== auth()->user()->tpu) {
+        if ((auth()->user()?->isPetugas() || auth()->user()?->isKepala()) && $makam->tpu !== auth()->user()->tpu) {
             throw ValidationException::withMessages([
                 'makam_id' => 'Anda hanya dapat memilih makam dari TPU Anda sendiri.',
+            ]);
+        }
+
+        if (auth()->user()?->isAdmin() && filled($request->tpu) && $makam->tpu !== $request->tpu) {
+            throw ValidationException::withMessages([
+                'tpu' => 'TPU yang dipilih harus sama dengan TPU dari makam.',
             ]);
         }
     }

@@ -69,26 +69,68 @@
 </head>
 <body onload="window.print()">
     <h2>Laporan Pemakaman TPU {{ auth()->user()->tpu }}</h2>
-    <p class="muted">Gabungan data permohonan dan data jenazah. Periode: {{ $filter ?? 'harian' }}</p>
+    <p class="muted">
+        {{ ($isKepalaReport ?? false) ? 'Gabungan data pemakaman, permohonan, dan jenazah.' : 'Gabungan data permohonan dan data jenazah.' }}
+        Periode: {{ $filter ?? 'harian' }}
+    </p>
 
-    <div class="summary">
-        <div class="card">
-            <div class="label">Total Data</div>
-            <div class="value">{{ $total ?? 0 }}</div>
+    @if($isKepalaReport ?? false)
+        <div class="summary">
+            <div class="card">
+                <div class="label">Total Pemakaman</div>
+                <div class="value">{{ $totalPemakaman ?? 0 }}</div>
+            </div>
+            <div class="card">
+                <div class="label">Permohonan Masuk</div>
+                <div class="value">{{ $totalPermohonan ?? 0 }}</div>
+            </div>
+            <div class="card">
+                <div class="label">Laki-laki</div>
+                <div class="value">{{ $laki ?? 0 }}</div>
+            </div>
+            <div class="card">
+                <div class="label">Perempuan</div>
+                <div class="value">{{ $perempuan ?? 0 }}</div>
+            </div>
         </div>
-        <div class="card">
-            <div class="label">Permohonan Masuk</div>
-            <div class="value">{{ $totalPermohonan ?? 0 }}</div>
+        <div class="summary" style="margin-top: 0;">
+            <div class="card">
+                <div class="label">Total Data</div>
+                <div class="value">{{ $total ?? 0 }}</div>
+            </div>
+            <div class="card">
+                <div class="label">Menunggu</div>
+                <div class="value">{{ $permohonanMenunggu ?? 0 }}</div>
+            </div>
+            <div class="card">
+                <div class="label">Disetujui</div>
+                <div class="value">{{ $permohonanDisetujui ?? 0 }}</div>
+            </div>
+            <div class="card">
+                <div class="label">Ditolak</div>
+                <div class="value">{{ $permohonanDitolak ?? 0 }}</div>
+            </div>
         </div>
-        <div class="card">
-            <div class="label">Data Jenazah</div>
-            <div class="value">{{ $totalJenazah ?? 0 }}</div>
+    @else
+        <div class="summary">
+            <div class="card">
+                <div class="label">Total Data</div>
+                <div class="value">{{ $total ?? 0 }}</div>
+            </div>
+            <div class="card">
+                <div class="label">Permohonan Masuk</div>
+                <div class="value">{{ $totalPermohonan ?? 0 }}</div>
+            </div>
+            <div class="card">
+                <div class="label">Data Jenazah</div>
+                <div class="value">{{ $totalJenazah ?? 0 }}</div>
+            </div>
+            <div class="card">
+                <div class="label">Makam Terhubung</div>
+                <div class="value">{{ $totalMakamTerhubung ?? 0 }}</div>
+            </div>
         </div>
-        <div class="card">
-            <div class="label">Makam Terhubung</div>
-            <div class="value">{{ $totalMakamTerhubung ?? 0 }}</div>
-        </div>
-    </div>
+    @endif
 
     <table>
         <thead>

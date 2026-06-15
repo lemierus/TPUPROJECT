@@ -30,9 +30,9 @@
                         <label class="form-label">TPU</label>
                         <select name="tpu" class="form-select @error('tpu') is-invalid @enderror" required {{ $isPetugas ? 'disabled' : '' }}>
                             <option value="">Pilih TPU</option>
-                            <option value="TPU Tunggul Hitam" @selected(old('tpu', $makam->tpu ?? auth()->user()->tpu) === 'TPU Tunggul Hitam')>TPU Tunggul Hitam</option>
-                            <option value="TPU Bungus Teluk Kabung" @selected(old('tpu', $makam->tpu ?? auth()->user()->tpu) === 'TPU Bungus Teluk Kabung')>TPU Bungus Teluk Kabung</option>
-                            <option value="TPU Air Dingin" @selected(old('tpu', $makam->tpu ?? auth()->user()->tpu) === 'TPU Air Dingin')>TPU Air Dingin</option>
+                            @foreach($tpuOptions ?? ['TPU Tunggul Hitam', 'TPU Bungus Teluk Kabung', 'TPU Air Dingin'] as $tpu)
+                                <option value="{{ $tpu }}" @selected(old('tpu', $makam->tpu ?? $selectedTpu ?? auth()->user()->tpu) === $tpu)>{{ $tpu }}</option>
+                            @endforeach
                         </select>
                         @if($isPetugas)
                             <input type="hidden" name="tpu" value="{{ auth()->user()->tpu }}">

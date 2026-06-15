@@ -24,6 +24,45 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
+        // Kepala TPU Tunggul Hitam
+        $kepalaTunggulHitam = User::updateOrCreate(
+            ['email' => 'kepala@tpu.test'],
+            [
+                'name' => 'Kepala TPU Tunggul Hitam',
+                'password' => Hash::make('password'),
+                'role' => User::ROLE_KEPALA,
+            ]
+        );
+        if (Schema::hasColumn('users', 'tpu')) {
+            $kepalaTunggulHitam->update(['tpu' => 'TPU Tunggul Hitam']);
+        }
+
+        // Kepala TPU Air Dingin
+        $kepalaAirDingin = User::updateOrCreate(
+            ['email' => 'kepala.airdingin@tpu.test'],
+            [
+                'name' => 'Kepala TPU Air Dingin',
+                'password' => Hash::make('password'),
+                'role' => User::ROLE_KEPALA,
+            ]
+        );
+        if (Schema::hasColumn('users', 'tpu')) {
+            $kepalaAirDingin->update(['tpu' => 'TPU Air Dingin']);
+        }
+
+        // Kepala TPU Bungus Teluk Kabung
+        $kepalaBungus = User::updateOrCreate(
+            ['email' => 'kepala.bungus@tpu.test'],
+            [
+                'name' => 'Kepala TPU Bungus Teluk Kabung',
+                'password' => Hash::make('password'),
+                'role' => User::ROLE_KEPALA,
+            ]
+        );
+        if (Schema::hasColumn('users', 'tpu')) {
+            $kepalaBungus->update(['tpu' => 'TPU Bungus Teluk Kabung']);
+        }
+
         // Petugas untuk TPU Tunggul Hitam
         $petugas1 = User::updateOrCreate(
             ['email' => 'petugas1@tpu.test'],
@@ -62,15 +101,6 @@ class DatabaseSeeder extends Seeder
         if (Schema::hasColumn('users', 'tpu')) {
             $petugas3->update(['tpu' => 'TPU Air Dingin']);
         }
-
-        User::updateOrCreate(
-            ['email' => 'kepala@tpu.test'],
-            [
-                'name' => 'Kepala UPT',
-                'password' => Hash::make('password'),
-                'role' => User::ROLE_KEPALA,
-            ]
-        );
 
         User::updateOrCreate(
             ['email' => 'user@tpu.test'],

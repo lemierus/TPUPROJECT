@@ -15,6 +15,10 @@ class PetugasMiddleware
         }
 
         if (! auth()->user()->isPetugas()) {
+            if (auth()->user()->isKepala() && str_starts_with((string) $request->route()?->getName(), 'petugas.master.laporan')) {
+                return $next($request);
+            }
+
             return redirect()->route('dashboard')->with('error', 'Anda tidak memiliki akses ke halaman petugas.');
         }
 

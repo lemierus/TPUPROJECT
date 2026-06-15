@@ -5,6 +5,7 @@
     $routePrefix = request()->routeIs('petugas.*') ? 'petugas' : 'admin';
     $selectedMakamId = old('makam_id', $jenazah->makam_id);
     $selectedMakam = $makams->firstWhere('id', $selectedMakamId);
+    $isAdmin = auth()->user()?->isAdmin();
 @endphp
 
 @section('title', $isEdit ? 'Edit Data Jenazah' : 'Tambah Data Jenazah')
@@ -33,6 +34,19 @@
                     </div>
 
                     <div class="row g-3">
+                        @if($isAdmin)
+                            <div class="col-md-6">
+                                <label class="form-label">TPU</label>
+                                <select name="tpu" class="form-select @error('tpu') is-invalid @enderror" required>
+                                    <option value="">Pilih TPU</option>
+                                    @foreach($tpuOptions ?? [] as $tpu)
+                                        <option value="{{ $tpu }}" @selected(old('tpu', $jenazah->tpu ?? $selectedTpu ?? auth()->user()->tpu) === $tpu)>{{ $tpu }}</option>
+                                    @endforeach
+                                </select>
+                                @error('tpu')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            </div>
+                        @endif
+
                         <div class="col-md-6">
                             <label class="form-label">NIK</label>
                             <input type="text" name="nik" class="form-control @error('nik') is-invalid @enderror" value="{{ old('nik', $jenazah->nik) }}" required>

@@ -11,11 +11,22 @@ class DashboardController extends Controller
 {
     public function index()
     {
+        $tpu = auth()->user()?->tpu;
+
         return view('kepala.dashboard', [
-            'totalJenazah' => Jenazah::count(),
-            'totalMakam' => Makam::count(),
-            'totalPermohonan' => Permohonan::count(),
-            'permohonanPending' => Permohonan::where('status', 'menunggu')->count(),
+            'tpu' => $tpu,
+            'totalJenazah' => Jenazah::where('tpu', $tpu)->count(),
+            'totalMakam' => Makam::where('tpu', $tpu)->count(),
+            'totalPermohonan' => Permohonan::where('tpu', $tpu)->count(),
+            'permohonanPending' => Permohonan::where('tpu', $tpu)
+                ->whereIn('status', ['menunggu', 'pending'])
+                ->count(),
+            'permohonanDisetujui' => Permohonan::where('tpu', $tpu)
+                ->where('status', 'disetujui')
+                ->count(),
+            'permohonanDitolak' => Permohonan::where('tpu', $tpu)
+                ->where('status', 'ditolak')
+                ->count(),
         ]);
     }
 }

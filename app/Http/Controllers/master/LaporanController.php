@@ -7,8 +7,10 @@ use Carbon\Carbon;
 use App\Models\Jenazah;
 use App\Models\Laporan;
 use App\Models\Permohonan;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 class LaporanController extends Controller
 {
@@ -17,13 +19,17 @@ class LaporanController extends Controller
         $filter = $request->filter ?? 'harian';
         $start  = $request->start;
         $end    = $request->end;
+        $selectedTpu = $request->tpu;
+        $tpuOptions = User::tpuOptions();
 
-        if (auth()->user()?->isPetugas()) {
+        if (auth()->user()?->isPetugas() || auth()->user()?->isKepala()) {
             $report = $this->buildPetugasReport($filter, $start, $end);
 
             return view('pages.master.laporan', array_merge($report, [
                 'routePrefix' => 'petugas',
                 'isPetugasReport' => true,
+                'isKepalaReport' => false,
+                'wordRoute' => route('petugas.master.laporan.word', $request->query()),
                 'exportExcelRoute' => route('petugas.master.laporan.excel', $request->query()),
                 'printRoute' => route('petugas.master.laporan.print', $request->query()),
                 'filter' => $filter,
@@ -35,6 +41,9 @@ class LaporanController extends Controller
         $query = Jenazah::with('makam')
             ->when(auth()->user()?->isPetugas(), function ($query) {
                 $query->where('tpu', auth()->user()->tpu);
+            })
+            ->when(auth()->user()?->isAdmin() && filled($selectedTpu) && in_array($selectedTpu, $tpuOptions, true), function ($query) use ($selectedTpu) {
+                $query->where('tpu', $selectedTpu);
             });
 
         if ($filter == 'harian') {
@@ -64,6 +73,11 @@ class LaporanController extends Controller
             'perempuan' => $data->whereIn('jenis_kelamin', ['P', 'Perempuan'])->count(),
             'totalMakamTerisi' => $data->whereNotNull('makam_id')->count(),
             'isPetugasReport' => false,
+            'selectedTpu' => $selectedTpu,
+            'tpuOptions' => $tpuOptions,
+            'wordRoute' => route('admin.master.laporan.word', $request->query()),
+            'printRoute' => route('admin.master.laporan.print', $request->query()),
+            'exportExcelRoute' => route('admin.master.laporan.excel', $request->query()),
             'routePrefix' => request()->routeIs('petugas.*') ? 'petugas' : 'admin',
         ]);
     }
@@ -106,12 +120,14 @@ class LaporanController extends Controller
 
     public function print(Request $request)
     {
-        abort_unless(auth()->user()?->isPetugas(), 403);
-
         $filter = $request->filter ?? 'harian';
         $start = $request->start;
         $end = $request->end;
-        $report = $this->buildPetugasReport($filter, $start, $end);
+
+        abort_unless(auth()->user()?->isPetugas() || auth()->user()?->isKepala(), 403);
+        $report = auth()->user()?->isKepala()
+            ? $this->buildKepalaReport($filter, $start, $end)
+            : $this->buildPetugasReport($filter, $start, $end);
 
         return view('pages.master.laporan_print', array_merge($report, [
             'filter' => $filter,
@@ -120,15 +136,43 @@ class LaporanController extends Controller
         ]));
     }
 
-    public function excel(Request $request)
+    public function word(Request $request)
     {
-        abort_unless(auth()->user()?->isPetugas(), 403);
-
         $filter = $request->filter ?? 'harian';
         $start = $request->start;
         $end = $request->end;
-        $report = $this->buildPetugasReport($filter, $start, $end);
-        $filename = 'laporan-petugas-' . auth()->user()->tpu . '-' . now()->format('Ymd-His') . '.xls';
+
+        abort_unless(auth()->user()?->isAdmin() || auth()->user()?->isPetugas() || auth()->user()?->isKepala(), 403);
+        $report = $this->buildWordReport($filter, $start, $end, $request->tpu);
+
+        $prefix = auth()->user()->isAdmin() ? 'laporan-admin' : (auth()->user()->isKepala() ? 'laporan-kepala' : 'laporan-petugas');
+        $scopeSlug = Str::slug($report['scopeLabel'] ?? auth()->user()->tpu ?? 'semua-tpu');
+        $filename = $prefix . '-' . $scopeSlug . '-' . now()->format('Ymd-His') . '.doc';
+
+        $html = view('pages.master.laporan_word', array_merge($report, [
+            'filter' => $filter,
+            'start' => $start,
+            'end' => $end,
+        ]))->render();
+
+        return response($html, 200, [
+            'Content-Type' => 'application/msword; charset=utf-8',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+        ]);
+    }
+
+    public function excel(Request $request)
+    {
+        $filter = $request->filter ?? 'harian';
+        $start = $request->start;
+        $end = $request->end;
+
+        abort_unless(auth()->user()?->isPetugas() || auth()->user()?->isKepala(), 403);
+        $report = auth()->user()->isKepala()
+            ? $this->buildKepalaReport($filter, $start, $end)
+            : $this->buildPetugasReport($filter, $start, $end);
+        $prefix = auth()->user()->isKepala() ? 'laporan-kepala' : 'laporan-petugas';
+        $filename = $prefix . '-' . auth()->user()->tpu . '-' . now()->format('Ymd-His') . '.xls';
 
         $html = view('pages.master.laporan_export', $report + [
             'filter' => $filter,
@@ -189,6 +233,7 @@ class LaporanController extends Controller
             'total' => $rows->count(),
             'totalPermohonan' => $permohonans->count(),
             'totalJenazah' => $jenazahs->count(),
+            'totalPemakaman' => $jenazahs->count(),
             'totalMakamTerhubung' => $rows->filter(fn ($row) => ! empty($row['kode_makam']) || ! empty($row['nomor_makam']))->count(),
             'permohonanMenunggu' => $permohonans->whereIn('status', ['menunggu', 'pending'])->count(),
             'permohonanDisetujui' => $permohonans->where('status', 'disetujui')->count(),
@@ -206,6 +251,7 @@ class LaporanController extends Controller
             return [
                 'source' => 'permohonan',
                 'source_label' => $item->jenis_permohonan === 'perpanjangan' ? 'Permohonan Perpanjangan' : 'Permohonan Makam Baru',
+                'jenis_permohonan' => $item->jenis_permohonan ?? '-',
                 'nama' => $item->nama_jenazah ?? $item->jenazah?->nama ?? '-',
                 'nik' => $item->nik_jenazah ?? $item->jenazah?->nik ?? '-',
                 'jenis_kelamin' => $item->jenis_kelamin ?? $item->jenazah?->jenis_kelamin ?? '-',
@@ -287,5 +333,105 @@ class LaporanController extends Controller
         }
 
         return Carbon::parse($value)->format('d-m-Y');
+    }
+
+    private function buildWordReport(string $filter, ?string $start, ?string $end, ?string $selectedTpu = null): array
+    {
+        $scopeTpu = auth()->user()?->isAdmin() ? (filled($selectedTpu) ? $selectedTpu : null) : auth()->user()?->tpu;
+        $scopeLabel = $scopeTpu ?: 'Semua TPU';
+
+        $permohonanQuery = Permohonan::with(['makam', 'jenazah', 'user']);
+        if ($scopeTpu) {
+            $permohonanQuery->where('tpu', $scopeTpu);
+        }
+        $this->applyDateFilter($permohonanQuery, $filter, $start, $end, 'created_at');
+        $permohonans = $permohonanQuery->latest('created_at')->get();
+
+        $jenazahQuery = Jenazah::with('makam');
+        if ($scopeTpu) {
+            $jenazahQuery->where('tpu', $scopeTpu);
+        }
+        $this->applyDateFilter($jenazahQuery, $filter, $start, $end, 'tanggal_wafat');
+        $jenazahs = $jenazahQuery->latest('created_at')->get();
+
+        $rows = $this->buildReportRows($permohonans, $jenazahs)->sortByDesc('tanggal_sort')->values();
+
+        $permohonanBaru = $permohonans->where('jenis_permohonan', 'makam_baru')->count();
+        $perpanjangan = $permohonans->where('jenis_permohonan', 'perpanjangan')->count();
+        $perawatan = 0;
+        $makamAktif = $jenazahs->whereNotNull('makam_id')->count();
+        $berakhirSewa = $jenazahs->filter(function (Jenazah $item) {
+            $due = $item->renewalDueAt();
+            return $due && $due->isPast();
+        })->count();
+
+        $dataJenazahRows = $rows->where('source', 'permohonan')->values();
+        if ($dataJenazahRows->isEmpty()) {
+            $dataJenazahRows = $rows->values();
+        }
+
+        $blokZonaStats = $rows
+            ->groupBy(fn ($row) => trim(($row['blok'] ?? '-') . '/' . ($row['zona'] ?? '-')))
+            ->map(fn ($items, $key) => [
+                'blok_zona' => str_replace('/', ' / ', $key),
+                'jumlah' => $items->count(),
+            ])
+            ->sortByDesc('jumlah')
+            ->values();
+
+        return [
+            'reportRows' => $rows,
+            'permohonansReport' => $permohonans,
+            'jenazahsReport' => $jenazahs,
+            'scopeLabel' => $scopeLabel,
+            'periodLabel' => $this->reportPeriodLabel($filter, $start, $end),
+            'monthLabel' => $this->reportMonthLabel($filter, $start, $end),
+            'yearLabel' => $this->reportYearLabel($filter, $start, $end),
+            'totalPemakamanBaru' => $permohonanBaru,
+            'totalPerpanjangan' => $perpanjangan,
+            'totalPerawatan' => $perawatan,
+            'totalMakamAktif' => $makamAktif,
+            'totalMakamBerakhirSewa' => $berakhirSewa,
+            'dataJenazahRows' => $dataJenazahRows,
+            'blokZonaStats' => $blokZonaStats,
+            'reportDate' => now()->translatedFormat('d F Y'),
+        ];
+    }
+
+    private function reportPeriodLabel(string $filter, ?string $start, ?string $end): string
+    {
+        if ($start && $end) {
+            return Carbon::parse($start)->format('d F Y') . ' s/d ' . Carbon::parse($end)->format('d F Y');
+        }
+
+        return match ($filter) {
+            'harian' => 'Harian',
+            'mingguan' => 'Mingguan',
+            'bulanan' => 'Bulanan',
+            'tahunan' => 'Tahunan',
+            default => 'Bulanan',
+        };
+    }
+
+    private function reportMonthLabel(string $filter, ?string $start, ?string $end): string
+    {
+        if ($start && $end) {
+            return Carbon::parse($start)->translatedFormat('F');
+        }
+
+        return match ($filter) {
+            'bulanan' => Carbon::now()->translatedFormat('F'),
+            'harian', 'mingguan', 'tahunan' => Carbon::now()->translatedFormat('F'),
+            default => Carbon::now()->translatedFormat('F'),
+        };
+    }
+
+    private function reportYearLabel(string $filter, ?string $start, ?string $end): string
+    {
+        if ($start && $end) {
+            return Carbon::parse($start)->format('Y');
+        }
+
+        return Carbon::now()->format('Y');
     }
 }

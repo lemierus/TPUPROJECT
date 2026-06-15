@@ -105,6 +105,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::delete('/master/permohonan/{permohonan}', [PermohonanController::class, 'destroy'])->name('master.permohonan.destroy');
 
     Route::get('/master/laporan', [LaporanController::class, 'index'])->name('master.laporan');
+    Route::get('/master/laporan/word', [LaporanController::class, 'word'])->name('master.laporan.word');
     Route::get('/master/laporan/print', [LaporanController::class, 'print'])->name('master.laporan.print');
     Route::get('/master/laporan/excel', [LaporanController::class, 'excel'])->name('master.laporan.excel');
     Route::get('/master/laporan/create', [LaporanController::class, 'create'])->name('master.laporan.create');
@@ -149,6 +150,7 @@ Route::middleware(['auth', 'petugas'])->prefix('petugas')->name('petugas.')->gro
     Route::delete('/master/permohonan/{permohonan}', [PermohonanController::class, 'destroy'])->name('master.permohonan.destroy');
 
     Route::get('/master/laporan', [LaporanController::class, 'index'])->name('master.laporan');
+    Route::get('/master/laporan/word', [LaporanController::class, 'word'])->name('master.laporan.word');
     Route::get('/master/laporan/print', [LaporanController::class, 'print'])->name('master.laporan.print');
     Route::get('/master/laporan/excel', [LaporanController::class, 'excel'])->name('master.laporan.excel');
     Route::get('/master/laporan/create', [LaporanController::class, 'create'])->name('master.laporan.create');
@@ -160,7 +162,21 @@ Route::middleware(['auth', 'petugas'])->prefix('petugas')->name('petugas.')->gro
 
 Route::middleware(['auth', 'kepala'])->prefix('kepala')->name('kepala.')->group(function () {
     Route::get('/dashboard', [KepalaDashboardController::class, 'index'])->name('dashboard');
-    Route::get('/laporan', [LaporanController::class, 'index'])->name('laporan');
+    Route::get('/laporan', function () {
+        return redirect()->route('petugas.master.laporan', request()->query());
+    })->name('laporan');
+    Route::get('/laporan/word', function () {
+        return redirect()->route('petugas.master.laporan.word', request()->query());
+    })->name('laporan.word');
+    Route::get('/laporan/print', function () {
+        return redirect()->route('petugas.master.laporan.print', request()->query());
+    })->name('laporan.print');
+    Route::get('/laporan/excel', function () {
+        return redirect()->route('petugas.master.laporan.excel', request()->query());
+    })->name('laporan.excel');
+
+    Route::get('/data-jenazah', [DataJenazahController::class, 'index'])->name('data-jenazah');
+    Route::get('/data-makam', [DataMakamController::class, 'index'])->name('data-makam');
 });
 
 Route::middleware(['auth', 'user'])->prefix('user')->name('user.')->group(function () {

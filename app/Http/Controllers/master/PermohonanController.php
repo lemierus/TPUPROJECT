@@ -18,15 +18,21 @@ class PermohonanController extends Controller
      */
     public function index()
     {
-        $permohonans = $this->accessiblePermohonans()
-            ->latest()
-            ->get();
+        $selectedTpu = request()->tpu;
+        $tpuOptions = User::tpuOptions();
+
+        $permohonanQuery = $this->accessiblePermohonans()
+            ->when(auth()->user()?->isAdmin() && filled($selectedTpu) && in_array($selectedTpu, $tpuOptions, true), function ($query) use ($selectedTpu) {
+                $query->where('tpu', $selectedTpu);
+            });
+
+        $permohonans = $permohonanQuery->latest()->get();
 
         $permohonans->each(function (Permohonan $permohonan) {
             $permohonan->syncLinkedJenazahData();
         });
 
-        return view('pages.master.permohonan', compact('permohonans'));
+        return view('pages.master.permohonan', compact('permohonans', 'selectedTpu', 'tpuOptions'));
     }
 
     public function create()
@@ -35,6 +41,8 @@ class PermohonanController extends Controller
             'permohonan' => new Permohonan(),
             'users' => User::where('role', User::ROLE_USER)->orderBy('name')->get(),
             'jenazah' => Jenazah::orderBy('nama')->get(),
+            'selectedTpu' => request()->tpu,
+            'tpuOptions' => User::tpuOptions(),
         ]);
     }
 
@@ -55,6 +63,8 @@ class PermohonanController extends Controller
             'permohonan' => $permohonan,
             'users' => User::where('role', User::ROLE_USER)->orderBy('name')->get(),
             'jenazah' => Jenazah::orderBy('nama')->get(),
+            'selectedTpu' => request()->tpu,
+            'tpuOptions' => User::tpuOptions(),
         ]);
     }
 

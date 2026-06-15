@@ -5,6 +5,7 @@
 @section('content')
 @php
     $routePrefix = request()->routeIs('petugas.*') ? 'petugas' : 'admin';
+    $isAdmin = auth()->user()?->isAdmin();
 @endphp
 
 <div class="container-fluid pt-2 pb-4">
@@ -16,7 +17,7 @@
             <p class="text-muted mb-0">Daftar permohonan pengajuan makam dari masyarakat</p>
         </div>
         <div>
-            <a href="{{ route($routePrefix.'.master.permohonan.create') }}" class="btn btn-sm me-2" style="background-color:#1E3E62;color:white;">
+            <a href="{{ route($routePrefix.'.master.permohonan.create', request()->only('tpu')) }}" class="btn btn-sm me-2" style="background-color:#1E3E62;color:white;">
                 <i class="bi bi-plus-circle"></i> Tambah Permohonan
             </a>
             <span class="badge px-3 py-2" style="background-color: #1E3E62; color: white;">
@@ -27,6 +28,30 @@
 
     @if(session('success'))
         <div class="alert alert-success">{{ session('success') }}</div>
+    @endif
+
+    @if($isAdmin)
+        <div class="card shadow-sm border-0 rounded-4 mb-4">
+            <div class="card-body">
+                <form method="GET" action="{{ route($routePrefix.'.master.permohonan') }}">
+                    <div class="row g-2 align-items-center">
+                        <div class="col-md-4">
+                            <select name="tpu" class="form-select">
+                                <option value="">Semua TPU</option>
+                                @foreach($tpuOptions ?? [] as $tpu)
+                                    <option value="{{ $tpu }}" @selected(($selectedTpu ?? '') === $tpu)>{{ $tpu }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn w-100" style="background-color:#1E3E62;color:white;">
+                                <i class="bi bi-filter"></i> Tampilkan
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
     @endif
 
     {{-- TABEL --}}
@@ -202,21 +227,27 @@
                                                 </div>
                                             </div>
                                             @if($p->jenis_permohonan === 'perpanjangan')
+                                                @php
+                                                    $relatedMakam = $p->makam;
+                                                    $displayBlokZona = collect([$relatedMakam?->blok, $relatedMakam?->zona])
+                                                        ->filter(fn ($value) => filled($value))
+                                                        ->implode(' / ');
+                                                @endphp
                                                 <div class="col-md-12">
-                                                    <small class="text-muted d-block">Makam Lama</small>
-                                                    <strong>{{ $p->makam->kode_makam ?? '-' }} - Blok {{ $p->makam->blok ?? '-' }} - Zona {{ $p->makam->zona ?? '-' }}</strong>
+                                                    <small class="text-muted d-block">Kode Makam</small>
+                                                    <strong>{{ $relatedMakam?->kode_makam ?? '-' }}</strong>
                                                 </div>
-                                                <div class="col-md-4">
-                                                    <small class="text-muted d-block">No Makam</small>
-                                                    <strong>{{ $p->no_makam ?? '-' }}</strong>
+                                                <div class="col-md-6">
+                                                    <small class="text-muted d-block">Blok / Zona</small>
+                                                    <strong>{{ $displayBlokZona ?: '-' }}</strong>
                                                 </div>
-                                                <div class="col-md-4">
-                                                    <small class="text-muted d-block">Blok / Zona Makam</small>
-                                                    <strong>{{ $p->blok_zona_makam ?? '-' }}</strong>
+                                                <div class="col-md-6">
+                                                    <small class="text-muted d-block">Nomor Makam</small>
+                                                    <strong>{{ $relatedMakam?->nomor ?? '-' }}</strong>
                                                 </div>
-                                                <div class="col-md-4">
-                                                    <small class="text-muted d-block">Tahun Pemakaman</small>
-                                                    <strong>{{ $p->tahun_pemakaman ?? '-' }}</strong>
+                                                <div class="col-md-12">
+                                                    <small class="text-muted d-block">Keterangan Makam</small>
+                                                    <strong>{{ $relatedMakam?->keterangan ?? '-' }}</strong>
                                                 </div>
                                             @endif
                                             @if($p->bukti_pembayaran_retribusi)

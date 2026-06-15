@@ -115,7 +115,7 @@
         @endif
 
         @if($currentUser?->isKepala())
-            <a href="{{ route('kepala.laporan') }}">
+            <a href="{{ route('petugas.master.laporan') }}">
                 <i class="bi bi-file-earmark-text-fill me-2"></i> Laporan
             </a>
         @endif

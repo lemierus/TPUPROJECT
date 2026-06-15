@@ -4,7 +4,11 @@
 
 @section('content')
 @php
-    $routePrefix = request()->routeIs('petugas.*') ? 'petugas' : 'admin';
+    $routePrefix = request()->routeIs('petugas.*')
+        ? 'petugas'
+        : (request()->routeIs('kepala.*') ? 'kepala' : 'admin');
+    $canManage = auth()->user()?->isAdmin() || auth()->user()?->isPetugas();
+    $isAdmin = auth()->user()?->isAdmin();
 @endphp
 
 <div class="container-fluid pt-2 pb-4">
@@ -15,10 +19,12 @@
                 {{ $isPetugasView ? 'Data jenazah dari permohonan TPU ini, termasuk yang masih dalam proses' : 'Daftar data jenazah dalam sistem' }}
             </p>
         </div>
-        <div class="d-flex align-items-center gap-2">
-            <a href="{{ route($routePrefix.'.data-jenazah.create') }}" class="btn btn-sm me-2" style="background-color:#1E3E62;color:white;">
-                <i class="bi bi-plus-circle"></i> Tambah Jenazah
-            </a>
+        <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end">
+            @if($canManage)
+                <a href="{{ route($routePrefix.'.data-jenazah.create', request()->only('tpu')) }}" class="btn btn-sm me-2" style="background-color:#1E3E62;color:white;">
+                    <i class="bi bi-plus-circle"></i> Tambah Jenazah
+                </a>
+            @endif
             <span class="badge px-3 py-2" style="background-color: #1E3E62; color: white;">
                 {{ now()->translatedFormat('l, d F Y') }}
             </span>
@@ -33,6 +39,16 @@
         <div class="card-body">
             <form method="GET" action="{{ route($routePrefix.'.data-jenazah') }}">
                 <div class="row g-2">
+                    @if($isAdmin)
+                        <div class="col-md-3">
+                            <select name="tpu" class="form-select form-select-sm">
+                                <option value="">Semua TPU</option>
+                                @foreach($tpuOptions ?? [] as $tpu)
+                                    <option value="{{ $tpu }}" @selected(($selectedTpu ?? '') === $tpu)>{{ $tpu }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    @endif
                     @if($isPetugasView)
                         <div class="col-md-3">
                             <select name="filter" class="form-select form-select-sm">
@@ -41,13 +57,13 @@
                                 <option value="bulanan" @selected(($filter ?? 'harian') === 'bulanan')>Bulanan</option>
                             </select>
                         </div>
-                        <div class="col-md-7">
+                        <div class="col-md-{{ $isAdmin ? 4 : 7 }}">
                             <input type="text" name="search" class="form-control form-control-sm"
                                    placeholder="Cari nama jenazah, NIK, nama ahli waris, atau no hp..."
                                    value="{{ request('search') }}">
                         </div>
                     @else
-                        <div class="col-md-10">
+                        <div class="col-md-{{ $isAdmin ? 7 : 10 }}">
                             <input type="text" name="search" class="form-control form-control-sm"
                                    placeholder="Cari nama, NIK, alamat, atau makam..."
                                    value="{{ request('search') }}">
@@ -90,7 +106,9 @@
                                     <th>Ahli Waris</th>
                                     <th>Makam</th>
                                     <th>Dokumen</th>
-                                    <th width="180">Aksi</th>
+                                    @if($canManage)
+                                        <th width="180">Aksi</th>
+                                    @endif
                                 </tr>
                             </thead>
                             <tbody>
@@ -154,27 +172,29 @@
                                                 @endif
                                             </div>
                                         </td>
-                                        <td>
-                                            @if($item->jenazah_id)
-                                                <div class="d-flex flex-wrap gap-1">
-                                                    <a href="{{ route($routePrefix.'.data-jenazah.edit', $item->jenazah_id) }}"
-                                                       class="btn btn-warning btn-xs">
-                                                        <i class="bi bi-pencil-square"></i> Edit
-                                                    </a>
-                                                    <form action="{{ route($routePrefix.'.data-jenazah.destroy', $item->jenazah_id) }}"
-                                                          method="POST"
-                                                          onsubmit="return confirm('Yakin hapus data?')">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <button class="btn btn-danger btn-xs">
-                                                            <i class="bi bi-trash"></i> Hapus
-                                                        </button>
-                                                    </form>
-                                                </div>
-                                            @else
-                                                <span class="text-muted small">Belum tercatat</span>
-                                            @endif
-                                        </td>
+                                        @if($canManage)
+                                            <td>
+                                                @if($item->jenazah_id)
+                                                    <div class="d-flex flex-wrap gap-1">
+                                                        <a href="{{ route($routePrefix.'.data-jenazah.edit', $item->jenazah_id) }}"
+                                                           class="btn btn-warning btn-xs">
+                                                            <i class="bi bi-pencil-square"></i> Edit
+                                                        </a>
+                                                        <form action="{{ route($routePrefix.'.data-jenazah.destroy', $item->jenazah_id) }}"
+                                                              method="POST"
+                                                              onsubmit="return confirm('Yakin hapus data?')">
+                                                            @csrf
+                                                            @method('DELETE')
+                                                            <button class="btn btn-danger btn-xs">
+                                                                <i class="bi bi-trash"></i> Hapus
+                                                            </button>
+                                                        </form>
+                                                    </div>
+                                                @else
+                                                    <span class="text-muted small">Belum tercatat</span>
+                                                @endif
+                                            </td>
+                                        @endif
                                     </tr>
                                 @endforeach
                             </tbody>
@@ -201,7 +221,9 @@
                                     <th>Makam</th>
                                     <th width="170">Tenggat Sewa</th>
                                     <th>Alamat</th>
-                                    <th width="180">Aksi</th>
+                                    @if($canManage)
+                                        <th width="180">Aksi</th>
+                                    @endif
                                 </tr>
                         </thead>
                         <tbody>
@@ -249,27 +271,29 @@
                                         @endif
                                     </td>
                                     <td class="small text-muted">{{ $item->alamat ?: '-' }}</td>
-                                    <td>
-                                        <div class="d-flex flex-wrap gap-1">
-                                            <a href="{{ route($routePrefix.'.data-jenazah.edit', $item->id) }}"
-                                               class="btn btn-warning btn-xs">
-                                                <i class="bi bi-pencil-square"></i> Edit
-                                            </a>
-                                            <form action="{{ route($routePrefix.'.data-jenazah.destroy', $item->id) }}"
-                                                  method="POST"
-                                                  onsubmit="return confirm('Yakin hapus data?')">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button class="btn btn-danger btn-xs">
-                                                    <i class="bi bi-trash"></i> Hapus
-                                                </button>
-                                            </form>
-                                        </div>
-                                    </td>
+                                    @if($canManage)
+                                        <td>
+                                            <div class="d-flex flex-wrap gap-1">
+                                                <a href="{{ route($routePrefix.'.data-jenazah.edit', $item->id) }}"
+                                                   class="btn btn-warning btn-xs">
+                                                    <i class="bi bi-pencil-square"></i> Edit
+                                                </a>
+                                                <form action="{{ route($routePrefix.'.data-jenazah.destroy', $item->id) }}"
+                                                      method="POST"
+                                                      onsubmit="return confirm('Yakin hapus data?')">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button class="btn btn-danger btn-xs">
+                                                        <i class="bi bi-trash"></i> Hapus
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    @endif
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="6" class="text-center text-muted py-4">
+                                    <td colspan="{{ $canManage ? 6 : 5 }}" class="text-center text-muted py-4">
                                         Data tidak ditemukan
                                     </td>
                                 </tr>

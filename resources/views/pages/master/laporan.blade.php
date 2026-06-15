@@ -6,6 +6,7 @@
 @php
     $routePrefix = request()->routeIs('petugas.*') ? 'petugas' : 'admin';
     $canEditData = auth()->user()?->isAdmin() || auth()->user()?->isPetugas();
+    $isAdmin = auth()->user()?->isAdmin();
 @endphp
 
 <div class="container-fluid pt-2 pb-4">
@@ -27,16 +28,41 @@
         <div class="alert alert-success">{{ session('success') }}</div>
     @endif
 
-    @if($isPetugasReport ?? false)
+    @if($isAdmin && ! empty($wordRoute))
+        <div class="d-flex flex-wrap gap-2 mb-4">
+            <a href="{{ $printRoute }}" target="_blank" class="btn btn-outline-dark btn-sm">
+                <i class="bi bi-printer"></i> Cetak PDF
+            </a>
+            <a href="{{ $wordRoute }}" class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-file-earmark-word"></i> Export Word
+            </a>
+            <a href="{{ $exportExcelRoute }}" class="btn btn-success btn-sm">
+                <i class="bi bi-file-earmark-excel"></i> Export Excel
+            </a>
+        </div>
+    @endif
+
+    @if($isPetugasReport ?? false || $isKepalaReport ?? false)
+        @php
+            $reportTitle = ($isKepalaReport ?? false) ? 'Laporan Kepala TPU' : 'Laporan Petugas TPU';
+            $reportDescription = ($isKepalaReport ?? false)
+                ? 'Gabungan data pemakaman, permohonan, dan jenazah untuk ' . auth()->user()->tpu
+                : 'Gabungan data permohonan dan data jenazah untuk ' . auth()->user()->tpu;
+        @endphp
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
             <div>
-                <h4 class="fw-bold text-dark mb-1">Laporan Petugas TPU</h4>
-                <p class="text-muted mb-0">Gabungan data permohonan dan data jenazah untuk TPU {{ auth()->user()->tpu }}</p>
+                <h4 class="fw-bold text-dark mb-1">{{ $reportTitle }}</h4>
+                <p class="text-muted mb-0">{{ $reportDescription }}</p>
             </div>
             <div class="d-flex flex-wrap gap-2">
                 <a href="{{ $printRoute }}" target="_blank" class="btn btn-outline-dark btn-sm">
                     <i class="bi bi-printer"></i> Cetak PDF
                 </a>
+                @if(! empty($wordRoute))
+                    <a href="{{ $wordRoute }}" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-file-earmark-word"></i> Export Word
+                    </a>
+                @endif
                 <a href="{{ $exportExcelRoute }}" class="btn btn-success btn-sm">
                     <i class="bi bi-file-earmark-excel"></i> Export Excel
                 </a>
@@ -74,40 +100,111 @@
             </div>
         </div>
 
-        <div class="row g-4 mb-4">
-            <div class="col-md-3">
-                <div class="card shadow-sm border-0 rounded-4">
-                    <div class="card-body">
-                        <p class="text-muted mb-1">Total Data</p>
-                        <h4 class="fw-bold">{{ $total ?? 0 }}</h4>
+        @if($isKepalaReport ?? false)
+            <div class="row g-4 mb-4">
+                <div class="col-md-3">
+                    <div class="card shadow-sm border-0 rounded-4">
+                        <div class="card-body">
+                            <p class="text-muted mb-1">Total Pemakaman</p>
+                            <h4 class="fw-bold">{{ $totalPemakaman ?? 0 }}</h4>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card shadow-sm border-0 rounded-4">
+                        <div class="card-body">
+                            <p class="text-muted mb-1">Permohonan Masuk</p>
+                            <h4 class="fw-bold">{{ $totalPermohonan ?? 0 }}</h4>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card shadow-sm border-0 rounded-4">
+                        <div class="card-body">
+                            <p class="text-muted mb-1">Laki-laki</p>
+                            <h4 class="fw-bold">{{ $laki ?? 0 }}</h4>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card shadow-sm border-0 rounded-4">
+                        <div class="card-body">
+                            <p class="text-muted mb-1">Perempuan</p>
+                            <h4 class="fw-bold">{{ $perempuan ?? 0 }}</h4>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="card shadow-sm border-0 rounded-4">
-                    <div class="card-body">
-                        <p class="text-muted mb-1">Permohonan Masuk</p>
-                        <h4 class="fw-bold">{{ $totalPermohonan ?? 0 }}</h4>
+            <div class="row g-4 mb-4">
+                <div class="col-md-3">
+                    <div class="card shadow-sm border-0 rounded-4">
+                        <div class="card-body">
+                            <p class="text-muted mb-1">Total Data</p>
+                            <h4 class="fw-bold">{{ $total ?? 0 }}</h4>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card shadow-sm border-0 rounded-4">
+                        <div class="card-body">
+                            <p class="text-muted mb-1">Menunggu</p>
+                            <h4 class="fw-bold">{{ $permohonanMenunggu ?? 0 }}</h4>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card shadow-sm border-0 rounded-4">
+                        <div class="card-body">
+                            <p class="text-muted mb-1">Disetujui</p>
+                            <h4 class="fw-bold text-success">{{ $permohonanDisetujui ?? 0 }}</h4>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card shadow-sm border-0 rounded-4">
+                        <div class="card-body">
+                            <p class="text-muted mb-1">Ditolak</p>
+                            <h4 class="fw-bold text-danger">{{ $permohonanDitolak ?? 0 }}</h4>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="card shadow-sm border-0 rounded-4">
-                    <div class="card-body">
-                        <p class="text-muted mb-1">Data Jenazah</p>
-                        <h4 class="fw-bold">{{ $totalJenazah ?? 0 }}</h4>
+        @else
+            <div class="row g-4 mb-4">
+                <div class="col-md-3">
+                    <div class="card shadow-sm border-0 rounded-4">
+                        <div class="card-body">
+                            <p class="text-muted mb-1">Total Data</p>
+                            <h4 class="fw-bold">{{ $total ?? 0 }}</h4>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card shadow-sm border-0 rounded-4">
+                        <div class="card-body">
+                            <p class="text-muted mb-1">Permohonan Masuk</p>
+                            <h4 class="fw-bold">{{ $totalPermohonan ?? 0 }}</h4>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card shadow-sm border-0 rounded-4">
+                        <div class="card-body">
+                            <p class="text-muted mb-1">Data Jenazah</p>
+                            <h4 class="fw-bold">{{ $totalJenazah ?? 0 }}</h4>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card shadow-sm border-0 rounded-4">
+                        <div class="card-body">
+                            <p class="text-muted mb-1">Makam Terhubung</p>
+                            <h4 class="fw-bold">{{ $totalMakamTerhubung ?? 0 }}</h4>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="card shadow-sm border-0 rounded-4">
-                    <div class="card-body">
-                        <p class="text-muted mb-1">Makam Terhubung</p>
-                        <h4 class="fw-bold">{{ $totalMakamTerhubung ?? 0 }}</h4>
-                    </div>
-                </div>
-            </div>
-        </div>
+        @endif
 
         <div class="card shadow-sm border-0 rounded-4">
             <div class="card-header bg-white border-0 py-3 px-4">
@@ -188,8 +285,19 @@
         <div class="card-body">
             <form method="GET" action="{{ request()->url() }}">
                 <div class="row g-3 align-items-end">
+                    @if($isAdmin)
+                        <div class="col-md-3">
+                            <label class="form-label">TPU</label>
+                            <select name="tpu" class="form-select">
+                                <option value="">Semua TPU</option>
+                                @foreach($tpuOptions ?? [] as $tpu)
+                                    <option value="{{ $tpu }}" @selected(($selectedTpu ?? '') === $tpu)>{{ $tpu }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    @endif
 
-                    <div class="col-md-3">
+                    <div class="{{ $isAdmin ? 'col-md-3' : 'col-md-3' }}">
                         <label class="form-label">Jenis Laporan</label>
                         <select name="filter" class="form-select">
                             <option value="harian" {{ request('filter')=='harian'?'selected':'' }}>Harian</option>
@@ -199,17 +307,17 @@
                         </select>
                     </div>
 
-                    <div class="col-md-3">
+                    <div class="{{ $isAdmin ? 'col-md-2' : 'col-md-3' }}">
                         <label class="form-label">Tanggal Mulai</label>
                         <input type="date" name="start" value="{{ request('start') }}" class="form-control">
                     </div>
 
-                    <div class="col-md-3">
+                    <div class="{{ $isAdmin ? 'col-md-2' : 'col-md-3' }}">
                         <label class="form-label">Tanggal Akhir</label>
                         <input type="date" name="end" value="{{ request('end') }}" class="form-control">
                     </div>
 
-                    <div class="col-md-3">
+                    <div class="{{ $isAdmin ? 'col-md-2' : 'col-md-3' }}">
                         <button class="btn w-100" style="background-color:#1E3E62;color:white;">
                             <i class="bi bi-filter"></i> Tampilkan
                         </button>
@@ -274,52 +382,61 @@
                     <thead class="table-light">
                         <tr>
                             <th>No</th>
+                            <th>Sumber</th>
                             <th>Nama Jenazah</th>
                             <th>NIK</th>
                             <th>Jenis Kelamin</th>
+                            <th>Tanggal Input</th>
                             <th>Tanggal Wafat</th>
                             <th>Kode Makam</th>
                             <th>Blok</th>
                             <th>Zona</th>
                             <th>Nomor</th>
+                            <th>Status Permohonan</th>
                             <th>Status Makam</th>
-                            @if($canEditData)
-                                <th width="120">Aksi</th>
-                            @endif
+                            <th>Catatan</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse($data as $d)
+                        @forelse($reportRows ?? [] as $row)
                         <tr>
                             <td>{{ $loop->iteration }}</td>
-                            <td>{{ $d->nama }}</td>
-                            <td>{{ $d->nik }}</td>
-                            <td>{{ $d->jenis_kelamin }}</td>
-                            <td>{{ \Carbon\Carbon::parse($d->tanggal_wafat)->format('d-m-Y') }}</td>
-                            <td>{{ $d->makam->kode_makam ?? '-' }}</td>
-                            <td>{{ $d->makam->blok ?? '-' }}</td>
-                            <td>{{ $d->makam->zona ?? '-' }}</td>
-                            <td>{{ $d->makam->nomor ?? '-' }}</td>
                             <td>
-                                @if($d->makam)
-                                    <span class="badge {{ $d->makam->status === 'kosong' ? 'bg-success' : 'bg-secondary' }}">
-                                        {{ ucfirst($d->makam->status) }}
+                                <span class="badge {{ $row['source'] === 'permohonan' ? 'bg-primary' : 'bg-success' }}">
+                                    {{ $row['source_label'] }}
+                                </span>
+                            </td>
+                            <td>{{ $row['nama'] }}</td>
+                            <td>{{ $row['nik'] }}</td>
+                            <td>{{ $row['jenis_kelamin'] }}</td>
+                            <td>{{ $row['tanggal_input_label'] }}</td>
+                            <td>{{ $row['tanggal_wafat_label'] }}</td>
+                            <td>{{ $row['kode_makam'] }}</td>
+                            <td>{{ $row['blok'] }}</td>
+                            <td>{{ $row['zona'] }}</td>
+                            <td>{{ $row['nomor_makam'] }}</td>
+                            <td>
+                                @if($row['source'] === 'permohonan')
+                                    <span class="badge {{ $row['status_permohonan'] === 'disetujui' ? 'bg-success' : ($row['status_permohonan'] === 'ditolak' ? 'bg-danger' : 'bg-warning text-dark') }}">
+                                        {{ ucfirst($row['status_permohonan'] ?? '-') }}
                                     </span>
                                 @else
-                                    <span class="badge bg-warning">Belum Ada</span>
+                                    <span class="text-muted">-</span>
                                 @endif
                             </td>
-                            @if($canEditData)
-                                <td>
-                                    <a href="{{ route($routePrefix.'.data-jenazah.edit', $d->id) }}" class="btn btn-warning btn-sm">
-                                        <i class="bi bi-pencil-square"></i> Edit
-                                    </a>
-                                </td>
-                            @endif
+                            <td>
+                                @php $statusMakam = $row['status_makam'] ?? null; @endphp
+                                <span class="badge {{ $statusMakam === 'kosong' ? 'bg-secondary' : ($statusMakam ? 'bg-success' : 'bg-warning text-dark') }}">
+                                    {{ $statusMakam ? ucfirst($statusMakam) : 'Belum Ada' }}
+                                </span>
+                            </td>
+                            <td>
+                                <small>{{ $row['source'] === 'permohonan' ? ($row['nama_ahli_waris'] !== '-' ? 'Ahli waris: '.$row['nama_ahli_waris'].' | ' : '') : '' }}{{ $row['catatan'] }}</small>
+                            </td>
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="{{ $canEditData ? 10 : 9 }}" class="text-center text-muted">
+                            <td colspan="14" class="text-center text-muted">
                                 Tidak ada data laporan
                             </td>
                         </tr>
