@@ -89,7 +89,6 @@ class PermohonanController extends Controller
             'scan_ktp_ahli_waris' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
             'scan_kk' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
             'surat_kematian' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
-            'bukti_pembayaran_retribusi' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
             'catatan' => ['nullable', 'string'],
         ]);
 
@@ -109,9 +108,6 @@ class PermohonanController extends Controller
             'scan_ktp_ahli_waris' => $request->file('scan_ktp_ahli_waris')->store('permohonan/ktp', 'public'),
             'scan_kk' => $request->file('scan_kk')->store('permohonan/kk', 'public'),
             'surat_kematian' => $request->file('surat_kematian')->store('permohonan/surat-kematian', 'public'),
-            'bukti_pembayaran_retribusi' => $request->hasFile('bukti_pembayaran_retribusi')
-                ? $request->file('bukti_pembayaran_retribusi')->store('permohonan/retribusi', 'public')
-                : null,
         ];
 
         $permohonan = Permohonan::create(array_merge($data, [
@@ -122,7 +118,6 @@ class PermohonanController extends Controller
             'scan_ktp_ahli_waris' => $paths['scan_ktp_ahli_waris'],
             'scan_kk' => $paths['scan_kk'],
             'surat_kematian' => $paths['surat_kematian'],
-            'bukti_pembayaran_retribusi' => $paths['bukti_pembayaran_retribusi'],
             'status' => 'menunggu',
             'jenazah_id' => null,
             'nama_jenazah' => $data['nama_jenazah'] ?? null,
@@ -183,7 +178,6 @@ class PermohonanController extends Controller
             'scan_ktp_ahli_waris' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
             'scan_kk' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
             'surat_kematian' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
-            'bukti_pembayaran_retribusi' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
             'catatan' => ['nullable', 'string'],
         ]);
 
@@ -204,10 +198,10 @@ class PermohonanController extends Controller
             $data['tahun_pemakaman'] = $permohonan->tahun_pemakaman;
         }
 
-        foreach (['scan_ktp_ahli_waris', 'scan_kk', 'surat_kematian', 'bukti_pembayaran_retribusi'] as $fileKey) {
-            if ($request->hasFile($fileKey)) {
-                $data[$fileKey] = $request->file($fileKey)->store('permohonan/' . $fileKey, 'public');
-            }
+            foreach (['scan_ktp_ahli_waris', 'scan_kk', 'surat_kematian'] as $fileKey) {
+                if ($request->hasFile($fileKey)) {
+                    $data[$fileKey] = $request->file($fileKey)->store('permohonan/' . $fileKey, 'public');
+                }
         }
 
         $permohonan->fill(array_merge($data, [

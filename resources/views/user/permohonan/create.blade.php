@@ -30,7 +30,6 @@
                 <p class="text-muted mb-0">Petugas TPU: <strong>Belum ada petugas terdaftar untuk TPU ini</strong></p>
             @endif
         </div>
-        <a href="{{ route('user.dashboard') }}" class="btn btn-outline-secondary btn-sm">Kembali</a>
     </div>
 
     @if($errors->any())

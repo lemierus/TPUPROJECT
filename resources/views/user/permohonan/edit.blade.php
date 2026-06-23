@@ -13,7 +13,6 @@
             <h4 class="fw-bold text-dark mb-1">Edit Permohonan</h4>
             <p class="text-muted mb-0">TPU tujuan: {{ $permohonan->tpu }}</p>
         </div>
-        <a href="{{ route('user.dashboard') }}" class="btn btn-outline-secondary btn-sm">Kembali</a>
     </div>
 
     @if(session('error'))
@@ -237,6 +236,7 @@
                             <small class="text-muted">Saat ini: <a href="{{ asset('storage/' . $permohonan->surat_kematian) }}" target="_blank">Lihat file</a></small>
                         @endif
                     </div>
+
                 </div>
 
                 <div class="mt-3">

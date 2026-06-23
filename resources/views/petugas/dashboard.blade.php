@@ -182,6 +182,7 @@
         padding: .75rem 1.5rem;
         transition: all .18s ease;
         box-shadow: 0 8px 0 rgba(30, 62, 98, 0.08);
+        text-decoration: none !important;
     }
 
     .petugas-btn-process:hover {
@@ -296,7 +297,7 @@
                                 <th style="width: 60px;">No</th>
                                 <th>Ahli Waris</th>
                                 <th>Jenazah</th>
-                                <th>TPU / Makam</th>
+                                <th>TPU</th>
                                 <th style="width: 150px;">Batas 2 Tahun</th>
                                 <th style="width: 140px;">Status</th>
                             </tr>
@@ -314,10 +315,7 @@
                                         <small class="text-muted">{{ $item->no_hp_ahli_waris ?? '-' }}</small>
                                     </td>
                                     <td>{{ $item->nama_jenazah ?? $item->jenazah?->nama ?? '-' }}</td>
-                                    <td>
-                                        <div class="fw-semibold">{{ $item->tpu ?? '-' }}</div>
-                                        <small class="text-muted">{{ $item->kode_makam ?? $item->makam?->kode_makam ?? '-' }}</small>
-                                    </td>
+                                    <td>{{ $item->tpu ?? '-' }}</td>
                                     <td class="text-nowrap">{{ $dueAt?->format('d-m-Y') ?? '-' }}</td>
                                     <td>
                                         @if($level === 'expired')

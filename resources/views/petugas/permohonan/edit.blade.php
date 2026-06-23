@@ -16,7 +16,6 @@
             <h4 class="fw-bold text-dark mb-1">Edit Permohonan Petugas</h4>
             <p class="text-muted mb-0">ID: #{{ $permohonan->id }} | TPU: {{ $permohonan->tpu }}</p>
         </div>
-        <a href="{{ route('petugas.permohonan.show', $permohonan) }}" class="btn btn-outline-secondary btn-sm">Kembali</a>
     </div>
 
     @if($errors->any())
@@ -198,18 +197,9 @@
                         @error('surat_kematian')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
 
-                    <div class="col-md-4">
-                        <label class="form-label">Bukti Pembayaran Retribusi</label>
-                        <input type="file" name="bukti_pembayaran_retribusi" class="form-control @error('bukti_pembayaran_retribusi') is-invalid @enderror" accept=".jpg,.jpeg,.png,.pdf">
-                        @if($permohonan->bukti_pembayaran_retribusi)
-                            <small class="text-muted d-block mt-1">Saat ini: <a href="{{ asset('storage/' . $permohonan->bukti_pembayaran_retribusi) }}" target="_blank">Lihat file</a></small>
-                        @endif
-                        @error('bukti_pembayaran_retribusi')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                    </div>
                 </div>
 
-                <div class="d-flex gap-2 justify-content-end mt-4">
-                    <a href="{{ route('petugas.permohonan.show', $permohonan) }}" class="btn btn-outline-secondary">Batal</a>
+                <div class="d-flex justify-content-end mt-4">
                     <button type="submit" class="btn" style="background-color:#1E3E62;color:white;">
                         <i class="bi bi-check-circle"></i> Simpan Perubahan
                     </button>

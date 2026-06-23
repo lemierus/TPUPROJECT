@@ -164,9 +164,6 @@
                     <i class="bi bi-building"></i>
                     {{ $permohonan->tpu }}
                 </div>
-                <a href="{{ route('user.dashboard') }}" class="btn btn-outline-dark btn-sm">
-                    <i class="bi bi-arrow-left"></i> Kembali ke Dashboard
-                </a>
             </div>
         </div>
     </div>

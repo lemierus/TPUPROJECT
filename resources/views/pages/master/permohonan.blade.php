@@ -250,14 +250,6 @@
                                                     <strong>{{ $relatedMakam?->keterangan ?? '-' }}</strong>
                                                 </div>
                                             @endif
-                                            @if($p->bukti_pembayaran_retribusi)
-                                                <div class="col-md-12">
-                                                    <small class="text-muted d-block">Bukti Pembayaran Retribusi</small>
-                                                    <a href="{{ asset('storage/'.$p->bukti_pembayaran_retribusi) }}" target="_blank" class="btn btn-outline-primary btn-sm mt-1">
-                                                        Lihat Bukti Retribusi
-                                                    </a>
-                                                </div>
-                                            @endif
                                             <div class="col-md-12">
                                                 <small class="text-muted d-block">Catatan</small>
                                                 <strong>{{ $p->catatan ?? '-' }}</strong>

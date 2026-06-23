@@ -375,7 +375,7 @@
                                 @endif
                             </div>
                             <div class="text-muted small">
-                                TPU: {{ $item->tpu ?? '-' }} · Kode makam: {{ $item->kode_makam ?? $item->makam?->kode_makam ?? '-' }}
+                                TPU: {{ $item->tpu ?? '-' }}
                             </div>
                             <div class="text-muted small">
                                 Batas perpanjangan: {{ $dueAt?->format('d-m-Y') ?? '-' }}
@@ -568,14 +568,16 @@
                                     @endif
                                 </td>
                                 <td>{{ $item->catatan ?? '-' }}</td>
-                                <td>
-                                    <div class="d-flex flex-wrap gap-2">
-                                        @if($item->jenis_permohonan === 'makam_baru' && $status === 'disetujui')
-                                            <a href="{{ route('user.permohonan.summary', $item) }}" class="btn btn-sm btn-success">Lihat Ringkasan</a>
-                                        @endif
+                            <td>
+                                <div class="d-flex flex-wrap gap-2">
+                                    @if($item->jenis_permohonan === 'makam_baru')
+                                        <a href="{{ route('user.permohonan.summary', $item) }}" class="btn btn-sm btn-success">Lihat Ringkasan</a>
+                                    @endif
+                                    @if($status !== 'disetujui')
                                         <a href="{{ route('user.permohonan.edit', $item) }}" class="btn btn-sm btn-outline-primary">Detail / Edit</a>
-                                    </div>
-                                </td>
+                                    @endif
+                                </div>
+                            </td>
                             </tr>
                         @empty
                             <tr>

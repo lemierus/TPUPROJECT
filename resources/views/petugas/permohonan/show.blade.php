@@ -195,14 +195,6 @@
 
 @section('content')
 <div class="container-fluid py-4">
-    <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-2">
-        <div>
-            <a href="{{ route('petugas.permohonan') }}" class="btn btn-sm btn-outline-dark mb-3">
-                <i class="bi bi-arrow-left me-1"></i> Kembali ke Daftar
-            </a>
-        </div>
-    </div>
-
     @if(session('success'))
         <div class="alert alert-success border-2 border-dark shadow-sm mb-4">
             <i class="bi bi-check-circle-fill me-2"></i>{{ session('success') }}
@@ -541,14 +533,6 @@
                 </div>
             @endif
 
-            @if($permohonan->bukti_pembayaran_retribusi)
-                <div>
-                    <div class="detail-label">Bukti Pembayaran Retribusi</div>
-                    <a href="{{ asset('storage/' . $permohonan->bukti_pembayaran_retribusi) }}" target="_blank" class="doc-link">
-                        <i class="bi bi-file-pdf"></i> Lihat Dokumen
-                    </a>
-                </div>
-            @endif
         </div>
     </div>
 

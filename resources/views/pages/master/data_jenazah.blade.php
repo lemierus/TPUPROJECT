@@ -164,10 +164,7 @@
                                                 @if($item->surat_kematian)
                                                     <a href="{{ asset('storage/'.$item->surat_kematian) }}" target="_blank" class="btn btn-outline-secondary btn-xs">Surat</a>
                                                 @endif
-                                                @if($item->bukti_pembayaran_retribusi)
-                                                    <a href="{{ asset('storage/'.$item->bukti_pembayaran_retribusi) }}" target="_blank" class="btn btn-outline-secondary btn-xs">Retribusi</a>
-                                                @endif
-                                                @if(! $item->scan_ktp_ahli_waris && ! $item->scan_kk && ! $item->surat_kematian && ! $item->bukti_pembayaran_retribusi)
+                                                @if(! $item->scan_ktp_ahli_waris && ! $item->scan_kk && ! $item->surat_kematian)
                                                     <span class="small text-muted">Tidak ada dokumen</span>
                                                 @endif
                                             </div>

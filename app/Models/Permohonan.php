@@ -35,7 +35,6 @@ class Permohonan extends Model
         'makam_id',
         'tahun_pemakaman',
         'tenggat_sewa_makam',
-        'bukti_pembayaran_retribusi',
         'status',
         'approved_at',
         'jenazah_deleted_at',

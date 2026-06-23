@@ -9,7 +9,6 @@
             <h4 class="fw-bold text-dark mb-1">Buat Permohonan Petugas</h4>
             <p class="text-muted mb-0">TPU: {{ auth()->user()->tpu }}</p>
         </div>
-        <a href="{{ route('petugas.permohonan') }}" class="btn btn-outline-secondary btn-sm">Kembali</a>
     </div>
 
     @if($errors->any())
@@ -134,11 +133,6 @@
                         @error('surat_kematian')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
 
-                    <div class="col-md-4">
-                        <label class="form-label">Bukti Pembayaran Retribusi</label>
-                        <input type="file" name="bukti_pembayaran_retribusi" class="form-control @error('bukti_pembayaran_retribusi') is-invalid @enderror" accept=".jpg,.jpeg,.png,.pdf">
-                        @error('bukti_pembayaran_retribusi')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                    </div>
                 </div>
 
                 <div class="d-flex justify-content-end mt-4">
