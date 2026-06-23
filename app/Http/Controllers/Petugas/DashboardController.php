@@ -29,13 +29,13 @@ class DashboardController extends Controller
             ->count();
 
         // Permohonan terbaru untuk ditampilkan di tabel
-        $permohonanTerbaru = Permohonan::with(['user'])
+        $permohonanTerbaru = Permohonan::with(['user', 'jenazah.makam', 'makam'])
             ->where('tpu', $petugas->tpu)
             ->latest('created_at')
             ->take(10)
             ->get();
 
-        $perpanjanganPerluDiingatkan = Permohonan::with(['user', 'jenazah', 'makam'])
+        $perpanjanganPerluDiingatkan = Permohonan::with(['user', 'jenazah.makam', 'makam'])
             ->where('tpu', $petugas->tpu)
             ->where('status', 'disetujui')
             ->where('jenis_permohonan', 'makam_baru')

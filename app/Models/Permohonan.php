@@ -110,7 +110,7 @@ class Permohonan extends Model
             'tanggal_wafat' => $jenazah?->tanggal_wafat ?? $this->tanggal_wafat,
             'jenis_kelamin' => $jenazah?->jenis_kelamin ?? $this->jenis_kelamin,
             'agama' => $jenazah?->agama ?? $this->agama,
-            'tenggat_sewa_makam' => $this->tenggat_sewa_makam ?? $jenazah?->tenggat_sewa_makam,
+            'tenggat_sewa_makam' => $jenazah?->tenggat_sewa_makam ?? $this->tenggat_sewa_makam,
         ];
 
         if ($makam) {
@@ -148,10 +148,6 @@ class Permohonan extends Model
 
     public function renewalDueAt(): ?CarbonInterface
     {
-        if ($this->tenggat_sewa_makam) {
-            return $this->tenggat_sewa_makam;
-        }
-
         if ($this->relationLoaded('jenazah') && $this->jenazah?->tenggat_sewa_makam) {
             return $this->jenazah->tenggat_sewa_makam;
         }
@@ -162,6 +158,10 @@ class Permohonan extends Model
             if ($jenazah?->tenggat_sewa_makam) {
                 return $jenazah->tenggat_sewa_makam;
             }
+        }
+
+        if ($this->tenggat_sewa_makam) {
+            return $this->tenggat_sewa_makam;
         }
 
         if ($this->jenis_permohonan !== 'makam_baru' || $this->status !== 'disetujui') {

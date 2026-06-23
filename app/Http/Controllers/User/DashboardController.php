@@ -14,26 +14,30 @@ class DashboardController extends Controller
                     'slug' => 'tunggul-hitam',
                     'nama' => 'TPU Tunggul Hitam',
                     'lokasi' => 'Koto Tangah, Kota Padang',
-                    'ringkasan' => 'Informasi lokasi, layanan, dan gambaran area TPU Tunggul Hitam.',
+                    'ringkasan' => 'Untuk menghubungi petugas Tempat Pemakaman Umum (TPU) di bawah naungan UPT TPU Dinas Lingkungan Hidup, Anda dapat menghubungi nomor WhatsApp/Telepon resmi berikut: 0813 6302 0913',
                 ],
                 [
                     'slug' => 'bungus-teluk-kabung',
                     'nama' => 'TPU Bungus Teluk Kabung',
                     'lokasi' => 'Bungus Teluk Kabung, Kota Padang',
-                    'ringkasan' => 'Informasi TPU Bungus Teluk Kabung untuk kebutuhan pelayanan pemakaman masyarakat.',
+                    'ringkasan' => 'Untuk menghubungi petugas Tempat Pemakaman Umum (TPU) di bawah naungan UPT TPU Dinas Lingkungan Hidup, Anda dapat menghubungi nomor WhatsApp/Telepon resmi berikut: 0813 6302 0913',
                 ],
                 [
                     'slug' => 'air-dingin',
                     'nama' => 'TPU Air Dingin',
                     'lokasi' => 'Koto Tangah, Kota Padang',
-                    'ringkasan' => 'Informasi TPU Air Dingin beserta layanan dasar yang tersedia di lokasi.',
+                    'ringkasan' => 'Untuk menghubungi petugas Tempat Pemakaman Umum (TPU) di bawah naungan UPT TPU Dinas Lingkungan Hidup, Anda dapat menghubungi nomor WhatsApp/Telepon resmi berikut: 0813 6302 0913',
                 ],
         ];
 
-        $permohonanSaya = Permohonan::with(['jenazah', 'makam'])
+        $permohonanSaya = Permohonan::with(['jenazah.makam', 'makam'])
             ->where('user_id', auth()->id())
             ->latest()
-            ->get();
+            ->get()
+            ->filter(function (Permohonan $permohonan) {
+                return ! ($permohonan->jenis_permohonan === 'perpanjangan' && $permohonan->status === 'disetujui');
+            })
+            ->values();
 
         $pengingatSewaMakam = $permohonanSaya
             ->filter(function (Permohonan $permohonan) {
@@ -44,9 +48,9 @@ class DashboardController extends Controller
             })
             ->values();
 
-        $totalPermohonan = Permohonan::where('user_id', auth()->id())->count();
-        $permohonanMenunggu = Permohonan::where('user_id', auth()->id())->where('status', 'menunggu')->count();
-        $permohonanDisetujui = Permohonan::where('user_id', auth()->id())->where('status', 'disetujui')->count();
+        $totalPermohonan = $permohonanSaya->count();
+        $permohonanMenunggu = $permohonanSaya->where('status', 'menunggu')->count();
+        $permohonanDisetujui = $permohonanSaya->where('status', 'disetujui')->count();
 
         return view('user.dashboard', compact(
             'daftarTpu',

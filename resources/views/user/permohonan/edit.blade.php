@@ -237,16 +237,6 @@
                             <small class="text-muted">Saat ini: <a href="{{ asset('storage/' . $permohonan->surat_kematian) }}" target="_blank">Lihat file</a></small>
                         @endif
                     </div>
-
-                    @if($isPerpanjangan)
-                    <div class="col-md-4">
-                        <label class="form-label">Bukti Pembayaran Retribusi</label>
-                        <input type="file" name="bukti_pembayaran_retribusi" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
-                        @if($permohonan->bukti_pembayaran_retribusi)
-                            <small class="text-muted">Saat ini: <a href="{{ asset('storage/' . $permohonan->bukti_pembayaran_retribusi) }}" target="_blank">Lihat file</a></small>
-                        @endif
-                    </div>
-                    @endif
                 </div>
 
                 <div class="mt-3">

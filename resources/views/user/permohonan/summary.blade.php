@@ -133,9 +133,11 @@
 @section('content')
 @php
     $jenazahData = $jenazah ?? $permohonan->jenazah;
-    $makamData = $makam ?? $permohonan->makam;
+    $jenazahMakamData = $jenazahData?->makam;
+    $makamData = $jenazahMakamData ?? $makam ?? $permohonan->makam;
     $renewalDueAt = $permohonan->renewalDueAt();
     $renewalLevel = $permohonan->renewalAlertLevel();
+    $renewalJenazahId = $jenazahData?->id ?? $permohonan->jenazah_id;
 @endphp
 
 <div class="container-fluid py-4 summary-shell">
@@ -219,6 +221,25 @@
                         </span>
                     @endif
                 </div>
+            </div>
+        </div>
+    @endif
+
+    @if(in_array($renewalLevel, ['soon', 'expired'], true) && $renewalJenazahId)
+        <div class="alert alert-primary border-2 border-dark shadow-sm mb-4">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3">
+                <div>
+                    <div class="fw-bold mb-1">
+                        <i class="bi bi-arrow-repeat me-2"></i>Ajukan Perpanjangan Sewa Makam
+                    </div>
+                    <div class="mb-0">
+                        Klik tombol berikut untuk membuka form perpanjangan sewa makam TPU {{ $permohonan->tpu }}.
+                        Data jenazah dan data makam akan terbawa otomatis sesuai data yang sudah diperbarui petugas.
+                    </div>
+                </div>
+                <a href="{{ route('user.permohonan.create', ['tpu' => $permohonan->tpu, 'jenis_permohonan' => 'perpanjangan', 'jenazah_id' => $renewalJenazahId, 'source_permohonan_id' => $permohonan->id]) }}" class="btn btn-dark">
+                    <i class="bi bi-calendar-plus me-1"></i> Perpanjang Sewa Makam
+                </a>
             </div>
         </div>
     @endif
@@ -330,27 +351,27 @@
                         <tbody>
                             <tr>
                                 <th>Kode Makam</th>
-                                <td>{{ $makamData->kode_makam ?? $permohonan->kode_makam ?? '-' }}</td>
+                                <td>{{ $jenazahData->kode_makam ?? $makamData?->kode_makam ?? $permohonan->kode_makam ?? '-' }}</td>
                             </tr>
                             <tr>
                                 <th>Blok</th>
-                                <td>{{ $makamData->blok ?? $permohonan->blok ?? '-' }}</td>
+                                <td>{{ $jenazahData->blok ?? $makamData?->blok ?? $permohonan->blok ?? '-' }}</td>
                             </tr>
                             <tr>
                                 <th>Zona</th>
-                                <td>{{ $makamData->zona ?? $permohonan->zona ?? '-' }}</td>
+                                <td>{{ $jenazahData->zona ?? $makamData?->zona ?? $permohonan->zona ?? '-' }}</td>
                             </tr>
                             <tr>
                                 <th>Nomor</th>
-                                <td>{{ $makamData->nomor ?? $permohonan->nomor_makam ?? $permohonan->no_makam ?? '-' }}</td>
+                                <td>{{ $jenazahData->nomor_makam ?? $makamData?->nomor ?? $permohonan->nomor_makam ?? $permohonan->no_makam ?? '-' }}</td>
                             </tr>
                             <tr>
                                 <th>TPU</th>
-                                <td>{{ $makamData->tpu ?? $permohonan->tpu ?? '-' }}</td>
+                                <td>{{ $jenazahData->tpu ?? $makamData?->tpu ?? $permohonan->tpu ?? '-' }}</td>
                             </tr>
                             <tr>
                                 <th>Keterangan Makam</th>
-                                <td>{{ $makamData->keterangan ?? $permohonan->keterangan ?? '-' }}</td>
+                                <td>{{ $jenazahData->keterangan ?? $makamData?->keterangan ?? $permohonan->keterangan ?? '-' }}</td>
                             </tr>
                             <tr>
                                 <th>Jenis Permohonan</th>

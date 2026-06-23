@@ -202,7 +202,7 @@
                     <h1 class="petugas-hero-title mb-3">Proses dan kelola semua permohonan makam dari ahli waris.</h1>
                     <p class="petugas-hero-text mb-0">
                         Tinjau permohonan baru, setujui atau tolak, dan berikan catatan untuk ahli waris.
-                        Semua permohonan dari TPU {{ $petugas->tpu ?? 'Anda' }} ditampilkan di sini.
+                        Semua permohonan dari {{ $petugas->tpu ?? 'Anda' }} ditampilkan di sini.
                     </p>
                 </div>
 

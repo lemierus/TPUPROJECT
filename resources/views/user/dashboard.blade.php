@@ -535,16 +535,19 @@
                                         </span>
                                     @endif
                                 </td>
-                                <td>
-                                    @if($item->jenis_permohonan === 'perpanjangan')
-                                        <small class="text-muted d-block mb-1">
-                                            <i class="bi bi-pin-map-fill"></i> Kode Makam
-                                        </small>
-                                        {{ $item->makam->kode_makam ?? 'Makam tidak ditemukan' }}
+                            <td>
+                                @if($item->jenis_permohonan === 'perpanjangan')
+                                    @php
+                                        $linkedMakam = $item->jenazah?->makam ?? $item->makam;
+                                    @endphp
+                                    <small class="text-muted d-block mb-1">
+                                        <i class="bi bi-pin-map-fill"></i> Kode Makam
+                                    </small>
+                                        {{ $linkedMakam?->kode_makam ?? 'Makam tidak ditemukan' }}
                                         @if($item->tahun_pemakaman)
                                             <small class="text-muted d-block">Tahun {{ $item->tahun_pemakaman }}</small>
                                         @endif
-                                    @else
+                                @else
                                         <small class="text-muted d-block mb-1">
                                             <i class="bi bi-person-fill"></i> Nama Jenazah
                                         </small>

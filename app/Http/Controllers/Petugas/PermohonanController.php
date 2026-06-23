@@ -20,7 +20,7 @@ class PermohonanController extends Controller
     {
         $petugas = auth()->user();
 
-        $permohonans = Permohonan::with(['user', 'jenazah', 'makam'])
+        $permohonans = Permohonan::with(['user', 'jenazah.makam', 'makam'])
             ->where('tpu', $petugas->tpu)
             ->latest('created_at')
             ->get();
@@ -29,7 +29,7 @@ class PermohonanController extends Controller
             $permohonan->syncLinkedJenazahData();
         });
 
-        $perpanjanganPerluDiingatkan = Permohonan::with(['user', 'jenazah', 'makam'])
+        $perpanjanganPerluDiingatkan = Permohonan::with(['user', 'jenazah.makam', 'makam'])
             ->where('tpu', $petugas->tpu)
             ->where('status', 'disetujui')
             ->where('jenis_permohonan', 'makam_baru')

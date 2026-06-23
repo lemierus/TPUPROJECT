@@ -251,7 +251,7 @@
         <div class="alert {{ $permohonan->jenazah_id ? 'alert-info' : 'alert-warning' }} border-2 border-dark shadow-sm mb-4">
             <i class="bi {{ $permohonan->jenazah_id ? 'bi-info-circle-fill' : 'bi-exclamation-triangle-fill' }} me-2"></i>
             @if($permohonan->jenazah_id)
-                <strong>Data Jenazah Tersimpan:</strong> Data jenazah sudah disimpan ke halaman data jenazah dengan ID: #{{ $permohonan->jenazah_id }}
+                <strong>Data Jenazah Tersimpan:</strong> Data jenazah sudah disimpan ke halaman data jenazah.
             @else
                 <strong>Data Jenazah Belum Tersimpan:</strong> Data jenazah belum disimpan. Pastikan NIK dan nama jenazah sudah diisi sebelum menyetujui permohonan ini.
             @endif
@@ -447,14 +447,10 @@
             </div>
             <div class="detail-row">
                 <div>
-                    <div class="detail-label">Status Penyimpanan ke Database Jenazah</div>
+                    <div class="detail-label">Status Penyimpanan Jenazah</div>
                     @if($permohonan->jenazah_id)
-                        <div class="detail-badge detail-badge-success">
-                            <i class="bi bi-check-circle"></i>
-                            Tersimpan (ID: #{{ $permohonan->jenazah_id }})
-                        </div>
                         <p class="text-muted mt-2 mb-0">
-                            Data jenazah sudah berhasil disimpan ke database data jenazah TPU {{ $permohonan->tpu }}
+                            Data jenazah sudah berhasil disimpan ke database data jenazah {{ $permohonan->tpu }}
                             <a href="{{ route('petugas.data-jenazah') }}" class="fw-semibold">Lihat di Data Jenazah →</a>
                         </p>
                     @else

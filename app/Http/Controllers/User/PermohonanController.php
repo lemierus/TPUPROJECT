@@ -18,6 +18,11 @@ class PermohonanController extends Controller
     public function create()
     {
         $tpu = request('tpu');
+        $selectedJenis = request('jenis_permohonan', 'makam_baru');
+        $selectedRenewalJenazahId = request('jenazah_id');
+        $selectedSourcePermohonanId = request('source_permohonan_id');
+        $sourcePermohonanId = request('source_permohonan_id');
+        $renewalSource = null;
 
         abort_unless(in_array($tpu, ['TPU Tunggul Hitam', 'TPU Bungus Teluk Kabung', 'TPU Air Dingin'], true), 404);
 
@@ -25,11 +30,32 @@ class PermohonanController extends Controller
             ->where('tpu', $tpu)
             ->first();
 
+        if ($selectedJenis === 'perpanjangan' && $sourcePermohonanId) {
+            $renewalSource = Permohonan::with(['jenazah.makam', 'makam'])
+                ->where('user_id', auth()->id())
+                ->where('tpu', $tpu)
+                ->where('status', 'disetujui')
+                ->where('jenis_permohonan', 'makam_baru')
+                ->find($sourcePermohonanId);
+
+            if ($renewalSource) {
+                $selectedRenewalJenazahId = $renewalSource->jenazah_id;
+            }
+        }
+
+        $perpanjanganJenazahs = $renewalSource
+            ? collect([$renewalSource])
+            : $this->eligibleRenewalJenazahs($tpu);
+
         return view('user.permohonan.create', [
             'tpu' => $tpu,
+            'selectedJenis' => $selectedJenis,
+            'selectedRenewalJenazahId' => $selectedRenewalJenazahId,
+            'selectedSourcePermohonanId' => $selectedSourcePermohonanId,
+            'renewalSource' => $renewalSource,
             'makams' => Makam::where('tpu', $tpu)->orderBy('kode_makam')->get(),
             'assignedPetugas' => $assignedPetugas,
-            'perpanjanganJenazahs' => $this->eligibleRenewalJenazahs($tpu),
+            'perpanjanganJenazahs' => $perpanjanganJenazahs,
         ]);
     }
 
@@ -39,6 +65,7 @@ class PermohonanController extends Controller
             'tpu' => ['required', Rule::in(['TPU Tunggul Hitam', 'TPU Bungus Teluk Kabung', 'TPU Air Dingin'])],
             'jenis_permohonan' => ['required', Rule::in(['makam_baru', 'perpanjangan', 'pemindahan_makam', 'renovasi_makam'])],
             'jenazah_id' => ['required_if:jenis_permohonan,perpanjangan', 'nullable', 'exists:jenazah,id'],
+            'source_permohonan_id' => ['nullable', 'exists:permohonans,id'],
             'nama_jenazah' => ['nullable', 'string', 'max:255'],
             'nik_jenazah' => ['nullable', 'string', 'max:255'],
             'tempat_lahir' => ['nullable', 'string', 'max:255'],
@@ -53,9 +80,9 @@ class PermohonanController extends Controller
             'makam_id' => ['nullable', 'exists:makams,id'],
             'tahun_pemakaman' => ['nullable', 'digits:4'],
             'catatan' => ['nullable', 'string'],
-            'scan_ktp_ahli_waris' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
-            'scan_kk' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
-            'surat_kematian' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
+            'scan_ktp_ahli_waris' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
+            'scan_kk' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
+            'surat_kematian' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
             'bukti_pembayaran_retribusi' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
         ]);
 
@@ -63,9 +90,15 @@ class PermohonanController extends Controller
         $data['nik_jenazah'] = $data['nik_jenazah'] ?? null;
 
         DB::transaction(function () use ($data, $request) {
-            $ktpPath = $request->file('scan_ktp_ahli_waris')->store('permohonan/ktp', 'public');
-            $kkPath = $request->file('scan_kk')->store('permohonan/kk', 'public');
-            $suratPath = $request->file('surat_kematian')->store('permohonan/surat-kematian', 'public');
+            $ktpPath = $request->hasFile('scan_ktp_ahli_waris')
+                ? $request->file('scan_ktp_ahli_waris')->store('permohonan/ktp', 'public')
+                : null;
+            $kkPath = $request->hasFile('scan_kk')
+                ? $request->file('scan_kk')->store('permohonan/kk', 'public')
+                : null;
+            $suratPath = $request->hasFile('surat_kematian')
+                ? $request->file('surat_kematian')->store('permohonan/surat-kematian', 'public')
+                : null;
             $buktiRetribusiPath = $request->file('bukti_pembayaran_retribusi')
                 ? $request->file('bukti_pembayaran_retribusi')->store('permohonan/retribusi', 'public')
                 : null;
@@ -78,13 +111,15 @@ class PermohonanController extends Controller
             $selectedMakam = null;
 
             if ($data['jenis_permohonan'] === 'perpanjangan') {
-                $renewalSource = $this->resolveRenewalSource($data['jenazah_id'] ?? null, $data['tpu']);
+                $renewalSource = ! empty($data['source_permohonan_id'] ?? null)
+                    ? $this->resolveRenewalSourceById((int) $data['source_permohonan_id'], $data['tpu'])
+                    : $this->resolveRenewalSource($data['jenazah_id'] ?? null, $data['tpu']);
                 if (! $renewalSource) {
                     throw ValidationException::withMessages([
                         'jenazah_id' => 'Pilih jenazah yang sudah disetujui dan memiliki makam aktif.',
                     ]);
                 }
-                $selectedMakam = $renewalSource->makam;
+                $selectedMakam = $renewalSource->jenazah?->makam ?? $renewalSource->makam;
             } else {
                 $selectedMakam = ($data['makam_id'] ?? null) ? Makam::find($data['makam_id']) : null;
             }
@@ -107,9 +142,9 @@ class PermohonanController extends Controller
                 'nama_ahli_waris' => $data['nama_ahli_waris'],
                 'no_hp_ahli_waris' => $data['no_hp_ahli_waris'],
                 'hubungan_keluarga' => $data['hubungan_keluarga'],
-                'scan_ktp_ahli_waris' => $ktpPath,
-                'scan_kk' => $kkPath,
-                'surat_kematian' => $suratPath,
+                'scan_ktp_ahli_waris' => $data['jenis_permohonan'] === 'perpanjangan' ? null : $ktpPath,
+                'scan_kk' => $data['jenis_permohonan'] === 'perpanjangan' ? null : $kkPath,
+                'surat_kematian' => $data['jenis_permohonan'] === 'perpanjangan' ? null : $suratPath,
                 'makam_id' => $selectedMakam?->id ?? ($data['makam_id'] ?? null),
                 'tahun_pemakaman' => $renewalSource?->tahun_pemakaman ?? $data['tahun_pemakaman'] ?? null,
                 'bukti_pembayaran_retribusi' => $buktiRetribusiPath,
@@ -142,9 +177,9 @@ class PermohonanController extends Controller
         abort_unless($permohonan->jenis_permohonan === 'makam_baru', 404);
         abort_unless($permohonan->status === 'disetujui', 403);
 
-        $permohonan->load(['jenazah', 'makam', 'petugas']);
+        $permohonan->load(['jenazah.makam', 'makam', 'petugas']);
         $permohonan->syncLinkedJenazahData();
-        $permohonan->refresh()->load(['jenazah', 'makam', 'petugas']);
+        $permohonan->refresh()->load(['jenazah.makam', 'makam', 'petugas']);
 
         return view('user.permohonan.summary', [
             'permohonan' => $permohonan,
@@ -165,6 +200,7 @@ class PermohonanController extends Controller
         $data = $request->validate([
             'jenis_permohonan' => ['required', Rule::in(['makam_baru', 'perpanjangan', 'pemindahan_makam', 'renovasi_makam'])],
             'jenazah_id' => ['required_if:jenis_permohonan,perpanjangan', 'nullable', 'exists:jenazah,id'],
+            'source_permohonan_id' => ['nullable', 'exists:permohonans,id'],
             'nama_jenazah' => ['nullable', 'string', 'max:255'],
             'nik_jenazah' => ['nullable', 'string', 'max:255'],
             'tempat_lahir' => ['nullable', 'string', 'max:255'],
@@ -197,13 +233,15 @@ class PermohonanController extends Controller
             $selectedMakam = null;
 
             if ($data['jenis_permohonan'] === 'perpanjangan') {
-                $renewalSource = $this->resolveRenewalSource($data['jenazah_id'] ?? $permohonan->jenazah_id, $permohonan->tpu);
+                $renewalSource = ! empty($data['source_permohonan_id'] ?? null)
+                    ? $this->resolveRenewalSourceById((int) $data['source_permohonan_id'], $permohonan->tpu)
+                    : $this->resolveRenewalSource($data['jenazah_id'] ?? $permohonan->jenazah_id, $permohonan->tpu);
                 if (! $renewalSource) {
                     throw ValidationException::withMessages([
                         'jenazah_id' => 'Pilih jenazah yang sudah disetujui dan memiliki makam aktif.',
                     ]);
                 }
-                $selectedMakam = $renewalSource->makam;
+                $selectedMakam = $renewalSource->jenazah?->makam ?? $renewalSource->makam;
             } else {
                 $selectedMakam = ($data['makam_id'] ?? null) ? Makam::find($data['makam_id']) : null;
             }
@@ -236,7 +274,7 @@ class PermohonanController extends Controller
 
     private function eligibleRenewalJenazahs(string $tpu)
     {
-        $query = Permohonan::with(['jenazah', 'makam'])
+        $query = Permohonan::with(['jenazah.makam', 'makam'])
             ->where('user_id', auth()->id())
             ->where('tpu', $tpu)
             ->where('status', 'disetujui')
@@ -262,12 +300,23 @@ class PermohonanController extends Controller
             return null;
         }
 
-        return Permohonan::with(['jenazah', 'makam'])
+        return Permohonan::with(['jenazah.makam', 'makam'])
             ->where('user_id', auth()->id())
             ->where('tpu', $tpu)
             ->where('status', 'disetujui')
             ->where('jenis_permohonan', 'makam_baru')
             ->where('jenazah_id', $jenazahId)
+            ->first();
+    }
+
+    private function resolveRenewalSourceById(int $permohonanId, string $tpu): ?Permohonan
+    {
+        return Permohonan::with(['jenazah.makam', 'makam'])
+            ->where('id', $permohonanId)
+            ->where('user_id', auth()->id())
+            ->where('tpu', $tpu)
+            ->where('status', 'disetujui')
+            ->where('jenis_permohonan', 'makam_baru')
             ->first();
     }
 }
