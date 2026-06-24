@@ -513,10 +513,6 @@
                                     <i class="bi bi-send me-1"></i>
                                     Ajukan Permohonan
                                 </a>
-                                <a href="{{ $dashboardHref }}" class="btn btn-outline-dark btn-brutal px-4 py-3">
-                                    <i class="bi bi-speedometer2 me-1"></i>
-                                    Ke Dashboard
-                                </a>
                             </div>
 
                             <div class="hero-meta">
@@ -559,7 +555,7 @@
                             <div class="floating-note mt-4">
                                 <div class="fw-bold text-dark mb-1">Untuk Ahli Waris</div>
                                 <div class="text-muted">
-                                    Jika sudah punya akun, langsung masuk ke dashboard untuk memilih TPU terlebih dahulu,
+                                    Jika sudah punya akun, silahkan login untuk memilih TPU terlebih dahulu,
                                     lalu lanjut ke pengajuan permohonan.
                                 </div>
                             </div>
@@ -671,10 +667,6 @@
                     </div>
                     <div class="col-lg-4">
                         <div class="cta-copy text-lg-end">
-                            <a href="{{ $ajukanHref }}" class="btn btn-light btn-brutal px-4 py-3 me-2 mb-2 mb-lg-0">
-                                <i class="bi bi-clipboard2-pulse me-1"></i>
-                                Ajukan untuk Ahli Waris
-                            </a>
                             <a href="{{ route('register') }}" class="btn btn-outline-light btn-brutal px-4 py-3 mb-2 mb-lg-0">
                                 <i class="bi bi-person-plus me-1"></i>
                                 Buat Akun
