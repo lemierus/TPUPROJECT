@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Laporan Pemakaman {{ $scopeLabel ?? 'TPU' }}</title>
+    <title>Laporan Bulanan TPU {{ $scopeLabel ?? 'Semua TPU' }}</title>
     <style>
         body {
             font-family: "Times New Roman", serif;
@@ -11,21 +11,29 @@
             margin: 28px 36px;
             line-height: 1.45;
         }
+
         .center { text-align: center; }
         .bold { font-weight: 700; }
         .upper { text-transform: uppercase; }
         .small { font-size: 10pt; }
-        .meta { margin-top: 14px; margin-bottom: 14px; }
+        .divider {
+            margin: 16px 0 18px;
+            letter-spacing: 1px;
+            white-space: nowrap;
+            overflow: hidden;
+        }
         .section-title {
             font-weight: 700;
             margin-top: 18px;
             margin-bottom: 8px;
         }
-        .divider {
-            margin: 18px 0;
-            letter-spacing: 1px;
-            white-space: nowrap;
-            overflow: hidden;
+        .meta {
+            width: 100%;
+            margin-top: 12px;
+            margin-bottom: 14px;
+        }
+        .meta td {
+            padding: 2px 0;
         }
         table {
             width: 100%;
@@ -65,41 +73,29 @@
     $periodLabel = $periodLabel ?? 'Bulanan';
     $monthLabel = $monthLabel ?? now()->translatedFormat('F');
     $yearLabel = $yearLabel ?? now()->format('Y');
-    $reportRows = collect($reportRows ?? []);
-    $dataJenazahRows = collect($dataJenazahRows ?? $reportRows->where('source', 'permohonan')->values());
-    $blokZonaStats = collect($blokZonaStats ?? []);
+    $reportDate = $reportDate ?? now()->translatedFormat('d F Y');
+    $ringkasanRows = collect($ringkasanRows ?? []);
+    $rekapPelayananRows = collect($rekapPelayananRows ?? []);
+    $dataPemakamanRows = collect($dataPemakamanRows ?? []);
+    $statistikRows = collect($statistikRows ?? []);
     $nomor = $nomor ?? '....................................';
     $lampiran = $lampiran ?? '....................................';
-    $perihal = $perihal ?? ('Laporan Data Pemakaman ' . $periodLabel . ' Tahun ' . $yearLabel);
+    $perihal = $perihal ?? ('Laporan Bulanan Pelayanan dan Pendataan Tempat Pemakaman Umum Bulan ' . $monthLabel . ' Tahun ' . $yearLabel);
     $tujuanKepalaDinas = $tujuanKepalaDinas ?? 'Kepala Dinas Perumahan Rakyat, Kawasan Permukiman dan Pertanahan';
     $tujuanWilayah = $tujuanWilayah ?? 'Kota/Kabupaten ................................';
-    $tanggalCetak = $tanggalCetak ?? now()->translatedFormat('d F Y');
 @endphp
 
-    <div class="center bold upper">
-        PEMERINTAH KOTA/KABUPATEN .................................
-    </div>
-    <div class="center bold upper">
-        DINAS PERUMAHAN RAKYAT, KAWASAN PERMUKIMAN DAN PERTANAHAN
-    </div>
-    <div class="center bold upper">
-        UNIT PELAKSANA TEKNIS DAERAH (UPTD) TEMPAT PEMAKAMAN UMUM
-    </div>
-    <div class="center">
-        Alamat: Jl. ............................................................<br>
-        Telepon: ..................... Email: ................................
-    </div>
+    <div class="center bold upper">PEMERINTAH KOTA/KABUPATEN .................................</div>
+    <div class="center bold upper">DINAS PERUMAHAN RAKYAT, KAWASAN PERMUKIMAN DAN PERTANAHAN</div>
+    <div class="center bold upper">UNIT PELAKSANA TEKNIS DAERAH (UPTD) TEMPAT PEMAKAMAN UMUM</div>
+    <div class="center">Alamat: Jl. ............................................................<br>Telepon: ..................... Email: ................................</div>
 
-    <div class="divider center">
-        =================================================================
-    </div>
+    <div class="divider center">=================================================================</div>
 
     <div class="center bold upper" style="font-size: 14pt;">
-        LAPORAN DATA PEMAKAMAN {{ strtoupper($periodLabel) }}
+        LAPORAN BULANAN PELAYANAN DAN PENDATAAN TEMPAT PEMAKAMAN UMUM
     </div>
-    <div class="center bold upper">
-        UPTD TEMPAT PEMAKAMAN UMUM (TPU) {{ $scopeLabel }}
-    </div>
+    <div class="center bold upper">UPTD TEMPAT PEMAKAMAN UMUM (TPU) {{ $scopeLabel }}</div>
 
     <table class="no-border meta">
         <tr>
@@ -127,83 +123,105 @@
     <p>Dengan hormat,</p>
 
     <p>
-        Dalam rangka pelaksanaan tugas dan fungsi pengelolaan Tempat Pemakaman Umum (TPU),
-        bersama ini kami sampaikan laporan kegiatan pelayanan pemakaman pada UPTD TPU {{ $scopeLabel }}
-        selama periode {{ $periodLabel }} {{ $yearLabel }}.
+        Dalam rangka pelaksanaan tugas dan fungsi pengelolaan Tempat Pemakaman Umum (TPU), bersama ini kami sampaikan laporan kegiatan pelayanan pemakaman pada UPTD TPU {{ $scopeLabel }} selama periode Bulan {{ $monthLabel }} Tahun {{ $yearLabel }}.
     </p>
 
     <p>Adapun rekapitulasi data pelayanan pemakaman adalah sebagai berikut:</p>
 
-    <div class="section-title">A. DATA PEMAKAMAN</div>
+    <div class="section-title">A. RINGKASAN DATA PEMAKAMAN</div>
     <table>
         <tbody>
-            <tr>
-                <td style="width: 55%;">1. Jumlah pemakaman baru</td>
-                <td style="width: 10%; text-align:center;">:</td>
-                <td>{{ $totalPemakamanBaru ?? 0 }} makam</td>
-            </tr>
-            <tr>
-                <td>2. Jumlah perpanjangan makam</td>
-                <td style="text-align:center;">:</td>
-                <td>{{ $totalPerpanjangan ?? 0 }} makam</td>
-            </tr>
-            <tr>
-                <td>3. Jumlah perawatan makam</td>
-                <td style="text-align:center;">:</td>
-                <td>{{ $totalPerawatan ?? 0 }} makam</td>
-            </tr>
-            <tr>
-                <td>4. Jumlah makam aktif</td>
-                <td style="text-align:center;">:</td>
-                <td>{{ $totalMakamAktif ?? 0 }} makam</td>
-            </tr>
-            <tr>
-                <td>5. Jumlah makam yang berakhir masa sewa</td>
-                <td style="text-align:center;">:</td>
-                <td>{{ $totalMakamBerakhirSewa ?? 0 }} makam</td>
-            </tr>
-        </tbody>
-    </table>
-
-    <div class="section-title">B. DATA JENAZAH YANG DIMAKAMKAN</div>
-    <table>
-        <thead>
-            <tr>
-                <th style="width: 40px;">No</th>
-                <th>Nama Jenazah</th>
-                <th>NIK</th>
-                <th>Tanggal Pemakaman</th>
-                <th>Blok/Zona</th>
-            </tr>
-        </thead>
-        <tbody>
-            @forelse($dataJenazahRows as $row)
+            @forelse($ringkasanRows as $item)
                 <tr>
-                    <td>{{ $loop->iteration }}</td>
-                    <td>{{ $row['nama'] ?? '-' }}</td>
-                    <td>{{ $row['nik'] ?? '-' }}</td>
-                    <td>{{ $row['tanggal_input_label'] ?? '-' }}</td>
-                    <td>{{ trim(($row['blok'] ?? '-') . ' / ' . ($row['zona'] ?? '-')) }}</td>
+                    <td style="width: 55%;">{{ $loop->iteration }}. {{ $item['label'] ?? '-' }}</td>
+                    <td style="width: 10%; text-align:center;">:</td>
+                    <td>{{ $item['value'] ?? '0' }}</td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="5" class="center">Tidak ada data</td>
+                    <td colspan="3" class="center">Tidak ada data</td>
                 </tr>
             @endforelse
         </tbody>
     </table>
 
-    <div class="section-title">C. STATISTIK PEMAKAMAN BERDASARKAN BLOK/ZONA</div>
+    <div class="section-title">B. REKAPITULASI PELAYANAN PEMAKAMAN</div>
     <table>
         <thead>
             <tr>
                 <th style="width: 40px;">No</th>
-                <th>Blok/Zona</th>
+                <th>TPU</th>
+                <th>Pemakaman Baru</th>
+                <th>Perpanjangan</th>
+                <th>Menunggu</th>
+                <th>Disetujui</th>
+                <th>Ditolak</th>
+                <th>Total Permohonan</th>
+            </tr>
+        </thead>
+        <tbody>
+            @forelse($rekapPelayananRows as $item)
+                <tr>
+                    <td>{{ $loop->iteration }}</td>
+                    <td>{{ $item['tpu'] ?? '-' }}</td>
+                    <td>{{ $item['pemakaman_baru'] ?? 0 }}</td>
+                    <td>{{ $item['perpanjangan'] ?? 0 }}</td>
+                    <td>{{ $item['menunggu'] ?? 0 }}</td>
+                    <td>{{ $item['disetujui'] ?? 0 }}</td>
+                    <td>{{ $item['ditolak'] ?? 0 }}</td>
+                    <td>{{ $item['total'] ?? 0 }}</td>
+                </tr>
+            @empty
+                <tr>
+                    <td colspan="8" class="center">Tidak ada data</td>
+                </tr>
+            @endforelse
+        </tbody>
+    </table>
+
+    <div class="section-title">C. DATA PEMAKAMAN BERDASARKAN TPU</div>
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 40px;">No</th>
+                <th>TPU</th>
+                <th>Total Jenazah</th>
+                <th>Total Makam</th>
+                <th>Laki-laki</th>
+                <th>Perempuan</th>
+                <th>Total Permohonan</th>
+            </tr>
+        </thead>
+        <tbody>
+            @forelse($dataPemakamanRows as $item)
+                <tr>
+                    <td>{{ $loop->iteration }}</td>
+                    <td>{{ $item['tpu'] ?? '-' }}</td>
+                    <td>{{ $item['total_jenazah'] ?? 0 }}</td>
+                    <td>{{ $item['total_makam'] ?? 0 }}</td>
+                    <td>{{ $item['laki_laki'] ?? 0 }}</td>
+                    <td>{{ $item['perempuan'] ?? 0 }}</td>
+                    <td>{{ $item['permohonan'] ?? 0 }}</td>
+                </tr>
+            @empty
+                <tr>
+                    <td colspan="7" class="center">Tidak ada data</td>
+                </tr>
+            @endforelse
+        </tbody>
+    </table>
+
+    <div class="section-title">D. STATISTIK PEMAKAMAN</div>
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 40px;">No</th>
+                <th>Blok / Zona</th>
                 <th style="width: 120px;">Jumlah Makam</th>
             </tr>
         </thead>
         <tbody>
-            @forelse($blokZonaStats as $item)
+            @forelse($statistikRows as $item)
                 <tr>
                     <td>{{ $loop->iteration }}</td>
                     <td>{{ $item['blok_zona'] ?? '-' }}</td>
@@ -217,30 +235,25 @@
         </tbody>
     </table>
 
-    <div class="section-title">D. KENDALA DAN TINDAK LANJUT</div>
+    <div class="section-title">E. KENDALA DAN TINDAK LANJUT</div>
     <ol>
         <li>.....................................................................</li>
         <li>.....................................................................</li>
         <li>.....................................................................</li>
     </ol>
 
-    <div class="section-title">E. KESIMPULAN</div>
+    <div class="section-title">F. KESIMPULAN</div>
     <p>
-        Berdasarkan data yang telah dihimpun, pelayanan pemakaman pada UPTD TPU {{ $scopeLabel }}
-        selama {{ $periodLabel }} {{ $yearLabel }} telah terlaksana dengan baik. Jumlah pelayanan yang
-        diberikan mencakup pemakaman baru, perpanjangan makam, serta perawatan makam sesuai dengan prosedur
-        yang berlaku. Data ini diharapkan dapat menjadi bahan evaluasi dan pengambilan keputusan dalam
-        pengelolaan serta pengembangan pelayanan pemakaman di masa yang akan datang.
+        Berdasarkan data yang telah dihimpun, pelayanan pemakaman pada UPTD TPU {{ $scopeLabel }} selama Bulan {{ $monthLabel }} Tahun {{ $yearLabel }} telah terlaksana dengan baik. Data ini mencakup ringkasan pelayanan, rekapitulasi permohonan, distribusi data per TPU, serta statistik pemakaman pada blok dan zona terkait.
     </p>
 
     <p>
-        Demikian laporan ini disampaikan untuk menjadi bahan informasi dan evaluasi. Atas perhatian dan
-        kerja sama yang baik, kami ucapkan terima kasih.
+        Demikian laporan ini disampaikan untuk menjadi bahan informasi dan evaluasi. Atas perhatian dan kerja sama yang baik, kami ucapkan terima kasih.
     </p>
 
     <div class="signature">
         <div class="block">
-            <p>{{ $tanggalCetak }}, ...................... 20....</p>
+            <p>{{ $reportDate }}, ...................... 20....</p>
             <p class="bold">Kepala UPTD TPU</p>
             <div class="spacer"></div>
             <div class="spacer"></div>

@@ -6,7 +6,7 @@
 @php
     $routePrefix = request()->routeIs('petugas.*')
         ? 'petugas'
-        : (request()->routeIs('kepala.*') ? 'kepala' : 'admin');
+        : (request()->routeIs('kepala.*') ? 'kepala' : (request()->routeIs('kdlh.*') ? 'kdlh' : 'admin'));
     $canManage = auth()->user()?->isAdmin() || auth()->user()?->isPetugas();
     $isAdmin = auth()->user()?->isAdmin();
 @endphp
@@ -39,7 +39,7 @@
         <div class="card-body">
             <form method="GET" action="{{ route($routePrefix.'.data-jenazah') }}">
                 <div class="row g-2">
-                    @if($isAdmin)
+                    @if($isAdmin || auth()->user()?->isKepala() || auth()->user()?->isKdlh())
                         <div class="col-md-3">
                             <select name="tpu" class="form-select form-select-sm">
                                 <option value="">Semua TPU</option>
@@ -57,13 +57,13 @@
                                 <option value="bulanan" @selected(($filter ?? 'harian') === 'bulanan')>Bulanan</option>
                             </select>
                         </div>
-                        <div class="col-md-{{ $isAdmin ? 4 : 7 }}">
+                        <div class="col-md-{{ ($isAdmin || auth()->user()?->isKepala() || auth()->user()?->isKdlh()) ? 4 : 7 }}">
                             <input type="text" name="search" class="form-control form-control-sm"
                                    placeholder="Cari nama jenazah, NIK, nama ahli waris, atau no hp..."
                                    value="{{ request('search') }}">
                         </div>
                     @else
-                        <div class="col-md-{{ $isAdmin ? 7 : 10 }}">
+                        <div class="col-md-{{ ($isAdmin || auth()->user()?->isKepala() || auth()->user()?->isKdlh()) ? 7 : 10 }}">
                             <input type="text" name="search" class="form-control form-control-sm"
                                    placeholder="Cari nama, NIK, alamat, atau makam..."
                                    value="{{ request('search') }}">

@@ -11,6 +11,7 @@ class User extends Authenticatable
     use HasFactory, Notifiable;
 
     public const ROLE_ADMIN = 'admin';
+    public const ROLE_KDLH = 'kdlh';
     public const ROLE_PETUGAS = 'petugas';
     public const ROLE_KEPALA = 'kepala';
     public const ROLE_USER = 'user';
@@ -51,6 +52,16 @@ class User extends Authenticatable
         return $this->role === self::ROLE_ADMIN;
     }
 
+    public function isKdlh(): bool
+    {
+        return $this->role === self::ROLE_KDLH;
+    }
+
+    public function isCentralManager(): bool
+    {
+        return $this->isAdmin() || $this->isKdlh();
+    }
+
     public function isKepala(): bool
     {
         return $this->role === self::ROLE_KEPALA;
@@ -68,10 +79,6 @@ class User extends Authenticatable
 
     public static function tpuOptions(): array
     {
-        return [
-            'TPU Tunggul Hitam',
-            'TPU Bungus Teluk Kabung',
-            'TPU Air Dingin',
-        ];
+        return Tpu::options();
     }
 }

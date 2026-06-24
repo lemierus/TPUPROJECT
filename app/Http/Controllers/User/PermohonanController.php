@@ -24,7 +24,7 @@ class PermohonanController extends Controller
         $sourcePermohonanId = request('source_permohonan_id');
         $renewalSource = null;
 
-        abort_unless(in_array($tpu, ['TPU Tunggul Hitam', 'TPU Bungus Teluk Kabung', 'TPU Air Dingin'], true), 404);
+        abort_unless(in_array($tpu, User::tpuOptions(), true), 404);
 
         $assignedPetugas = User::where('role', User::ROLE_PETUGAS)
             ->where('tpu', $tpu)
@@ -62,7 +62,7 @@ class PermohonanController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'tpu' => ['required', Rule::in(['TPU Tunggul Hitam', 'TPU Bungus Teluk Kabung', 'TPU Air Dingin'])],
+            'tpu' => ['required', Rule::in(User::tpuOptions())],
             'jenis_permohonan' => ['required', Rule::in(['makam_baru', 'perpanjangan', 'pemindahan_makam', 'renovasi_makam'])],
             'jenazah_id' => ['required_if:jenis_permohonan,perpanjangan', 'nullable', 'exists:jenazah,id'],
             'source_permohonan_id' => ['nullable', 'exists:permohonans,id'],

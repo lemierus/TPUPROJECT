@@ -504,7 +504,7 @@
                             </h1>
                             <p class="hero-text">
                                 Sistem Informasi TPU membantu ahli waris dan pengelola layanan pemakaman mengakses informasi,
-                                memilih lokasi TPU, serta mengajukan permohonan dengan alur yang lebih rapi. Informasi tiga TPU
+                                memilih lokasi TPU, serta mengajukan permohonan dengan alur yang lebih rapi. Informasi TPU
                                 terintegrasi disajikan agar proses pencarian dan pengajuan menjadi lebih mudah.
                             </p>
 
@@ -534,7 +534,7 @@
 
                                 <div class="panel-stats">
                                     <div class="panel-stat">
-                                        <strong>3</strong>
+                                        <strong>{{ count($tpus) }}</strong>
                                         <span>TPU terintegrasi</span>
                                     </div>
                                     <div class="panel-stat">
@@ -610,9 +610,9 @@
                             <span class="info-badge"><i class="bi bi-map"></i> Terhubung</span>
                         </div>
                         <div class="info-card-body">
-                            <h5 class="fw-bold mb-2">Tiga TPU dalam satu sistem</h5>
+                            <h5 class="fw-bold mb-2">TPU dalam satu sistem</h5>
                             <p class="text-muted mb-0">
-                                TPU Tunggul Hitam, TPU Air Dingin, dan TPU Bungus Teluk Kabung ditampilkan sebagai satu ekosistem layanan.
+                                Daftar TPU ditampilkan sebagai satu ekosistem layanan yang dapat diperbarui oleh kepala dinas.
                             </p>
                         </div>
                     </div>
@@ -625,7 +625,7 @@
                 <div>
                     <h2 class="section-title h3">TPU terintegrasi</h2>
                     <p class="section-text mb-0">
-                        Tiga TPU utama ditampilkan sebagai pilihan informasi dan referensi pengajuan layanan.
+                        Daftar TPU ditampilkan sebagai pilihan informasi dan referensi pengajuan layanan.
                     </p>
                 </div>
             </div>

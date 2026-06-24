@@ -17,7 +17,7 @@ class DataMakamController extends Controller
         $tpuOptions = User::tpuOptions();
 
         $makamQuery = $this->accessibleMakams()
-            ->when(auth()->user()?->isAdmin() && filled($selectedTpu) && in_array($selectedTpu, $tpuOptions, true), function ($query) use ($selectedTpu) {
+            ->when((auth()->user()?->isAdmin() || auth()->user()?->isKdlh() || auth()->user()?->isKepala()) && filled($selectedTpu) && in_array($selectedTpu, $tpuOptions, true), function ($query) use ($selectedTpu) {
                 $query->where('tpu', $selectedTpu);
             })
             ->when($search, function ($query) use ($search) {
@@ -35,6 +35,8 @@ class DataMakamController extends Controller
 
     public function create()
     {
+        $this->ensureCanManageMakams();
+
         return view('pages.master.form_makam', [
             'makam' => new Makam(),
             'selectedTpu' => request()->tpu,
@@ -44,6 +46,8 @@ class DataMakamController extends Controller
 
     public function store(Request $request)
     {
+        $this->ensureCanManageMakams();
+
         Makam::create($this->validatedData($request));
 
         return redirect()->route($this->routePrefix().'.data-makam')
@@ -52,6 +56,8 @@ class DataMakamController extends Controller
 
     public function edit(Makam $makam)
     {
+        $this->ensureCanManageMakams();
+
         $makam = $this->findAccessibleMakamOrFail($makam->id);
 
         return view('pages.master.form_makam', [
@@ -63,6 +69,8 @@ class DataMakamController extends Controller
 
     public function update(Request $request, Makam $makam)
     {
+        $this->ensureCanManageMakams();
+
         $makam = $this->findAccessibleMakamOrFail($makam->id);
         $makam->update($this->validatedData($request, $makam->id));
 
@@ -72,6 +80,8 @@ class DataMakamController extends Controller
 
     public function destroy(Makam $makam)
     {
+        $this->ensureCanManageMakams();
+
         $makam = $this->findAccessibleMakamOrFail($makam->id);
         $makam->delete();
 
@@ -82,7 +92,7 @@ class DataMakamController extends Controller
     private function validatedData(Request $request, ?int $ignoreId = null): array
     {
         $data = $request->validate([
-            'tpu' => ['required', Rule::in(['TPU Tunggul Hitam', 'TPU Bungus Teluk Kabung', 'TPU Air Dingin'])],
+            'tpu' => ['required', Rule::in(User::tpuOptions())],
             'kode_makam' => ['required', 'string', 'max:255', Rule::unique('makams', 'kode_makam')->ignore($ignoreId)],
             'blok' => ['nullable', 'string', 'max:255'],
             'zona' => ['nullable', 'string', 'max:255'],
@@ -91,7 +101,7 @@ class DataMakamController extends Controller
             'keterangan' => ['nullable', 'string'],
         ]);
 
-        if (auth()->user()?->isPetugas() || auth()->user()?->isKepala()) {
+        if (auth()->user()?->isPetugas()) {
             $data['tpu'] = auth()->user()->tpu;
         }
 
@@ -113,7 +123,7 @@ class DataMakamController extends Controller
 
     private function accessibleMakams()
     {
-        return Makam::query()->when(auth()->user()?->isPetugas() || auth()->user()?->isKepala(), function ($query) {
+        return Makam::query()->when(auth()->user()?->isPetugas(), function ($query) {
             $query->where('tpu', auth()->user()->tpu);
         });
     }
@@ -121,5 +131,10 @@ class DataMakamController extends Controller
     private function findAccessibleMakamOrFail(int $id): Makam
     {
         return $this->accessibleMakams()->findOrFail($id);
+    }
+
+    private function ensureCanManageMakams(): void
+    {
+        abort_unless(auth()->user()?->isAdmin() || auth()->user()?->isKepala() || auth()->user()?->isKdlh(), 403);
     }
 }

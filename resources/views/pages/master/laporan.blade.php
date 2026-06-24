@@ -28,16 +28,10 @@
         <div class="alert alert-success">{{ session('success') }}</div>
     @endif
 
-    @if($isAdmin && ! empty($wordRoute))
+    @if(! empty($wordRoute))
         <div class="d-flex flex-wrap gap-2 mb-4">
-            <a href="{{ $printRoute }}" target="_blank" class="btn btn-outline-dark btn-sm">
-                <i class="bi bi-printer"></i> Cetak PDF
-            </a>
             <a href="{{ $wordRoute }}" class="btn btn-outline-primary btn-sm">
                 <i class="bi bi-file-earmark-word"></i> Export Word
-            </a>
-            <a href="{{ $exportExcelRoute }}" class="btn btn-success btn-sm">
-                <i class="bi bi-file-earmark-excel"></i> Export Excel
             </a>
         </div>
     @endif
@@ -46,26 +40,13 @@
         @php
             $reportTitle = ($isKepalaReport ?? false) ? 'Laporan Kepala TPU' : 'Laporan Petugas TPU';
             $reportDescription = ($isKepalaReport ?? false)
-                ? 'Gabungan data pemakaman, permohonan, dan jenazah untuk ' . auth()->user()->tpu
+                ? 'Gabungan data pemakaman, permohonan, dan jenazah untuk seluruh TPU'
                 : 'Gabungan data permohonan dan data jenazah untuk ' . auth()->user()->tpu;
         @endphp
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
             <div>
                 <h4 class="fw-bold text-dark mb-1">{{ $reportTitle }}</h4>
                 <p class="text-muted mb-0">{{ $reportDescription }}</p>
-            </div>
-            <div class="d-flex flex-wrap gap-2">
-                <a href="{{ $printRoute }}" target="_blank" class="btn btn-outline-dark btn-sm">
-                    <i class="bi bi-printer"></i> Cetak PDF
-                </a>
-                @if(! empty($wordRoute))
-                    <a href="{{ $wordRoute }}" class="btn btn-outline-primary btn-sm">
-                        <i class="bi bi-file-earmark-word"></i> Export Word
-                    </a>
-                @endif
-                <a href="{{ $exportExcelRoute }}" class="btn btn-success btn-sm">
-                    <i class="bi bi-file-earmark-excel"></i> Export Excel
-                </a>
             </div>
         </div>
 

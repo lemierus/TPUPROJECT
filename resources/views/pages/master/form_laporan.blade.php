@@ -76,8 +76,7 @@
                     </div>
                 </div>
 
-                <div class="d-flex justify-content-between mt-4">
-                    <a href="{{ route($routePrefix.'.master.laporan') }}" class="btn btn-outline-secondary">Kembali</a>
+                <div class="d-flex justify-content-end mt-4">
                     <button type="submit" class="btn" style="background-color:#1E3E62;color:white;">
                         <i class="bi bi-save"></i> Simpan
                     </button>

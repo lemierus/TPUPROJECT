@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Tpu;
 use App\Models\User;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -24,44 +25,31 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        // Kepala TPU Tunggul Hitam
-        $kepalaTunggulHitam = User::updateOrCreate(
+        User::updateOrCreate(
+            ['email' => 'kdlh@tpu.test'],
+            [
+                'name' => 'Kepala Dinas Lingkungan Hidup',
+                'password' => Hash::make('password'),
+                'role' => User::ROLE_KDLH,
+            ]
+        );
+
+        // Satu akun kepala TPU pusat
+        $kepalaPusat = User::updateOrCreate(
             ['email' => 'kepala@tpu.test'],
             [
-                'name' => 'Kepala TPU Tunggul Hitam',
+                'name' => 'Kepala TPU',
                 'password' => Hash::make('password'),
                 'role' => User::ROLE_KEPALA,
             ]
         );
         if (Schema::hasColumn('users', 'tpu')) {
-            $kepalaTunggulHitam->update(['tpu' => 'TPU Tunggul Hitam']);
+            $kepalaPusat->update(['tpu' => null]);
         }
 
-        // Kepala TPU Air Dingin
-        $kepalaAirDingin = User::updateOrCreate(
-            ['email' => 'kepala.airdingin@tpu.test'],
-            [
-                'name' => 'Kepala TPU Air Dingin',
-                'password' => Hash::make('password'),
-                'role' => User::ROLE_KEPALA,
-            ]
-        );
-        if (Schema::hasColumn('users', 'tpu')) {
-            $kepalaAirDingin->update(['tpu' => 'TPU Air Dingin']);
-        }
-
-        // Kepala TPU Bungus Teluk Kabung
-        $kepalaBungus = User::updateOrCreate(
-            ['email' => 'kepala.bungus@tpu.test'],
-            [
-                'name' => 'Kepala TPU Bungus Teluk Kabung',
-                'password' => Hash::make('password'),
-                'role' => User::ROLE_KEPALA,
-            ]
-        );
-        if (Schema::hasColumn('users', 'tpu')) {
-            $kepalaBungus->update(['tpu' => 'TPU Bungus Teluk Kabung']);
-        }
+        User::where('role', User::ROLE_KEPALA)
+            ->where('email', '!=', 'kepala@tpu.test')
+            ->delete();
 
         // Petugas untuk TPU Tunggul Hitam
         $petugas1 = User::updateOrCreate(
@@ -110,5 +98,34 @@ class DatabaseSeeder extends Seeder
                 'role' => User::ROLE_USER,
             ]
         );
+
+        foreach ([
+            [
+                'nama' => 'TPU Tunggul Hitam',
+                'lokasi' => 'Koto Tangah, Kota Padang',
+                'ringkasan' => 'TPU terbesar dan paling dikenal di Kota Padang dengan akses layanan yang terintegrasi.',
+                'highlight' => 'Pusat layanan pemakaman yang aktif, luas, dan mudah dijangkau.',
+                'deskripsi' => 'TPU unggulan yang menjadi pusat layanan pemakaman untuk wilayah Tunggul Hitam.',
+                'urutan' => 1,
+            ],
+            [
+                'nama' => 'TPU Air Dingin',
+                'lokasi' => 'Koto Tangah, Kota Padang',
+                'ringkasan' => 'Melayani kebutuhan pemakaman masyarakat dengan tata ruang yang tertib dan informatif.',
+                'highlight' => 'Cocok untuk pengajuan yang membutuhkan alur layanan yang cepat dan terpantau.',
+                'deskripsi' => 'TPU dengan pengelolaan administrasi yang tertib dan terintegrasi penuh.',
+                'urutan' => 2,
+            ],
+            [
+                'nama' => 'TPU Bungus Teluk Kabung',
+                'lokasi' => 'Bungus Teluk Kabung, Kota Padang',
+                'ringkasan' => 'Terintegrasi untuk wilayah selatan Kota Padang dengan informasi layanan yang mudah diakses.',
+                'highlight' => 'Memberikan alternatif lokasi pemakaman yang terhubung dalam satu sistem.',
+                'deskripsi' => 'TPU yang melayani wilayah selatan kota dengan koordinasi terpadu.',
+                'urutan' => 3,
+            ],
+        ] as $tpuData) {
+            Tpu::updateOrCreate(['nama' => $tpuData['nama']], $tpuData);
+        }
     }
 }

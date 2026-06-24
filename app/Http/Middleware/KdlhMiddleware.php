@@ -6,7 +6,7 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-class KepalaMiddleware
+class KdlhMiddleware
 {
     public function handle(Request $request, Closure $next): Response
     {
@@ -14,8 +14,8 @@ class KepalaMiddleware
             return redirect()->route('login');
         }
 
-        if (! auth()->user()->isKepala()) {
-            return redirect()->route('login')->with('error', 'Akun Anda tidak memiliki akses ke halaman kepala UPT.');
+        if (! auth()->user()->isKdlh()) {
+            return redirect()->route('login')->with('error', 'Akun Anda tidak memiliki akses ke halaman kepala dinas lingkungan hidup.');
         }
 
         return $next($request);

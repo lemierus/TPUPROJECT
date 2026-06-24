@@ -6,8 +6,12 @@ use App\Http\Controllers\Controller;
 use Carbon\Carbon;
 use App\Models\Jenazah;
 use App\Models\Laporan;
+use App\Models\Makam;
 use App\Models\Permohonan;
 use App\Models\User;
+use DOMDocument;
+use DOMElement;
+use DOMXPath;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -22,7 +26,21 @@ class LaporanController extends Controller
         $selectedTpu = $request->tpu;
         $tpuOptions = User::tpuOptions();
 
-        if (auth()->user()?->isPetugas() || auth()->user()?->isKepala()) {
+        if (auth()->user()?->isKepala() || auth()->user()?->isKdlh()) {
+            $report = $this->buildKepalaReport($filter, $start, $end);
+
+            return view('pages.master.laporan', array_merge($report, [
+                'routePrefix' => auth()->user()?->isKdlh() ? 'kdlh' : 'kepala',
+                'isPetugasReport' => false,
+                'isKepalaReport' => true,
+                'wordRoute' => route((auth()->user()?->isKdlh() ? 'kdlh' : 'kepala').'.laporan.word', $request->query()),
+                'filter' => $filter,
+                'start' => $start,
+                'end' => $end,
+            ]));
+        }
+
+        if (auth()->user()?->isPetugas()) {
             $report = $this->buildPetugasReport($filter, $start, $end);
 
             return view('pages.master.laporan', array_merge($report, [
@@ -30,8 +48,6 @@ class LaporanController extends Controller
                 'isPetugasReport' => true,
                 'isKepalaReport' => false,
                 'wordRoute' => route('petugas.master.laporan.word', $request->query()),
-                'exportExcelRoute' => route('petugas.master.laporan.excel', $request->query()),
-                'printRoute' => route('petugas.master.laporan.print', $request->query()),
                 'filter' => $filter,
                 'start' => $start,
                 'end' => $end,
@@ -73,11 +89,10 @@ class LaporanController extends Controller
             'perempuan' => $data->whereIn('jenis_kelamin', ['P', 'Perempuan'])->count(),
             'totalMakamTerisi' => $data->whereNotNull('makam_id')->count(),
             'isPetugasReport' => false,
+            'isKepalaReport' => false,
             'selectedTpu' => $selectedTpu,
             'tpuOptions' => $tpuOptions,
             'wordRoute' => route('admin.master.laporan.word', $request->query()),
-            'printRoute' => route('admin.master.laporan.print', $request->query()),
-            'exportExcelRoute' => route('admin.master.laporan.excel', $request->query()),
             'routePrefix' => request()->routeIs('petugas.*') ? 'petugas' : 'admin',
         ]);
     }
@@ -138,27 +153,27 @@ class LaporanController extends Controller
 
     public function word(Request $request)
     {
-        $filter = $request->filter ?? 'harian';
+        $filter = $request->filter ?? 'bulanan';
         $start = $request->start;
         $end = $request->end;
 
-        abort_unless(auth()->user()?->isAdmin() || auth()->user()?->isPetugas() || auth()->user()?->isKepala(), 403);
-        $report = $this->buildWordReport($filter, $start, $end, $request->tpu);
+        abort_unless(auth()->user()?->isAdmin() || auth()->user()?->isPetugas() || auth()->user()?->isKepala() || auth()->user()?->isKdlh(), 403);
+        $report = auth()->user()->isKepala() || auth()->user()->isKdlh()
+            ? $this->buildKepalaReport($filter, $start, $end)
+            : $this->buildWordReport($filter, $start, $end, $request->tpu);
 
-        $prefix = auth()->user()->isAdmin() ? 'laporan-admin' : (auth()->user()->isKepala() ? 'laporan-kepala' : 'laporan-petugas');
+        $prefix = auth()->user()->isAdmin()
+            ? 'laporan-admin'
+            : (auth()->user()->isKepala() ? 'laporan-kepala' : (auth()->user()->isKdlh() ? 'laporan-kdlh' : 'laporan-petugas'));
         $scopeSlug = Str::slug($report['scopeLabel'] ?? auth()->user()->tpu ?? 'semua-tpu');
-        $filename = $prefix . '-' . $scopeSlug . '-' . now()->format('Ymd-His') . '.doc';
+        $filename = $prefix . '-' . $scopeSlug . '-' . now()->format('Ymd-His') . '.docx';
 
-        $html = view('pages.master.laporan_word', array_merge($report, [
-            'filter' => $filter,
-            'start' => $start,
-            'end' => $end,
-        ]))->render();
+        $templatePath = storage_path('app/template-laporan-bulanan.docx');
+        abort_unless(file_exists($templatePath), 500, 'Template laporan Word tidak ditemukan.');
 
-        return response($html, 200, [
-            'Content-Type' => 'application/msword; charset=utf-8',
-            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
-        ]);
+        $outputPath = $this->createWordReportFromTemplate($templatePath, $report);
+
+        return response()->download($outputPath, $filename)->deleteFileAfterSend(true);
     }
 
     public function excel(Request $request)
@@ -227,6 +242,38 @@ class LaporanController extends Controller
 
         return [
             'isPetugasReport' => true,
+            'reportRows' => $rows,
+            'permohonansReport' => $permohonans,
+            'jenazahsReport' => $jenazahs,
+            'total' => $rows->count(),
+            'totalPermohonan' => $permohonans->count(),
+            'totalJenazah' => $jenazahs->count(),
+            'totalPemakaman' => $jenazahs->count(),
+            'totalMakamTerhubung' => $rows->filter(fn ($row) => ! empty($row['kode_makam']) || ! empty($row['nomor_makam']))->count(),
+            'permohonanMenunggu' => $permohonans->whereIn('status', ['menunggu', 'pending'])->count(),
+            'permohonanDisetujui' => $permohonans->where('status', 'disetujui')->count(),
+            'permohonanDitolak' => $permohonans->where('status', 'ditolak')->count(),
+            'laki' => $rows->whereIn('jenis_kelamin', ['L', 'Laki-laki'])->count(),
+            'perempuan' => $rows->whereIn('jenis_kelamin', ['P', 'Perempuan'])->count(),
+        ];
+    }
+
+    private function buildKepalaReport(string $filter, ?string $start, ?string $end): array
+    {
+        $permohonanQuery = Permohonan::with(['makam', 'jenazah', 'user']);
+        $this->applyDateFilter($permohonanQuery, $filter, $start, $end, 'created_at');
+        $permohonans = $permohonanQuery->latest('created_at')->get();
+
+        $jenazahQuery = Jenazah::with('makam');
+        $this->applyDateFilter($jenazahQuery, $filter, $start, $end, 'tanggal_wafat');
+        $jenazahs = $jenazahQuery->latest('created_at')->get();
+
+        $rows = $this->buildReportRows($permohonans, $jenazahs)->sortByDesc('tanggal_sort')->values();
+
+        return [
+            'isPetugasReport' => false,
+            'isKepalaReport' => true,
+            'scopeLabel' => 'Semua TPU',
             'reportRows' => $rows,
             'permohonansReport' => $permohonans,
             'jenazahsReport' => $jenazahs,
@@ -337,7 +384,12 @@ class LaporanController extends Controller
 
     private function buildWordReport(string $filter, ?string $start, ?string $end, ?string $selectedTpu = null): array
     {
-        $scopeTpu = auth()->user()?->isAdmin() ? (filled($selectedTpu) ? $selectedTpu : null) : auth()->user()?->tpu;
+        $scopeTpu = match (true) {
+            auth()->user()?->isPetugas() => auth()->user()->tpu,
+            auth()->user()?->isKdlh() => null,
+            auth()->user()?->isAdmin() => filled($selectedTpu) ? $selectedTpu : null,
+            default => null,
+        };
         $scopeLabel = $scopeTpu ?: 'Semua TPU';
 
         $permohonanQuery = Permohonan::with(['makam', 'jenazah', 'user']);
@@ -355,9 +407,10 @@ class LaporanController extends Controller
         $jenazahs = $jenazahQuery->latest('created_at')->get();
 
         $rows = $this->buildReportRows($permohonans, $jenazahs)->sortByDesc('tanggal_sort')->values();
+        $tpuOptions = User::tpuOptions();
 
-        $permohonanBaru = $permohonans->where('jenis_permohonan', 'makam_baru')->count();
-        $perpanjangan = $permohonans->where('jenis_permohonan', 'perpanjangan')->count();
+        $approvedMakamBaru = $permohonans->where('jenis_permohonan', 'makam_baru')->where('status', 'disetujui')->count();
+        $approvedPerpanjangan = $permohonans->where('jenis_permohonan', 'perpanjangan')->where('status', 'disetujui')->count();
         $perawatan = 0;
         $makamAktif = $jenazahs->whereNotNull('makam_id')->count();
         $berakhirSewa = $jenazahs->filter(function (Jenazah $item) {
@@ -365,19 +418,81 @@ class LaporanController extends Controller
             return $due && $due->isPast();
         })->count();
 
-        $dataJenazahRows = $rows->where('source', 'permohonan')->values();
-        if ($dataJenazahRows->isEmpty()) {
-            $dataJenazahRows = $rows->values();
-        }
+        $ringkasanRows = [
+            ['label' => 'Jumlah pemakaman baru', 'value' => $approvedMakamBaru . ' makam'],
+            ['label' => 'Jumlah perpanjangan makam', 'value' => $approvedPerpanjangan . ' makam'],
+            ['label' => 'Jumlah perawatan makam', 'value' => $perawatan . ' makam'],
+            ['label' => 'Jumlah makam aktif', 'value' => $makamAktif . ' makam'],
+            ['label' => 'Jumlah makam yang berakhir masa sewa', 'value' => $berakhirSewa . ' makam'],
+        ];
 
-        $blokZonaStats = $rows
-            ->groupBy(fn ($row) => trim(($row['blok'] ?? '-') . '/' . ($row['zona'] ?? '-')))
+        $rekapPelayananRows = collect($tpuOptions)->map(function (string $tpu) use ($filter, $start, $end) {
+            $permohonanQuery = Permohonan::query()->with(['jenazah', 'makam', 'user'])->where('tpu', $tpu);
+            $this->applyDateFilter($permohonanQuery, $filter, $start, $end, 'created_at');
+            $permohonan = $permohonanQuery->get();
+
+            return [
+                'tpu' => $tpu,
+                'pemakaman_baru' => $permohonan->where('jenis_permohonan', 'makam_baru')->where('status', 'disetujui')->count(),
+                'perpanjangan' => $permohonan->where('jenis_permohonan', 'perpanjangan')->where('status', 'disetujui')->count(),
+                'menunggu' => $permohonan->whereIn('status', ['menunggu', 'pending'])->count(),
+                'disetujui' => $permohonan->where('status', 'disetujui')->count(),
+                'ditolak' => $permohonan->where('status', 'ditolak')->count(),
+                'total' => $permohonan->count(),
+            ];
+        })->values();
+
+        $dataPemakamanRows = collect($tpuOptions)->map(function (string $tpu) use ($filter, $start, $end) {
+            $jenazahQuery = Jenazah::query()->with('makam')->where('tpu', $tpu);
+            $this->applyDateFilter($jenazahQuery, $filter, $start, $end, 'tanggal_wafat');
+            $jenazah = $jenazahQuery->get();
+
+            $permohonanQuery = Permohonan::query()->where('tpu', $tpu);
+            $this->applyDateFilter($permohonanQuery, $filter, $start, $end, 'created_at');
+            $permohonanCount = $permohonanQuery->count();
+            $totalMakam = Makam::where('tpu', $tpu)->count();
+            $makamTerisi = $jenazah->whereNotNull('makam_id')->count();
+
+            return [
+                'tpu' => $tpu,
+                'total_jenazah' => $jenazah->count(),
+                'total_makam' => $makamTerisi,
+                'total_makam_kosong' => max(0, $totalMakam - $makamTerisi),
+                'laki_laki' => $jenazah->whereIn('jenis_kelamin', ['L', 'Laki-laki'])->count(),
+                'perempuan' => $jenazah->whereIn('jenis_kelamin', ['P', 'Perempuan'])->count(),
+                'permohonan' => $permohonanCount,
+            ];
+        })->values();
+
+        $statistikRows = $rows
+            ->groupBy(fn ($row) => trim(($row['blok'] ?? '-') . ' / ' . ($row['zona'] ?? '-')))
             ->map(fn ($items, $key) => [
                 'blok_zona' => str_replace('/', ' / ', $key),
                 'jumlah' => $items->count(),
             ])
             ->sortByDesc('jumlah')
             ->values();
+
+        $statistikJenisKelaminRows = collect([
+            ['label' => 'Laki-Laki', 'jumlah' => $jenazahs->whereIn('jenis_kelamin', ['L', 'Laki-laki', 'Laki Laki'])->count()],
+            ['label' => 'Perempuan', 'jumlah' => $jenazahs->whereIn('jenis_kelamin', ['P', 'Perempuan'])->count()],
+        ])->push([
+            'label' => 'Total',
+            'jumlah' => $jenazahs->count(),
+        ]);
+
+        $religions = ['Islam', 'Kristen', 'Katolik', 'Hindu', 'Buddha', 'Konghucu'];
+        $statistikAgamaRows = collect($religions)->map(function (string $religion) use ($jenazahs) {
+            return [
+                'label' => $religion,
+                'jumlah' => $jenazahs->filter(function (Jenazah $item) use ($religion) {
+                    return $this->normalizeReligion($item->agama) === $religion;
+                })->count(),
+            ];
+        })->push([
+            'label' => 'Total',
+            'jumlah' => $jenazahs->count(),
+        ]);
 
         return [
             'reportRows' => $rows,
@@ -387,15 +502,326 @@ class LaporanController extends Controller
             'periodLabel' => $this->reportPeriodLabel($filter, $start, $end),
             'monthLabel' => $this->reportMonthLabel($filter, $start, $end),
             'yearLabel' => $this->reportYearLabel($filter, $start, $end),
-            'totalPemakamanBaru' => $permohonanBaru,
-            'totalPerpanjangan' => $perpanjangan,
+            'ringkasanRows' => $ringkasanRows,
+            'rekapPelayananRows' => $rekapPelayananRows,
+            'dataPemakamanRows' => $dataPemakamanRows,
+            'statistikRows' => $statistikRows,
+            'statistikJenisKelaminRows' => $statistikJenisKelaminRows,
+            'statistikAgamaRows' => $statistikAgamaRows,
+            'reportDate' => now()->translatedFormat('d F Y'),
+            'totalPemakamanBaru' => $approvedMakamBaru,
+            'totalPerpanjangan' => $approvedPerpanjangan,
             'totalPerawatan' => $perawatan,
             'totalMakamAktif' => $makamAktif,
             'totalMakamBerakhirSewa' => $berakhirSewa,
-            'dataJenazahRows' => $dataJenazahRows,
-            'blokZonaStats' => $blokZonaStats,
-            'reportDate' => now()->translatedFormat('d F Y'),
+            'permohonanMenunggu' => $permohonans->whereIn('status', ['menunggu', 'pending'])->count(),
+            'permohonanDisetujui' => $permohonans->where('status', 'disetujui')->count(),
+            'permohonanDitolak' => $permohonans->where('status', 'ditolak')->count(),
+            'totalPermohonan' => $permohonans->count(),
+            'totalJenazah' => $jenazahs->count(),
         ];
+    }
+
+    private function createWordReportFromTemplate(string $templatePath, array $report): string
+    {
+        $sourceTemp = tempnam(sys_get_temp_dir(), 'tpu_laporan_source_');
+        abort_unless($sourceTemp !== false, 500, 'Gagal membuat file sementara laporan.');
+
+        $sourceZipPath = $sourceTemp . '.zip';
+        @unlink($sourceTemp);
+        abort_unless(copy($templatePath, $sourceZipPath), 500, 'Gagal menyalin template laporan.');
+
+        $extractDir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . uniqid('tpu_laporan_extract_', true);
+        mkdir($extractDir, 0777, true);
+
+        $this->runPowerShell(
+            'Expand-Archive -LiteralPath ' . $this->psQuote($sourceZipPath) .
+            ' -DestinationPath ' . $this->psQuote($extractDir) . ' -Force'
+        );
+
+        $documentPath = $extractDir . DIRECTORY_SEPARATOR . 'word' . DIRECTORY_SEPARATOR . 'document.xml';
+        abort_unless(file_exists($documentPath), 500, 'Isi template laporan tidak ditemukan.');
+
+        $xml = file_get_contents($documentPath);
+        abort_unless($xml !== false, 500, 'Isi template laporan tidak ditemukan.');
+
+        $xml = str_replace(
+            'Bulan: ................. Tahun: .................',
+            'Bulan: ' . $report['monthLabel'] . ' Tahun: ' . $report['yearLabel'],
+            $xml
+        );
+        $xml = str_replace(
+            'Padang, ................. 20....',
+            'Padang, ' . $report['reportDate'],
+            $xml
+        );
+
+        $dom = new DOMDocument();
+        $dom->preserveWhiteSpace = true;
+        $dom->formatOutput = false;
+        libxml_use_internal_errors(true);
+        $loaded = $dom->loadXML($xml);
+        libxml_clear_errors();
+        abort_unless($loaded, 500, 'Template laporan Word tidak valid.');
+
+        $xpath = new DOMXPath($dom);
+        $xpath->registerNamespace('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main');
+
+        $tables = $xpath->query('//w:tbl');
+        abort_unless($tables !== false && $tables->length >= 8, 500, 'Struktur tabel template laporan tidak sesuai.');
+
+        $this->fillTableCell($xpath, $tables->item(0), 1, 1, 'UPT Tempat Pemakaman Umum Kota Padang');
+        $this->fillTableCell($xpath, $tables->item(0), 2, 1, $report['periodLabel']);
+        $this->fillTableCell($xpath, $tables->item(0), 3, 1, $report['reportDate']);
+        $this->fillTableCell($xpath, $tables->item(0), 4, 1, 'Kepala UPT TPU Kota Padang');
+
+        $ringkasanMap = $report['dataPemakamanRows']->keyBy('tpu');
+        $ringkasanTargets = [
+            'TPU Tunggul Hitam',
+            'TPU Air Dingin',
+            'TPU Bungus Teluk Kabung',
+        ];
+
+        foreach ($ringkasanTargets as $index => $tpu) {
+            $row = $ringkasanMap->get($tpu, [
+                'tpu' => $tpu,
+                'total_jenazah' => 0,
+                'total_makam' => 0,
+            ]);
+
+            $this->fillTableCell($xpath, $tables->item(1), $index + 1, 1, (string) ($index + 1));
+            $this->fillTableCell($xpath, $tables->item(1), $index + 1, 2, $tpu);
+            $this->fillTableCell($xpath, $tables->item(1), $index + 1, 3, (string) $row['total_jenazah']);
+            $this->fillTableCell($xpath, $tables->item(1), $index + 1, 4, (string) $row['total_makam']);
+            $this->fillTableCell($xpath, $tables->item(1), $index + 1, 5, (string) $row['total_makam_kosong']);
+        }
+
+        $this->fillTableCell($xpath, $tables->item(1), 4, 0, 'Total');
+        $this->fillTableCell($xpath, $tables->item(1), 4, 1, '');
+        $this->fillTableCell($xpath, $tables->item(1), 4, 2, (string) ($report['dataPemakamanRows']->sum('total_jenazah')));
+        $this->fillTableCell($xpath, $tables->item(1), 4, 3, (string) ($report['dataPemakamanRows']->sum('total_makam')));
+        $this->fillTableCell($xpath, $tables->item(1), 4, 4, (string) ($report['dataPemakamanRows']->sum('total_makam_kosong')));
+
+        $this->fillTableCell($xpath, $tables->item(2), 1, 2, (string) $report['totalPemakamanBaru']);
+        $this->fillTableCell($xpath, $tables->item(2), 2, 2, (string) $report['totalPerawatan']);
+        $this->fillTableCell($xpath, $tables->item(2), 3, 2, (string) $report['permohonanDisetujui']);
+        $this->fillTableCell($xpath, $tables->item(2), 4, 2, (string) $report['permohonanDitolak']);
+        $this->fillTableCell($xpath, $tables->item(2), 5, 2, (string) $report['permohonanMenunggu']);
+        $this->fillTableCell($xpath, $tables->item(2), 6, 2, (string) $report['totalPermohonan']);
+
+        $this->populateDetailTables($dom, $xpath, $tables, $report['jenazahsReport']);
+
+        $jenisKelaminRows = $report['statistikJenisKelaminRows']->values();
+        $this->fillTableCell($xpath, $tables->item(6), 1, 1, (string) ($jenisKelaminRows[0]['jumlah'] ?? 0));
+        $this->fillTableCell($xpath, $tables->item(6), 2, 1, (string) ($jenisKelaminRows[1]['jumlah'] ?? 0));
+        $this->fillTableCell($xpath, $tables->item(6), 3, 1, (string) ($jenisKelaminRows[2]['jumlah'] ?? 0));
+
+        $agamaRows = $report['statistikAgamaRows']->values();
+        for ($i = 0; $i < 6; $i++) {
+            $this->fillTableCell($xpath, $tables->item(7), $i + 1, 1, (string) ($agamaRows[$i]['jumlah'] ?? 0));
+        }
+        $this->fillTableCell($xpath, $tables->item(7), 7, 1, (string) ($agamaRows[6]['jumlah'] ?? 0));
+
+        abort_unless(file_put_contents($documentPath, $dom->saveXML()) !== false, 500, 'Gagal menulis isi laporan.');
+
+        $resultTemp = tempnam(sys_get_temp_dir(), 'tpu_laporan_result_');
+        abort_unless($resultTemp !== false, 500, 'Gagal membuat arsip laporan.');
+        $resultZipPath = $resultTemp . '.zip';
+        @unlink($resultTemp);
+
+        $this->runPowerShell(
+            'Compress-Archive -Path ' . $this->psQuote($extractDir . DIRECTORY_SEPARATOR . '*') .
+            ' -DestinationPath ' . $this->psQuote($resultZipPath) . ' -Force'
+        );
+
+        $outputTemp = tempnam(sys_get_temp_dir(), 'tpu_laporan_');
+        abort_unless($outputTemp !== false, 500, 'Gagal membuat file output laporan.');
+        $outputPath = $outputTemp . '.docx';
+        @unlink($outputTemp);
+        abort_unless(rename($resultZipPath, $outputPath), 500, 'Gagal menyiapkan file laporan akhir.');
+
+        $this->deleteDirectoryRecursive($extractDir);
+        @unlink($sourceZipPath);
+
+        return $outputPath;
+    }
+
+    private function populateDetailTables(DOMDocument $dom, DOMXPath $xpath, $tables, Collection $jenazahs): void
+    {
+        $byTpu = $jenazahs->groupBy(fn (Jenazah $item) => $item->tpu ?: 'TPU Tidak Diketahui');
+        $targetTpus = ['TPU Tunggul Hitam', 'TPU Air Dingin', 'TPU Bungus Teluk Kabung'];
+
+        foreach ($targetTpus as $tableOffset => $tpu) {
+            $table = $tables->item(3 + $tableOffset);
+            if (! $table) {
+                continue;
+            }
+
+            $rows = $byTpu->get($tpu, collect())->values();
+            $tableRows = $xpath->query('./w:tr', $table);
+            if (! $tableRows || $tableRows->length < 2) {
+                continue;
+            }
+
+            $headerRow = $tableRows->item(0);
+            $templateRow = $tableRows->item(1);
+
+            while ($tableRows->length > 2) {
+                $table->removeChild($tableRows->item(2));
+                $tableRows = $xpath->query('./w:tr', $table);
+            }
+
+            if ($rows->isEmpty()) {
+                $this->fillTableCell($xpath, $table, 1, 0, '-');
+                $this->fillTableCell($xpath, $table, 1, 1, '-');
+                $this->fillTableCell($xpath, $table, 1, 2, '-');
+                $this->fillTableCell($xpath, $table, 1, 3, '-');
+                $this->fillTableCell($xpath, $table, 1, 4, '-');
+                continue;
+            }
+
+            foreach ($rows as $index => $item) {
+                $rowNode = $index === 0 ? $templateRow : $templateRow->cloneNode(true);
+                if ($index > 0) {
+                    $table->appendChild($rowNode);
+                }
+
+                $tanggalPemakaman = $this->formatDate($item->tanggal_wafat ?? $item->created_at);
+                $lokasiMakam = collect([
+                    $item->kode_makam ?: null,
+                    $item->blok ?: null,
+                    $item->zona ?: null,
+                    $item->nomor_makam ?: null,
+                ])->filter()->implode(' / ');
+
+                $this->fillRowCells($xpath, $rowNode, [
+                    (string) ($index + 1),
+                    $item->nama ?: '-',
+                    $tanggalPemakaman,
+                    $item->blok ?: '-',
+                    $lokasiMakam ?: '-',
+                ]);
+            }
+        }
+    }
+
+    private function fillTableCell(DOMXPath $xpath, $table, int $rowIndex, int $cellIndex, string $text): void
+    {
+        if (! $table instanceof DOMElement) {
+            return;
+        }
+
+        $rows = $xpath->query('./w:tr', $table);
+        if (! $rows || ! $rows->item($rowIndex)) {
+            return;
+        }
+
+        $this->fillRowCells($xpath, $rows->item($rowIndex), [], $cellIndex, $text);
+    }
+
+    private function fillRowCells(DOMXPath $xpath, DOMElement $row, array $values, ?int $cellIndex = null, ?string $text = null): void
+    {
+        $cells = $xpath->query('./w:tc', $row);
+        if (! $cells) {
+            return;
+        }
+
+        if ($cellIndex !== null) {
+            $cell = $cells->item($cellIndex);
+            if ($cell) {
+                $this->replaceCellText($cell, $text ?? '');
+            }
+            return;
+        }
+
+        foreach ($values as $index => $value) {
+            $cell = $cells->item($index);
+            if ($cell) {
+                $this->replaceCellText($cell, (string) $value);
+            }
+        }
+    }
+
+    private function replaceCellText(DOMElement $cell, string $text): void
+    {
+        $paragraph = null;
+        foreach ($cell->childNodes as $child) {
+            if ($child instanceof DOMElement && $child->localName === 'p') {
+                $paragraph = $child;
+                break;
+            }
+        }
+
+        if (! $paragraph) {
+            return;
+        }
+
+        $xpath = new DOMXPath($cell->ownerDocument);
+        $xpath->registerNamespace('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main');
+        $texts = $xpath->query('.//w:t', $paragraph);
+        if ($texts && $texts->length > 0) {
+            $texts->item(0)->nodeValue = $text;
+            for ($i = 1; $i < $texts->length; $i++) {
+                $texts->item($i)->nodeValue = '';
+            }
+            return;
+        }
+
+        $run = $cell->ownerDocument->createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'w:r');
+        $textNode = $cell->ownerDocument->createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'w:t');
+        if ($text !== trim($text)) {
+            $textNode->setAttribute('xml:space', 'preserve');
+        }
+        $textNode->nodeValue = $text;
+        $run->appendChild($textNode);
+        $paragraph->appendChild($run);
+    }
+
+    private function normalizeReligion(?string $value): string
+    {
+        $normalized = Str::of((string) $value)->trim()->lower();
+
+        return match ((string) $normalized) {
+            'islam', 'muslim' => 'Islam',
+            'kristen', 'protestan' => 'Kristen',
+            'katolik' => 'Katolik',
+            'hindu' => 'Hindu',
+            'buddha' => 'Buddha',
+            'konghucu', 'confucianism' => 'Konghucu',
+            default => '',
+        };
+    }
+
+    private function runPowerShell(string $script): void
+    {
+        $command = 'powershell.exe -NoProfile -ExecutionPolicy Bypass -Command ' . escapeshellarg($script);
+        exec($command, $output, $code);
+
+        abort_unless($code === 0, 500, 'Gagal memproses file Word template.');
+    }
+
+    private function psQuote(string $value): string
+    {
+        return "'" . str_replace("'", "''", $value) . "'";
+    }
+
+    private function deleteDirectoryRecursive(string $directory): void
+    {
+        if (! is_dir($directory)) {
+            return;
+        }
+
+        $items = array_diff(scandir($directory) ?: [], ['.', '..']);
+        foreach ($items as $item) {
+            $path = $directory . DIRECTORY_SEPARATOR . $item;
+            if (is_dir($path)) {
+                $this->deleteDirectoryRecursive($path);
+            } else {
+                @unlink($path);
+            }
+        }
+
+        @rmdir($directory);
     }
 
     private function reportPeriodLabel(string $filter, ?string $start, ?string $end): string

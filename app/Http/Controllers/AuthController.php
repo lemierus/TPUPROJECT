@@ -66,6 +66,7 @@ class AuthController extends Controller
     {
         return match ($user->role) {
             User::ROLE_ADMIN => route('admin.dashboard'),
+            User::ROLE_KDLH => route('kdlh.dashboard'),
             User::ROLE_PETUGAS => route('petugas.dashboard'),
             User::ROLE_KEPALA => route('kepala.dashboard'),
             default => route('user.dashboard'),

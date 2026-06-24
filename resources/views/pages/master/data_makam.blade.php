@@ -6,8 +6,8 @@
 @php
     $routePrefix = request()->routeIs('petugas.*')
         ? 'petugas'
-        : (request()->routeIs('kepala.*') ? 'kepala' : 'admin');
-    $canManage = auth()->user()?->isAdmin() || auth()->user()?->isPetugas();
+        : (request()->routeIs('kepala.*') ? 'kepala' : (request()->routeIs('kdlh.*') ? 'kdlh' : 'admin'));
+    $canManage = auth()->user()?->isAdmin() || auth()->user()?->isKepala();
     $isAdmin = auth()->user()?->isAdmin();
 @endphp
 
@@ -40,7 +40,7 @@
         <div class="card-body">
             <form method="GET" action="{{ route($routePrefix.'.data-makam') }}">
                 <div class="row g-2">
-                    @if($isAdmin)
+                    @if($isAdmin || auth()->user()?->isKepala() || auth()->user()?->isKdlh())
                         <div class="col-md-3">
                             <select name="tpu" class="form-select">
                                 <option value="">Semua TPU</option>
@@ -50,12 +50,12 @@
                             </select>
                         </div>
                     @endif
-                    <div class="{{ $isAdmin ? 'col-md-7' : 'col-md-10' }}">
+                    <div class="{{ ($isAdmin || auth()->user()?->isKepala() || auth()->user()?->isKdlh()) ? 'col-md-7' : 'col-md-10' }}">
                         <input type="text" name="search" class="form-control"
                                placeholder="Cari kode, blok, zona..."
                                value="{{ request('search') }}">
                     </div>
-                    <div class="{{ $isAdmin ? 'col-md-2' : 'col-md-2' }}">
+                    <div class="{{ ($isAdmin || auth()->user()?->isKepala() || auth()->user()?->isKdlh()) ? 'col-md-2' : 'col-md-2' }}">
                         <button class="btn w-100" style="background-color:#1E3E62;color:white;">
                             <i class="bi bi-search"></i> Cari
                         </button>

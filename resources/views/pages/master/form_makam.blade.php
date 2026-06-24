@@ -2,7 +2,9 @@
 
 @php
     $isEdit = $makam->exists;
-    $routePrefix = request()->routeIs('petugas.*') ? 'petugas' : 'admin';
+    $routePrefix = request()->routeIs('petugas.*')
+        ? 'petugas'
+        : (request()->routeIs('kepala.*') ? 'kepala' : 'admin');
     $isPetugas = auth()->user()?->isPetugas();
 @endphp
 
@@ -80,8 +82,7 @@
                     </div>
                 </div>
 
-                <div class="d-flex justify-content-between mt-4">
-                    <a href="{{ route($routePrefix.'.data-makam') }}" class="btn btn-outline-secondary">Kembali</a>
+                <div class="d-flex justify-content-end mt-4">
                     <button type="submit" class="btn" style="background-color:#1E3E62;color:white;">
                         <i class="bi bi-save"></i> Simpan
                     </button>

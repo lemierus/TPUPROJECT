@@ -70,9 +70,15 @@
             'admin' => 'admin.dashboard',
             'petugas' => 'petugas.dashboard',
             'kepala' => 'kepala.dashboard',
+            'kdlh' => 'kdlh.dashboard',
             default => 'user.dashboard',
         };
-        $masterPrefix = $currentUser?->isPetugas() ? 'petugas' : 'admin';
+        $masterPrefix = match (true) {
+            $currentUser?->isPetugas() => 'petugas',
+            $currentUser?->isKepala() => 'kepala',
+            $currentUser?->isKdlh() => 'kdlh',
+            default => 'admin',
+        };
     @endphp
 
     <div class="sidebar">
@@ -84,7 +90,7 @@
             <i class="bi bi-speedometer2 me-2"></i> Dashboard
         </a>
 
-        @if($currentUser?->isAdmin() || $currentUser?->isPetugas())
+        @if($currentUser?->isAdmin() || $currentUser?->isPetugas() || $currentUser?->isKepala() || $currentUser?->isKdlh())
             <a href="{{ route($masterPrefix.'.data-jenazah') }}">
                 <i class="bi bi-people-fill me-2"></i> Data Jenazah
             </a>
@@ -93,30 +99,26 @@
                 <i class="bi bi-geo-alt-fill me-2"></i> Data Makam
             </a>
 
-            @if($currentUser?->isPetugas())
-                <a href="{{ route('petugas.permohonan') }}">
-                    <i class="bi bi-envelope-paper-fill me-2"></i> Permohonan
-                </a>
-            @else
-                <a href="{{ route($masterPrefix.'.master.permohonan') }}">
+            @if($currentUser?->isAdmin() || $currentUser?->isPetugas())
+                <a href="{{ $currentUser?->isPetugas() ? route('petugas.permohonan') : route('admin.master.permohonan') }}">
                     <i class="bi bi-envelope-paper-fill me-2"></i> Permohonan
                 </a>
             @endif
 
-            <a href="{{ route($masterPrefix.'.master.laporan') }}">
+            <a href="{{ $currentUser?->isKepala() ? route('kepala.laporan') : ($currentUser?->isKdlh() ? route('kdlh.laporan') : route($masterPrefix.'.master.laporan')) }}">
                 <i class="bi bi-file-earmark-text-fill me-2"></i> Laporan
             </a>
         @endif
 
-        @if($currentUser?->isAdmin())
-            <a href="{{ route('admin.users.index') }}">
+        @if($currentUser?->isAdmin() || $currentUser?->isKepala() || $currentUser?->isKdlh())
+            <a href="{{ route($currentUser?->isKepala() ? 'kepala.users.index' : ($currentUser?->isKdlh() ? 'kdlh.users.index' : 'admin.users.index')) }}">
                 <i class="bi bi-person-gear me-2"></i> User
             </a>
         @endif
 
-        @if($currentUser?->isKepala())
-            <a href="{{ route('petugas.master.laporan') }}">
-                <i class="bi bi-file-earmark-text-fill me-2"></i> Laporan
+        @if($currentUser?->isKdlh())
+            <a href="{{ route('kdlh.tpu.index') }}">
+                <i class="bi bi-map me-2"></i> Kelola TPU
             </a>
         @endif
 

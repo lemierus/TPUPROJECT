@@ -3,6 +3,8 @@
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\Kdlh\DashboardController as KdlhDashboardController;
+use App\Http\Controllers\Kdlh\TpuController as KdlhTpuController;
 use App\Http\Controllers\Kepala\DashboardController as KepalaDashboardController;
 use App\Http\Controllers\Master\DataJenazahController;
 use App\Http\Controllers\Master\DataMakamController;
@@ -12,33 +14,22 @@ use App\Http\Controllers\Petugas\DashboardController as PetugasDashboardControll
 use App\Http\Controllers\Petugas\PermohonanController as PetugasPermohonanController;
 use App\Http\Controllers\User\DashboardController as UserDashboardController;
 use App\Http\Controllers\User\PermohonanController as UserPermohonanController;
+use App\Models\Tpu;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
+    $landingTpus = Tpu::query()->orderBy('urutan')->orderBy('nama')->get()->map(function (Tpu $tpu) {
+        return [
+            'slug' => str()->slug($tpu->nama),
+            'nama' => $tpu->nama,
+            'lokasi' => $tpu->lokasi ?? '-',
+            'ringkasan' => $tpu->ringkasan ?? '-',
+            'highlight' => $tpu->highlight ?? '-',
+        ];
+    })->values()->all();
+
     return view('welcome', [
-        'landingTpus' => [
-            [
-                'slug' => 'tunggul-hitam',
-                'nama' => 'TPU Tunggul Hitam',
-                'lokasi' => 'Koto Tangah, Kota Padang',
-                'ringkasan' => 'TPU terbesar dan paling dikenal di Kota Padang dengan akses layanan yang terintegrasi.',
-                'highlight' => 'Pusat layanan pemakaman yang aktif, luas, dan mudah dijangkau.',
-            ],
-            [
-                'slug' => 'air-dingin',
-                'nama' => 'TPU Air Dingin',
-                'lokasi' => 'Koto Tangah, Kota Padang',
-                'ringkasan' => 'Melayani kebutuhan pemakaman masyarakat dengan tata ruang yang tertib dan informatif.',
-                'highlight' => 'Cocok untuk pengajuan yang membutuhkan alur layanan yang cepat dan terpantau.',
-            ],
-            [
-                'slug' => 'bungus-teluk-kabung',
-                'nama' => 'TPU Bungus Teluk Kabung',
-                'lokasi' => 'Bungus Teluk Kabung, Kota Padang',
-                'ringkasan' => 'Terintegrasi untuk wilayah selatan Kota Padang dengan informasi layanan yang mudah diakses.',
-                'highlight' => 'Memberikan alternatif lokasi pemakaman yang terhubung dalam satu sistem.',
-            ],
-        ],
+        'landingTpus' => $landingTpus,
     ]);
 });
 
@@ -63,6 +54,10 @@ Route::middleware('auth')->group(function () {
 
         if ($user?->role === 'kepala') {
             return redirect()->route('kepala.dashboard');
+        }
+
+        if ($user?->role === 'kdlh') {
+            return redirect()->route('kdlh.dashboard');
         }
 
         if ($user?->role === 'user') {
@@ -162,21 +157,30 @@ Route::middleware(['auth', 'petugas'])->prefix('petugas')->name('petugas.')->gro
 
 Route::middleware(['auth', 'kepala'])->prefix('kepala')->name('kepala.')->group(function () {
     Route::get('/dashboard', [KepalaDashboardController::class, 'index'])->name('dashboard');
-    Route::get('/laporan', function () {
-        return redirect()->route('petugas.master.laporan', request()->query());
-    })->name('laporan');
-    Route::get('/laporan/word', function () {
-        return redirect()->route('petugas.master.laporan.word', request()->query());
-    })->name('laporan.word');
-    Route::get('/laporan/print', function () {
-        return redirect()->route('petugas.master.laporan.print', request()->query());
-    })->name('laporan.print');
-    Route::get('/laporan/excel', function () {
-        return redirect()->route('petugas.master.laporan.excel', request()->query());
-    })->name('laporan.excel');
+    Route::resource('users', UserController::class)->except('show');
+
+    Route::get('/laporan', [LaporanController::class, 'index'])->name('laporan');
+    Route::get('/laporan/word', [LaporanController::class, 'word'])->name('laporan.word');
+    Route::get('/laporan/print', [LaporanController::class, 'print'])->name('laporan.print');
+    Route::get('/laporan/excel', [LaporanController::class, 'excel'])->name('laporan.excel');
 
     Route::get('/data-jenazah', [DataJenazahController::class, 'index'])->name('data-jenazah');
     Route::get('/data-makam', [DataMakamController::class, 'index'])->name('data-makam');
+    Route::get('/data-makam/create', [DataMakamController::class, 'create'])->name('data-makam.create');
+    Route::post('/data-makam', [DataMakamController::class, 'store'])->name('data-makam.store');
+    Route::get('/data-makam/{makam}/edit', [DataMakamController::class, 'edit'])->name('data-makam.edit');
+    Route::put('/data-makam/{makam}', [DataMakamController::class, 'update'])->name('data-makam.update');
+    Route::delete('/data-makam/{makam}', [DataMakamController::class, 'destroy'])->name('data-makam.destroy');
+});
+
+Route::middleware(['auth', 'kdlh'])->prefix('kdlh')->name('kdlh.')->group(function () {
+    Route::get('/dashboard', [KdlhDashboardController::class, 'index'])->name('dashboard');
+    Route::resource('users', UserController::class)->except('show');
+    Route::resource('tpu', KdlhTpuController::class)->except(['show', 'destroy']);
+    Route::get('/data-jenazah', [DataJenazahController::class, 'index'])->name('data-jenazah');
+    Route::get('/data-makam', [DataMakamController::class, 'index'])->name('data-makam');
+    Route::get('/laporan', [LaporanController::class, 'index'])->name('laporan');
+    Route::get('/laporan/word', [LaporanController::class, 'word'])->name('laporan.word');
 });
 
 Route::middleware(['auth', 'user'])->prefix('user')->name('user.')->group(function () {

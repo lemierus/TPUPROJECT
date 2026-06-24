@@ -118,7 +118,7 @@ class PermohonanController extends Controller
     {
         $data = $request->validate([
             'user_id' => ['required', 'exists:users,id'],
-            'tpu' => ['required', Rule::in(['TPU Tunggul Hitam', 'TPU Bungus Teluk Kabung', 'TPU Air Dingin'])],
+            'tpu' => ['required', Rule::in(User::tpuOptions())],
             'jenazah_id' => ['required', 'exists:jenazah,id'],
             'status' => ['required', 'in:menunggu,disetujui,ditolak'],
             'catatan' => ['nullable', 'string'],

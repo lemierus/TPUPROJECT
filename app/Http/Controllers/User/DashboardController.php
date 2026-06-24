@@ -4,31 +4,27 @@ namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
 use App\Models\Permohonan;
+use App\Models\Tpu;
 
 class DashboardController extends Controller
 {
     public function index()
     {
-        $daftarTpu = [
-                [
-                    'slug' => 'tunggul-hitam',
-                    'nama' => 'TPU Tunggul Hitam',
-                    'lokasi' => 'Koto Tangah, Kota Padang',
-                    'ringkasan' => 'Untuk menghubungi petugas Tempat Pemakaman Umum (TPU) di bawah naungan UPT TPU Dinas Lingkungan Hidup, Anda dapat menghubungi nomor WhatsApp/Telepon resmi berikut: 0813 6302 0913',
-                ],
-                [
-                    'slug' => 'bungus-teluk-kabung',
-                    'nama' => 'TPU Bungus Teluk Kabung',
-                    'lokasi' => 'Bungus Teluk Kabung, Kota Padang',
-                    'ringkasan' => 'Untuk menghubungi petugas Tempat Pemakaman Umum (TPU) di bawah naungan UPT TPU Dinas Lingkungan Hidup, Anda dapat menghubungi nomor WhatsApp/Telepon resmi berikut: 0813 6302 0913',
-                ],
-                [
-                    'slug' => 'air-dingin',
-                    'nama' => 'TPU Air Dingin',
-                    'lokasi' => 'Koto Tangah, Kota Padang',
-                    'ringkasan' => 'Untuk menghubungi petugas Tempat Pemakaman Umum (TPU) di bawah naungan UPT TPU Dinas Lingkungan Hidup, Anda dapat menghubungi nomor WhatsApp/Telepon resmi berikut: 0813 6302 0913',
-                ],
-        ];
+        $daftarTpu = Tpu::query()
+            ->orderBy('urutan')
+            ->orderBy('nama')
+            ->get()
+            ->map(function (Tpu $tpu) {
+                return [
+                    'slug' => str()->slug($tpu->nama),
+                    'nama' => $tpu->nama,
+                    'lokasi' => $tpu->lokasi ?? '-',
+                    'ringkasan' => $tpu->ringkasan ?? '-',
+                    'highlight' => $tpu->highlight ?? '-',
+                ];
+            })
+            ->values()
+            ->all();
 
         $permohonanSemua = Permohonan::with(['jenazah.makam', 'makam'])
             ->where('user_id', auth()->id())
@@ -81,6 +77,7 @@ class DashboardController extends Controller
         $totalPermohonan = $permohonanSemua->count();
         $permohonanMenunggu = $permohonanSemua->where('status', 'menunggu')->count();
         $permohonanDisetujui = $permohonanSemua->where('status', 'disetujui')->count();
+        $totalTpu = count($daftarTpu);
 
         return view('user.dashboard', compact(
             'daftarTpu',
@@ -88,7 +85,8 @@ class DashboardController extends Controller
             'pengingatSewaMakam',
             'totalPermohonan',
             'permohonanMenunggu',
-            'permohonanDisetujui'
+            'permohonanDisetujui',
+            'totalTpu'
         ));
     }
 }
