@@ -176,7 +176,7 @@ Route::middleware(['auth', 'kepala'])->prefix('kepala')->name('kepala.')->group(
 Route::middleware(['auth', 'kdlh'])->prefix('kdlh')->name('kdlh.')->group(function () {
     Route::get('/dashboard', [KdlhDashboardController::class, 'index'])->name('dashboard');
     Route::resource('users', UserController::class)->except('show');
-    Route::resource('tpu', KdlhTpuController::class)->except(['show', 'destroy']);
+    Route::resource('tpu', KdlhTpuController::class)->except(['show']);
     Route::get('/data-jenazah', [DataJenazahController::class, 'index'])->name('data-jenazah');
     Route::get('/data-makam', [DataMakamController::class, 'index'])->name('data-makam');
     Route::get('/laporan', [LaporanController::class, 'index'])->name('laporan');

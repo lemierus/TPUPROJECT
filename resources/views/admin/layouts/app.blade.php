@@ -105,10 +105,13 @@
                 </a>
             @endif
 
-            <a href="{{ $currentUser?->isKepala() ? route('kepala.laporan') : ($currentUser?->isKdlh() ? route('kdlh.laporan') : route($masterPrefix.'.master.laporan')) }}">
+            @if($currentUser?->isPetugas() || $currentUser?->isKepala())
+            <a href="{{ $currentUser?->isKepala() ? route('kepala.laporan') : route($masterPrefix.'.master.laporan') }}">
                 <i class="bi bi-file-earmark-text-fill me-2"></i> Laporan
             </a>
+            @endif
         @endif
+
 
         @if($currentUser?->isAdmin() || $currentUser?->isKepala() || $currentUser?->isKdlh())
             <a href="{{ route($currentUser?->isKepala() ? 'kepala.users.index' : ($currentUser?->isKdlh() ? 'kdlh.users.index' : 'admin.users.index')) }}">

@@ -42,6 +42,13 @@ class TpuController extends Controller
         return redirect()->route('kdlh.tpu.index')->with('success', 'Data TPU berhasil diperbarui');
     }
 
+    public function destroy(Tpu $tpu)
+    {
+        $tpu->delete();
+
+        return redirect()->route('kdlh.tpu.index')->with('success', 'Data TPU berhasil dihapus');
+    }
+
     private function validatedData(Request $request, ?int $ignoreId = null): array
     {
         return $request->validate([

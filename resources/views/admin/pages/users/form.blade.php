@@ -68,7 +68,7 @@
 
                     <div class="col-md-6">
                         <label class="form-label">TPU Petugas</label>
-                        <select name="tpu" class="form-select @error('tpu') is-invalid @enderror" {{ ($isKepalaRoute || $isKdlhRoute) ? 'required' : '' }}>
+                        <select name="tpu" class="form-select @error('tpu') is-invalid @enderror" {{ ($isKepalaRoute) ? 'required' : '' }}>
                             <option value="">Pilih TPU jika role petugas</option>
                             @foreach($tpuOptions ?? [] as $tpu)
                                 <option value="{{ $tpu }}" @selected(old('tpu', $user->tpu) === $tpu)>{{ $tpu }}</option>

@@ -106,7 +106,7 @@ class UserController extends Controller
                 : ($isKdlhRoute
                     ? ['required', Rule::in([User::ROLE_KEPALA])]
                     : ['required', Rule::in([User::ROLE_ADMIN, User::ROLE_KDLH, User::ROLE_PETUGAS, User::ROLE_KEPALA, User::ROLE_USER])]),
-            'tpu' => ($isKepalaRoute || $isKdlhRoute)
+            'tpu' => ($isKepalaRoute)
                 ? ['required', Rule::in(User::tpuOptions())]
                 : ['nullable', Rule::in(User::tpuOptions())],
         ]);

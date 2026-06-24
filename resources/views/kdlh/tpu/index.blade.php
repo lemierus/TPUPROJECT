@@ -41,7 +41,16 @@
                                 <td>{{ \Illuminate\Support\Str::limit($tpu->deskripsi ?? '-', 70) }}</td>
                                 <td>{{ $tpu->urutan ?? 0 }}</td>
                                 <td>
-                                    <a href="{{ route('kdlh.tpu.edit', $tpu) }}" class="btn btn-sm btn-outline-primary">Edit</a>
+                                    <div class="d-flex gap-2">
+                                        <a href="{{ route('kdlh.tpu.edit', $tpu) }}" class="btn btn-sm btn-outline-primary">Edit</a>
+                                        <form action="{{ route('kdlh.tpu.destroy', $tpu) }}" method="POST" onsubmit="return confirm('Yakin hapus TPU?')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button class="btn btn-danger btn-sm">
+                                                <i class="bi bi-trash"></i> Hapus
+                                            </button>
+                                        </form>
+                                    </div>
                                 </td>
                             </tr>
                         @empty
