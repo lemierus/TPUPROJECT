@@ -13,7 +13,7 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        $tpus = Tpu::query()->orderBy('urutan')->orderBy('nama')->get();
+        $tpus = Tpu::query()->orderBy('nama')->get();
 
         $summaries = $tpus->map(function (Tpu $tpu) {
             return [

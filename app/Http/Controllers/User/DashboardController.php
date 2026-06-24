@@ -11,7 +11,6 @@ class DashboardController extends Controller
     public function index()
     {
         $daftarTpu = Tpu::query()
-            ->orderBy('urutan')
             ->orderBy('nama')
             ->get()
             ->map(function (Tpu $tpu) {

@@ -24,11 +24,6 @@
                         @error('nama')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label">Urutan</label>
-                        <input type="number" name="urutan" class="form-control @error('urutan') is-invalid @enderror" value="{{ old('urutan', $tpu->urutan ?? 0) }}" min="0">
-                        @error('urutan')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                    </div>
-                    <div class="col-md-6">
                         <label class="form-label">Lokasi</label>
                         <input type="text" name="lokasi" class="form-control @error('lokasi') is-invalid @enderror" value="{{ old('lokasi', $tpu->lokasi) }}">
                         @error('lokasi')<div class="invalid-feedback">{{ $message }}</div>@enderror

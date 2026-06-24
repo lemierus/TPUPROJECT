@@ -15,13 +15,11 @@ class Tpu extends Model
         'ringkasan',
         'highlight',
         'deskripsi',
-        'urutan',
     ];
 
     public static function options(): array
     {
         $names = static::query()
-            ->orderBy('urutan')
             ->orderBy('nama')
             ->pluck('nama')
             ->filter()

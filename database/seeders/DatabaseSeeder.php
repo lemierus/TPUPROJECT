@@ -106,7 +106,6 @@ class DatabaseSeeder extends Seeder
                 'ringkasan' => 'TPU terbesar dan paling dikenal di Kota Padang dengan akses layanan yang terintegrasi.',
                 'highlight' => 'Pusat layanan pemakaman yang aktif, luas, dan mudah dijangkau.',
                 'deskripsi' => 'TPU unggulan yang menjadi pusat layanan pemakaman untuk wilayah Tunggul Hitam.',
-                'urutan' => 1,
             ],
             [
                 'nama' => 'TPU Air Dingin',
@@ -114,7 +113,6 @@ class DatabaseSeeder extends Seeder
                 'ringkasan' => 'Melayani kebutuhan pemakaman masyarakat dengan tata ruang yang tertib dan informatif.',
                 'highlight' => 'Cocok untuk pengajuan yang membutuhkan alur layanan yang cepat dan terpantau.',
                 'deskripsi' => 'TPU dengan pengelolaan administrasi yang tertib dan terintegrasi penuh.',
-                'urutan' => 2,
             ],
             [
                 'nama' => 'TPU Bungus Teluk Kabung',
@@ -122,7 +120,6 @@ class DatabaseSeeder extends Seeder
                 'ringkasan' => 'Terintegrasi untuk wilayah selatan Kota Padang dengan informasi layanan yang mudah diakses.',
                 'highlight' => 'Memberikan alternatif lokasi pemakaman yang terhubung dalam satu sistem.',
                 'deskripsi' => 'TPU yang melayani wilayah selatan kota dengan koordinasi terpadu.',
-                'urutan' => 3,
             ],
         ] as $tpuData) {
             Tpu::updateOrCreate(['nama' => $tpuData['nama']], $tpuData);

@@ -18,7 +18,7 @@ use App\Models\Tpu;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    $landingTpus = Tpu::query()->orderBy('urutan')->orderBy('nama')->get()->map(function (Tpu $tpu) {
+    $landingTpus = Tpu::query()->orderBy('nama')->get()->map(function (Tpu $tpu) {
         return [
             'slug' => str()->slug($tpu->nama),
             'nama' => $tpu->nama,

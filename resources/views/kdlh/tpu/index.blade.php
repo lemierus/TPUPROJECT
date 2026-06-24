@@ -28,7 +28,6 @@
                             <th>Lokasi</th>
                             <th>Ringkasan</th>
                             <th>Deskripsi</th>
-                            <th>Urutan</th>
                             <th>Aksi</th>
                         </tr>
                     </thead>
@@ -39,7 +38,6 @@
                                 <td>{{ $tpu->lokasi ?? '-' }}</td>
                                 <td>{{ \Illuminate\Support\Str::limit($tpu->ringkasan ?? '-', 70) }}</td>
                                 <td>{{ \Illuminate\Support\Str::limit($tpu->deskripsi ?? '-', 70) }}</td>
-                                <td>{{ $tpu->urutan ?? 0 }}</td>
                                 <td>
                                     <div class="d-flex gap-2">
                                         <a href="{{ route('kdlh.tpu.edit', $tpu) }}" class="btn btn-sm btn-outline-primary">Edit</a>

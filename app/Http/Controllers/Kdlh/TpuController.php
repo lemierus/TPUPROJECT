@@ -11,7 +11,7 @@ class TpuController extends Controller
 {
     public function index()
     {
-        $tpus = Tpu::query()->orderBy('urutan')->orderBy('nama')->get();
+        $tpus = Tpu::query()->orderBy('nama')->get();
 
         return view('kdlh.tpu.index', compact('tpus'));
     }
@@ -56,8 +56,7 @@ class TpuController extends Controller
             'lokasi' => ['nullable', 'string', 'max:255'],
             'ringkasan' => ['nullable', 'string'],
             'highlight' => ['nullable', 'string'],
-            'deskripsi' => ['nullable', 'string'],
-            'urutan' => ['nullable', 'integer', 'min:0'],
+            'deskripsi' => ['nullable', 'string']
         ]);
     }
 }
