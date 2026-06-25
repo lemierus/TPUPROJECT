@@ -517,7 +517,6 @@
 
                             <div class="hero-meta">
                                 <div class="meta-chip"><i class="bi bi-shield-check"></i> Terpusat & aman</div>
-                                <div class="meta-chip"><i class="bi bi-phone"></i> Responsif di mobile</div>
                                 <div class="meta-chip"><i class="bi bi-diagram-3"></i> Alur terintegrasi</div>
                             </div>
                         </div>
