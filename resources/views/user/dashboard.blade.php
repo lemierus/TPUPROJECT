@@ -313,7 +313,7 @@
                     <h1 class="user-hero-title mb-3">Pantau TPU, ajukan permohonan, dan cek status dengan lebih cepat.</h1>
                     <p class="user-hero-text mb-0">
                         Pilih TPU tujuan terlebih dahulu, lalu ajukan dan pantau status permohonan makam Anda.
-                        Semua informasi penting ditata lebih ringkas agar mudah dibaca di desktop maupun mobile.
+                        Semua informasi penting ditata lebih ringkas agar mudah dibaca.
                     </p>
                 </div>
 
@@ -600,7 +600,7 @@
             <div class="col-lg-8">
                 <h5 class="fw-bold mb-1">Butuh pengajuan baru?</h5>
                 <p class="text-muted mb-0">
-                    Langsung buat permohonan baru atau buka salah satu TPU untuk melihat informasi lokasi terlebih dulu.
+                    Langsung buat permohonan baru dengan memilih TPU tujuan anda terlebih dahulu.
                 </p>
             </div>
             <div class="col-lg-4 text-lg-end">

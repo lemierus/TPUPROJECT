@@ -105,18 +105,11 @@
                 </a>
             @endif
 
-            @if($currentUser?->isPetugas() || $currentUser?->isKepala())
-            <a href="{{ $currentUser?->isKepala() ? route('kepala.laporan') : route($masterPrefix.'.master.laporan') }}">
-                <i class="bi bi-file-earmark-text-fill me-2"></i> Laporan
-            </a>
+            @if($currentUser?->isAdmin() || $currentUser?->isPetugas() || $currentUser?->isKepala() || $currentUser?->isKdlh())
+                <a href="{{ $currentUser?->isKepala() ? route('kepala.laporan') : ($currentUser?->isKdlh() ? route('kdlh.laporan') : route($masterPrefix.'.master.laporan')) }}">
+                    <i class="bi bi-file-earmark-text-fill me-2"></i> Laporan
+                </a>
             @endif
-        @endif
-
-
-        @if($currentUser?->isAdmin() || $currentUser?->isKepala() || $currentUser?->isKdlh())
-            <a href="{{ route($currentUser?->isKepala() ? 'kepala.users.index' : ($currentUser?->isKdlh() ? 'kdlh.users.index' : 'admin.users.index')) }}">
-                <i class="bi bi-person-gear me-2"></i> User
-            </a>
         @endif
 
         @if($currentUser?->isKdlh())
@@ -124,6 +117,13 @@
                 <i class="bi bi-map me-2"></i> Kelola TPU
             </a>
         @endif
+
+        @if($currentUser?->isAdmin() || $currentUser?->isKepala() || $currentUser?->isKdlh())
+            <a href="{{ route($currentUser?->isKepala() ? 'kepala.users.index' : ($currentUser?->isKdlh() ? 'kdlh.users.index' : 'admin.users.index')) }}">
+                <i class="bi bi-person-gear me-2"></i> Kelola User
+            </a>
+        @endif
+
 
         <hr class="border-light">
 

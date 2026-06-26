@@ -611,7 +611,7 @@
                         <div class="info-card-body">
                             <h5 class="fw-bold mb-2">TPU dalam satu sistem</h5>
                             <p class="text-muted mb-0">
-                                Daftar TPU ditampilkan sebagai satu ekosistem layanan yang dapat diperbarui oleh kepala dinas.
+                                Daftar TPU ditampilkan sebagai satu ekosistem layanan yang dapat diperbarui.
                             </p>
                         </div>
                     </div>
@@ -677,8 +677,7 @@
         </section>
 
         <div class="footer-note d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <span>© {{ date('Y') }} TAMPU — Sistem Informasi TPU Terintegrasi</span>
-            <span>Login untuk admin, petugas, kepala, dan user ahli waris</span>
+            <span>© {{ date('Y') }} TAMPU — Sistem Informasi Tempat Pemakaman Umum</span>
         </div>
     </div>
 </div>

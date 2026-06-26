@@ -81,12 +81,12 @@
     $nomor = $nomor ?? '....................................';
     $lampiran = $lampiran ?? '....................................';
     $perihal = $perihal ?? ('Laporan Bulanan Pelayanan dan Pendataan Tempat Pemakaman Umum Bulan ' . $monthLabel . ' Tahun ' . $yearLabel);
-    $tujuanKepalaDinas = $tujuanKepalaDinas ?? 'Kepala Dinas Perumahan Rakyat, Kawasan Permukiman dan Pertanahan';
+    $tujuanKepalaDinas = $tujuanKepalaDinas ?? 'Kepala Dinas Lingkungan Hidup';
     $tujuanWilayah = $tujuanWilayah ?? 'Kota/Kabupaten ................................';
 @endphp
 
     <div class="center bold upper">PEMERINTAH KOTA/KABUPATEN .................................</div>
-    <div class="center bold upper">DINAS PERUMAHAN RAKYAT, KAWASAN PERMUKIMAN DAN PERTANAHAN</div>
+    <div class="center bold upper">DINAS LINGKUNGAN HIDUP</div>
     <div class="center bold upper">UNIT PELAKSANA TEKNIS DAERAH (UPTD) TEMPAT PEMAKAMAN UMUM</div>
     <div class="center">Alamat: Jl. ............................................................<br>Telepon: ..................... Email: ................................</div>
 
