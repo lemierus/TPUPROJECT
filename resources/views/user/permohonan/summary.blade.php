@@ -230,7 +230,7 @@
                         <i class="bi bi-arrow-repeat me-2"></i>Ajukan Perpanjangan Sewa Makam
                     </div>
                     <div class="mb-0">
-                        Klik tombol berikut untuk membuka form perpanjangan sewa makam TPU {{ $permohonan->tpu }}.
+                        Klik tombol berikut untuk membuka form perpanjangan sewa makam {{ $permohonan->tpu }}.
                         Data jenazah dan data makam akan terbawa otomatis sesuai data yang sudah diperbarui petugas.
                     </div>
                 </div>
