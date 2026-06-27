@@ -100,6 +100,8 @@ class UserController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($ignoreId)],
+            'nip' => ['nullable', 'string', 'max:30'],
+            'no_hp' => ['nullable', 'string', 'max:20'],
             'password' => [$isUpdate ? 'nullable' : 'required', 'string', 'min:6'],
             'role' => $isKepalaRoute
                 ? ['required', Rule::in([User::ROLE_PETUGAS])]

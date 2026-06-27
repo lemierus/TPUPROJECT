@@ -197,7 +197,7 @@
 <div class="container-fluid py-4">
     @if(session('success'))
         <div class="alert alert-success border-2 border-dark shadow-sm mb-4">
-            <i class="bi bi-check-circle-fill me-2"></i>{{ session('success') }}
+            <i class="bi bi-check-circle-fill me-2"></i>{!! session('success') !!}
         </div>
     @endif
 

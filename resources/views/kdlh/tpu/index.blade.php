@@ -28,16 +28,31 @@
                             <th>Lokasi</th>
                             <th>Ringkasan</th>
                             <th>Deskripsi</th>
+                            <th>Kontak WhatsApp</th>
                             <th>Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($tpus as $tpu)
+                            @php
+                                $waPetugas = $tpu->waPetugas;
+                            @endphp
                             <tr>
                                 <td class="fw-semibold">{{ $tpu->nama }}</td>
                                 <td>{{ $tpu->lokasi ?? '-' }}</td>
                                 <td>{{ \Illuminate\Support\Str::limit($tpu->ringkasan ?? '-', 70) }}</td>
                                 <td>{{ \Illuminate\Support\Str::limit($tpu->deskripsi ?? '-', 70) }}</td>
+                                <td>
+                                    @if($waPetugas && $waPetugas->no_hp)
+                                        <a href="https://wa.me/{{ $waPetugas->no_hp }}" target="_blank" class="text-decoration-none">
+                                            <i class="bi bi-whatsapp text-success me-1"></i>
+                                            {{ $waPetugas->name }}
+                                            <small class="text-muted d-block">{{ $waPetugas->no_hp }}</small>
+                                        </a>
+                                    @else
+                                        <span class="text-muted">—</span>
+                                    @endif
+                                </td>
                                 <td>
                                     <div class="d-flex gap-2">
                                         <a href="{{ route('kdlh.tpu.edit', $tpu) }}" class="btn btn-sm btn-outline-primary">Edit</a>

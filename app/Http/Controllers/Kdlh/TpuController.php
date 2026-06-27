@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Kdlh;
 
 use App\Http\Controllers\Controller;
 use App\Models\Tpu;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -11,7 +12,7 @@ class TpuController extends Controller
 {
     public function index()
     {
-        $tpus = Tpu::query()->orderBy('nama')->get();
+        $tpus = Tpu::with('waPetugas')->orderBy('nama')->get();
 
         return view('kdlh.tpu.index', compact('tpus'));
     }
@@ -20,6 +21,10 @@ class TpuController extends Controller
     {
         return view('kdlh.tpu.form', [
             'tpu' => new Tpu(),
+            'petugasList' => User::where('role', User::ROLE_PETUGAS)
+                ->whereNotNull('no_hp')
+                ->orderBy('name')
+                ->get(),
         ]);
     }
 
@@ -32,7 +37,13 @@ class TpuController extends Controller
 
     public function edit(Tpu $tpu)
     {
-        return view('kdlh.tpu.form', compact('tpu'));
+        return view('kdlh.tpu.form', [
+            'tpu' => $tpu,
+            'petugasList' => User::where('role', User::ROLE_PETUGAS)
+                ->whereNotNull('no_hp')
+                ->orderBy('name')
+                ->get(),
+        ]);
     }
 
     public function update(Request $request, Tpu $tpu)
@@ -56,7 +67,8 @@ class TpuController extends Controller
             'lokasi' => ['nullable', 'string', 'max:255'],
             'ringkasan' => ['nullable', 'string'],
             'highlight' => ['nullable', 'string'],
-            'deskripsi' => ['nullable', 'string']
+            'deskripsi' => ['nullable', 'string'],
+            'wa_petugas_id' => ['nullable', 'exists:users,id'],
         ]);
     }
 }

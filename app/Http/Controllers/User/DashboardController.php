@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
+use App\Models\Makam;
 use App\Models\Permohonan;
 use App\Models\Tpu;
 
@@ -11,15 +12,22 @@ class DashboardController extends Controller
     public function index()
     {
         $daftarTpu = Tpu::query()
+            ->with('waPetugas')
             ->orderBy('nama')
             ->get()
             ->map(function (Tpu $tpu) {
+                $makamTersedia = Makam::where('tpu', $tpu->nama)->where('status', 'kosong')->count();
+                $waPetugas = $tpu->waPetugas;
+
                 return [
                     'slug' => str()->slug($tpu->nama),
                     'nama' => $tpu->nama,
                     'lokasi' => $tpu->lokasi ?? '-',
                     'ringkasan' => $tpu->ringkasan ?? '-',
                     'highlight' => $tpu->highlight ?? '-',
+                    'makam_tersedia' => $makamTersedia,
+                    'wa_nama' => $waPetugas?->name,
+                    'wa_nomor' => $waPetugas?->no_hp,
                 ];
             })
             ->values()

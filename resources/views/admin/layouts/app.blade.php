@@ -56,7 +56,47 @@
 
     .text-custom {
         color: #1E3E62 !important;
-    }       
+    }
+
+    .navbar-user-link {
+        display: inline-flex;
+        align-items: center;
+        gap: .75rem;
+        color: #111827;
+        text-decoration: none;
+    }
+
+    .navbar-user-link:hover {
+        color: #1E3E62;
+    }
+
+    .navbar-user-avatar {
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        border: 2px solid #1E3E62;
+        overflow: hidden;
+        background: #ecf2ff;
+        display: grid;
+        place-items: center;
+        flex: 0 0 auto;
+    }
+
+    .navbar-user-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .navbar-user-avatar span {
+        font-weight: 800;
+        color: #1E3E62;
+        font-size: .95rem;
+    }
+
+    .navbar-user-meta {
+        line-height: 1.1;
+    }
 </style>
 
     @stack('styles')
@@ -82,7 +122,7 @@
     @endphp
 
     <div class="sidebar">
-        <h5 class="fw-bold mb-4">
+        <h5 class="fw-bold mb-4" onclick="window.location='{{ url('/') }}'" style="cursor: pointer;">
             <i class="bi bi-building"></i> TAMPU
         </h5>
 
@@ -107,7 +147,7 @@
 
             @if($currentUser?->isAdmin() || $currentUser?->isPetugas() || $currentUser?->isKepala() || $currentUser?->isKdlh())
                 <a href="{{ $currentUser?->isKepala() ? route('kepala.laporan') : ($currentUser?->isKdlh() ? route('kdlh.laporan') : route($masterPrefix.'.master.laporan')) }}">
-                    <i class="bi bi-file-earmark-text-fill me-2"></i> Laporan
+                    <i class="bi bi-file-earmark-text-fill me-2"></i> Laporan TPU
                 </a>
             @endif
         @endif
@@ -127,6 +167,12 @@
 
         <hr class="border-light">
 
+        @unless($currentUser?->isAdmin())
+            <a href="{{ route('profile.page') }}">
+                <i class="bi bi-person-circle me-2"></i> Profil
+            </a>
+        @endunless
+
         <form method="POST" action="{{ route('logout') }}">
             @csrf
             <button type="submit" class="btn text-start w-100 text-white border-0" style="padding:10px 12px;">
@@ -145,8 +191,39 @@
             </div>
 
             <div class="text-end">
-                <span class="fw-bold text-custom">{{ auth()->user()->name ?? 'Admin' }}</span>
-                <small class="d-block text-muted">{{ now()->format('d-m-Y') }}</small>
+                <div class="d-flex align-items-center justify-content-end gap-3">
+                    @if($currentUser?->isAdmin())
+                        <div class="navbar-user-link">
+                            <span class="navbar-user-avatar">
+                                @if($currentUser?->profile_photo_path)
+                                    <img src="{{ \Illuminate\Support\Facades\Storage::url($currentUser->profile_photo_path) }}" alt="Foto profil {{ $currentUser->name }}">
+                                @else
+                                    <span>{{ $currentUser?->initials() ?? 'U' }}</span>
+                                @endif
+                            </span>
+
+                            <span class="navbar-user-meta text-start">
+                                <span class="fw-bold text-custom d-block">{{ $currentUser->name ?? 'Pengguna' }}</span>
+                                <small class="text-muted d-block text-capitalize">{{ $currentUser->role ?? '-' }}</small>
+                            </span>
+                        </div>
+                    @else
+                        <a href="{{ route('profile.page') }}" class="navbar-user-link">
+                            <span class="navbar-user-avatar">
+                                @if($currentUser?->profile_photo_path)
+                                    <img src="{{ \Illuminate\Support\Facades\Storage::url($currentUser->profile_photo_path) }}" alt="Foto profil {{ $currentUser->name }}">
+                                @else
+                                    <span>{{ $currentUser?->initials() ?? 'U' }}</span>
+                                @endif
+                            </span>
+
+                            <span class="navbar-user-meta text-start">
+                                <span class="fw-bold text-custom d-block">{{ $currentUser->name ?? 'Pengguna' }}</span>
+                                <small class="text-muted d-block text-capitalize">{{ $currentUser->role ?? '-' }}</small>
+                            </span>
+                        </a>
+                    @endif
+                </div>
             </div>
         </div>
 

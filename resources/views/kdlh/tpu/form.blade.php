@@ -43,6 +43,20 @@
                         <textarea name="deskripsi" class="form-control @error('deskripsi') is-invalid @enderror" rows="4">{{ old('deskripsi', $tpu->deskripsi) }}</textarea>
                         @error('deskripsi')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Nomor WhatsApp Petugas <i class="bi bi-whatsapp text-success"></i></label>
+                        <select name="wa_petugas_id" class="form-select @error('wa_petugas_id') is-invalid @enderror">
+                            <option value="">— Tidak ditampilkan —</option>
+                            @foreach($petugasList ?? [] as $petugas)
+                                <option value="{{ $petugas->id }}" @selected(old('wa_petugas_id', $tpu->wa_petugas_id) == $petugas->id)>
+                                    {{ $petugas->name }} — {{ $petugas->no_hp ?? '(nomor tidak tersedia)' }}
+                                    @if($petugas->tpu) ({{ $petugas->tpu }}) @endif
+                                </option>
+                            @endforeach
+                        </select>
+                        <small class="text-muted">Nomor ini akan ditampilkan di halaman utama dan dashboard user sebagai kontak penguburan segera.</small>
+                        @error('wa_petugas_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
                 </div>
 
                 <div class="d-flex justify-content-end gap-2 mt-4">

@@ -267,17 +267,17 @@
                         </div>
 
                         <div class="col-md-4">
-                            <label class="form-label">Scan KTP Ahli Waris</label>
+                            <label class="form-label">Scan KTP Ahli Waris <span class="text-danger">*</span></label>
                             <input type="file" name="scan_ktp_ahli_waris" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
                         </div>
 
                         <div class="col-md-4">
-                            <label class="form-label">Scan KK</label>
+                            <label class="form-label">Scan KK <span class="text-danger">*</span></label>
                             <input type="file" name="scan_kk" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
                         </div>
 
                         <div class="col-md-4">
-                            <label class="form-label">Surat Kematian</label>
+                            <label class="form-label">Surat Kematian <span class="text-danger">*</span></label>
                             <input type="file" name="surat_kematian" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
                         </div>
                     </div>

@@ -53,6 +53,8 @@
                             <th>No</th>
                             <th>Nama</th>
                             <th>Email</th>
+                            <th>NIP</th>
+                            <th>No. HP</th>
                             <th>Role</th>
                             <th>TPU</th>
                             <th width="180">Aksi</th>
@@ -64,6 +66,8 @@
                                 <td>{{ $loop->iteration }}</td>
                                 <td>{{ $user->name }}</td>
                                 <td>{{ $user->email }}</td>
+                                <td>{{ $user->nip ?? '-' }}</td>
+                                <td>{{ $user->no_hp ?? '-' }}</td>
                                 <td><span class="badge bg-secondary">{{ strtoupper($user->role) }}</span></td>
                                 <td>{{ $user->tpu ?? '-' }}</td>
                                 <td>
@@ -83,7 +87,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="text-center text-muted">Data user tidak ditemukan</td>
+                                <td colspan="8" class="text-center text-muted">Data user tidak ditemukan</td>
                             </tr>
                         @endforelse
                     </tbody>

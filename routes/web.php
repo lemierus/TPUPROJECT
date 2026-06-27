@@ -18,13 +18,19 @@ use App\Models\Tpu;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    $landingTpus = Tpu::query()->orderBy('nama')->get()->map(function (Tpu $tpu) {
+    $landingTpus = Tpu::query()->with('waPetugas')->orderBy('nama')->get()->map(function (Tpu $tpu) {
+        $makamTersedia = \App\Models\Makam::where('tpu', $tpu->nama)->where('status', 'kosong')->count();
+        $waPetugas = $tpu->waPetugas;
+
         return [
             'slug' => str()->slug($tpu->nama),
             'nama' => $tpu->nama,
             'lokasi' => $tpu->lokasi ?? '-',
             'ringkasan' => $tpu->ringkasan ?? '-',
             'highlight' => $tpu->highlight ?? '-',
+            'makam_tersedia' => $makamTersedia,
+            'wa_nama' => $waPetugas?->name,
+            'wa_nomor' => $waPetugas?->no_hp,
         ];
     })->values()->all();
 
@@ -191,6 +197,11 @@ Route::middleware(['auth', 'user'])->prefix('user')->name('user.')->group(functi
     Route::get('/permohonan/{permohonan}/ringkasan', [UserPermohonanController::class, 'summary'])->name('permohonan.summary');
     Route::get('/permohonan/{permohonan}/edit', [UserPermohonanController::class, 'edit'])->name('permohonan.edit');
     Route::put('/permohonan/{permohonan}', [UserPermohonanController::class, 'update'])->name('permohonan.update');
+});
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('/profile', [App\Http\Controllers\ProfileController::class, 'edit'])->name('profile.page');
+    Route::put('/profile', [App\Http\Controllers\ProfileController::class, 'update'])->name('profile.update');
 });
 
 require __DIR__ . '/settings.php';

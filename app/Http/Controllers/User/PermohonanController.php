@@ -63,7 +63,7 @@ class PermohonanController extends Controller
     {
         $data = $request->validate([
             'tpu' => ['required', Rule::in(User::tpuOptions())],
-            'jenis_permohonan' => ['required', Rule::in(['makam_baru', 'perpanjangan', 'pemindahan_makam', 'renovasi_makam'])],
+            'jenis_permohonan' => ['required', Rule::in(['makam_baru', 'perpanjangan'])],
             'jenazah_id' => ['required_if:jenis_permohonan,perpanjangan', 'nullable', 'exists:jenazah,id'],
             'source_permohonan_id' => ['nullable', 'exists:permohonans,id'],
             'nama_jenazah' => ['nullable', 'string', 'max:255'],
@@ -80,9 +80,18 @@ class PermohonanController extends Controller
             'makam_id' => ['nullable', 'exists:makams,id'],
             'tahun_pemakaman' => ['nullable', 'digits:4'],
             'catatan' => ['nullable', 'string'],
-            'scan_ktp_ahli_waris' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
-            'scan_kk' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
-            'surat_kematian' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
+            'scan_ktp_ahli_waris' => [
+                $request->jenis_permohonan !== 'perpanjangan' ? 'required' : 'nullable',
+                'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'
+            ],
+            'scan_kk' => [
+                $request->jenis_permohonan !== 'perpanjangan' ? 'required' : 'nullable',
+                'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'
+            ],
+            'surat_kematian' => [
+                $request->jenis_permohonan !== 'perpanjangan' ? 'required' : 'nullable',
+                'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'
+            ],
         ]);
 
         $data['nama_jenazah'] = $data['nama_jenazah'] ?? null;

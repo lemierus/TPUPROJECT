@@ -28,10 +28,6 @@
         </div>
 
         <div class="d-flex align-items-center gap-2">
-            <span class="badge bg-secondary">
-                {{ strtoupper($role) }}
-            </span>
-
             <span class="badge px-3 py-2" style="background-color: #1E3E62; color: white;">
                 {{ now()->translatedFormat('l, d F Y') }}
             </span>

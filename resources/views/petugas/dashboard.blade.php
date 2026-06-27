@@ -254,15 +254,6 @@
                         Kelola permohonan pemakaman, pantau status pengajuan, dan proses berkas dengan efisien.
                     </p>
                 </div>
-                <div class="text-lg-end">
-                    <div class="d-flex flex-column align-items-lg-end gap-2">
-                        <div class="fw-semibold" style="color: rgba(255,255,255,.8);">
-                            <i class="bi bi-person-circle me-1"></i>
-                            {{ auth()->user()->name ?? 'Petugas' }}
-                        </div>
-                        <small style="color: rgba(255,255,255,.6);">{{ $petugas->tpu ?? 'TPU N/A' }}</small>
-                    </div>
-                </div>
             </div>
         </div>
     </div>

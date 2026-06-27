@@ -345,22 +345,24 @@
             height: 100%;
             background: #fff;
             border: 2px solid var(--ink);
-            border-radius: 22px;
-            box-shadow: 0 14px 0 rgba(16, 38, 63, 0.08);
+            border-radius: 18px;
+            box-shadow: 0 4px 16px rgba(16, 38, 63, 0.10);
             overflow: hidden;
+            display: flex;
+            flex-direction: column;
             transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
         }
 
         .tpu-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 20px 0 rgba(16, 38, 63, 0.10);
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(16, 38, 63, 0.14);
             border-color: var(--brand);
         }
 
         .tpu-head {
             background: var(--brand);
             color: #fff;
-            padding: 1rem;
+            padding: 1.25rem;
             border-bottom: 2px solid var(--ink);
         }
 
@@ -368,34 +370,44 @@
             display: inline-flex;
             align-items: center;
             gap: .35rem;
-            padding: .35rem .65rem;
+            padding: .28rem .65rem;
             border-radius: 999px;
             border: 1.5px solid rgba(255,255,255,.35);
             background: rgba(255,255,255,.12);
-            font-size: .82rem;
-            font-weight: 800;
-            margin-bottom: .75rem;
+            font-size: .78rem;
+            font-weight: 700;
+            margin-bottom: .65rem;
         }
 
         .tpu-body {
-            padding: 1rem;
+            padding: 1.25rem;
             color: #344054;
+            flex: 1;
+        }
+
+        .tpu-footer {
+            padding: 0 1.25rem 1.25rem;
+        }
+
+        .tpu-footer hr {
+            border-color: #e5e7eb;
+            margin-bottom: .85rem;
         }
 
         .tpu-feature-list {
             display: flex;
             flex-wrap: wrap;
-            gap: .55rem;
-            margin-top: .95rem;
+            gap: .5rem;
+            margin-top: .85rem;
         }
 
         .tpu-feature-list span {
-            padding: .42rem .68rem;
+            padding: .35rem .75rem;
             border-radius: 999px;
-            border: 1.5px solid var(--ink);
+            border: 1.5px solid #d1d5db;
             background: #f8fafc;
-            font-size: .82rem;
-            font-weight: 700;
+            font-size: .78rem;
+            font-weight: 600;
             color: #344054;
         }
 
@@ -476,7 +488,7 @@
                 <span class="brand-mark"><i class="bi bi-building-check"></i></span>
                 <span>
                     TAMPU
-                    <small>Sistem Informasi TPU Terintegrasi</small>
+                    <small>Website Tempat Pemakaman Umum Terintegrasi</small>
                 </span>
             </a>
 
@@ -636,17 +648,39 @@
                             <div class="tpu-head">
                                 <span class="tpu-tag"><i class="bi bi-geo-alt"></i> Terintegrasi</span>
                                 <h5 class="fw-bold mb-1">{{ $tpu['nama'] }}</h5>
-                                <div class="opacity-75">{{ $tpu['lokasi'] }}</div>
+                                <div class="opacity-75 small">{{ $tpu['lokasi'] }}</div>
                             </div>
+
                             <div class="tpu-body">
-                                <p class="mb-3">{{ $tpu['ringkasan'] }}</p>
-                                <div class="fw-bold text-dark mb-2">{{ $tpu['highlight'] }}</div>
-                                <div class="d-flex flex-wrap gap-2">
-                                    <span class="badge text-bg-light border border-dark-subtle py-2 px-3">Info lokasi</span>
-                                    <span class="badge text-bg-light border border-dark-subtle py-2 px-3">Layanan digital</span>
-                                    <span class="badge text-bg-light border border-dark-subtle py-2 px-3">Tertata</span>
+                                <p class="mb-2 small">{{ $tpu['ringkasan'] }}</p>
+                                <p class="fw-semibold text-dark mb-3 small">{{ $tpu['highlight'] }}</p>
+
+                                <div class="tpu-feature-list">
+                                    <span>
+                                        <i class="bi bi-grid-3x3-gap me-1"></i>
+                                        {{ $tpu['makam_tersedia'] }} makam tersedia
+                                    </span>
+                                    <span><i class="bi bi-map me-1"></i>Info lokasi</span>
+                                    <span><i class="bi bi-phone me-1"></i>Layanan digital</span>
+                                    <span><i class="bi bi-check2-circle me-1"></i>Tertata</span>
                                 </div>
                             </div>
+
+                            @if($tpu['wa_nomor'])
+                                <div class="tpu-footer">
+                                    <hr>
+                                    <p class="small text-muted mb-2 fw-semibold">
+                                        <i class="bi bi-whatsapp text-success me-1"></i>
+                                        Butuh penguburan segera?
+                                    </p>
+                                    <a href="https://wa.me/{{ preg_replace('/^0/', '62', $tpu['wa_nomor']) }}" target="_blank"
+                                        class="btn btn-success btn-sm w-100 fw-semibold"
+                                        style="border-radius: 8px;">
+                                        <i class="bi bi-whatsapp me-1"></i>
+                                        Hubungi {{ $tpu['wa_nama'] ?? 'Petugas' }}
+                                    </a>
+                                </div>
+                            @endif
                         </div>
                     </div>
                 @endforeach

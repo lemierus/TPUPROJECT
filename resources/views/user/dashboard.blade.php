@@ -461,30 +461,39 @@
         </div>
     </div>
 
-    <div class="row g-3 g-lg-4 mb-4">
-        @foreach($daftarTpu as $tpu)
-            <div class="col-lg-4 col-md-6">
-                <a href="{{ route('user.permohonan.create', ['tpu' => $tpu['nama']]) }}" class="user-card-link">
-                    <div class="user-tpu-card">
-                        <div class="user-tpu-card-header d-flex justify-content-between align-items-start gap-3">
-                            <div>
-                                <div class="user-tpu-card-badge mb-2">
-                                    <i class="bi bi-map"></i>
-                                    TPU
-                                </div>
-                                <h5 class="mb-1 fw-bold">{{ $tpu['nama'] }}</h5>
-                                <small class="opacity-75">{{ $tpu['lokasi'] }}</small>
+<div class="row g-3 g-lg-4 mb-4">
+    @foreach($daftarTpu as $tpu)
+        <div class="col-lg-4 col-md-6">
+            <a href="{{ route('user.permohonan.create', ['tpu' => $tpu['nama']]) }}" class="user-card-link">
+                <div class="user-tpu-card">
+
+                    <div class="user-tpu-card-header d-flex justify-content-between align-items-start gap-3">
+                        <div>
+                            <div class="user-tpu-card-badge mb-2">
+                                <i class="bi bi-map"></i> TPU
                             </div>
-                            <i class="bi bi-arrow-up-right-circle-fill fs-4"></i>
+                            <h5 class="mb-1 fw-bold">{{ $tpu['nama'] }}</h5>
+                            <small class="opacity-75">{{ $tpu['lokasi'] }}</small>
                         </div>
-                        <div class="user-tpu-card-body">
-                            <p class="mb-0">{{ $tpu['ringkasan'] }}</p>
+                        <i class="bi bi-arrow-up-right-circle-fill fs-4 flex-shrink-0"></i>
+                    </div>
+
+                    <div class="user-tpu-card-body">
+                        <p class="mb-3 small text-muted">{{ $tpu['ringkasan'] }}</p>
+
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <span class="badge rounded-pill text-bg-light border border-dark-subtle py-2 px-3">
+                                <i class="bi bi-grid-3x3-gap me-1"></i>
+                                {{ $tpu['makam_tersedia'] }} makam tersedia
+                            </span>
                         </div>
                     </div>
-                </a>
-            </div>
-        @endforeach
-    </div>
+
+                </div>
+            </a>
+        </div>
+    @endforeach
+</div>
 
     <div class="user-section-card">
         <div class="user-section-header d-flex justify-content-between align-items-center flex-wrap gap-2">

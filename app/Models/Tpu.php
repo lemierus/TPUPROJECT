@@ -15,7 +15,13 @@ class Tpu extends Model
         'ringkasan',
         'highlight',
         'deskripsi',
+        'wa_petugas_id',
     ];
+
+    public function waPetugas()
+    {
+        return $this->belongsTo(User::class, 'wa_petugas_id');
+    }
 
     public static function options(): array
     {

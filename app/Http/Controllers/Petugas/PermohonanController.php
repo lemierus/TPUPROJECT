@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Petugas;
 
 use App\Http\Controllers\Controller;
+use App\Concerns\WhatsAppNotifiable;
 use App\Models\Makam;
 use App\Models\Permohonan;
 use App\Models\Jenazah;
@@ -16,6 +17,7 @@ use Illuminate\Validation\ValidationException;
 
 class PermohonanController extends Controller
 {
+    use WhatsAppNotifiable;
     public function index()
     {
         $petugas = auth()->user();
@@ -290,8 +292,15 @@ class PermohonanController extends Controller
                 ->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
         }
 
+        $waUrl = $this->notifyPermohonanStatus($permohonan);
+
+        $successMsg = 'Permohonan berhasil disetujui dan data jenazah tersimpan.';
+        if ($waUrl) {
+            $successMsg .= ' <a href="' . e($waUrl) . '" target="_blank" class="alert-link"><i class="bi bi-whatsapp"></i> Kirim notifikasi WhatsApp ke ahli waris</a>';
+        }
+
         return redirect()->route('petugas.permohonan')
-            ->with('success', 'Permohonan berhasil disetujui dan data jenazah tersimpan.');
+            ->with('success', $successMsg);
     }
 
     public function reject(Request $request, Permohonan $permohonan)
@@ -307,8 +316,17 @@ class PermohonanController extends Controller
             'catatan' => $request->catatan,
         ]);
 
+        $permohonan->refresh();
+
+        $waUrl = $this->notifyPermohonanStatus($permohonan);
+
+        $successMsg = 'Permohonan berhasil ditolak.';
+        if ($waUrl) {
+            $successMsg .= ' <a href="' . e($waUrl) . '" target="_blank" class="alert-link"><i class="bi bi-whatsapp"></i> Kirim notifikasi WhatsApp ke ahli waris</a>';
+        }
+
         return redirect()->route('petugas.permohonan')
-            ->with('success', 'Permohonan berhasil ditolak.');
+            ->with('success', $successMsg);
     }
 
     private function authorizePermohonan(Permohonan $permohonan): void

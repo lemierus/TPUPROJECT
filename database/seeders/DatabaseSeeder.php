@@ -20,6 +20,8 @@ class DatabaseSeeder extends Seeder
             ['email' => 'admin@tpu.test'],
             [
                 'name' => 'Admin TPU',
+                'nip' => '197501012005011001',
+                'no_hp' => '6281234567888',
                 'password' => Hash::make('password'),
                 'role' => User::ROLE_ADMIN,
             ]
@@ -29,6 +31,8 @@ class DatabaseSeeder extends Seeder
             ['email' => 'kdlh@tpu.test'],
             [
                 'name' => 'Kepala Dinas Lingkungan Hidup',
+                'nip' => '198001012010011001',
+                'no_hp' => '6281234567890',
                 'password' => Hash::make('password'),
                 'role' => User::ROLE_KDLH,
             ]
@@ -39,6 +43,8 @@ class DatabaseSeeder extends Seeder
             ['email' => 'kepala@tpu.test'],
             [
                 'name' => 'Kepala TPU',
+                'nip' => '198505052015011001',
+                'no_hp' => '6281234567891',
                 'password' => Hash::make('password'),
                 'role' => User::ROLE_KEPALA,
             ]
@@ -56,6 +62,8 @@ class DatabaseSeeder extends Seeder
             ['email' => 'petugas1@tpu.test'],
             [
                 'name' => 'Petugas Tunggul Hitam',
+                'nip' => '199001012020011001',
+                'no_hp' => '6281234567892',
                 'password' => Hash::make('password'),
                 'role' => User::ROLE_PETUGAS,
             ]
@@ -69,6 +77,8 @@ class DatabaseSeeder extends Seeder
             ['email' => 'petugas2@tpu.test'],
             [
                 'name' => 'Petugas Bungus Teluk Kabung',
+                'nip' => '199002022020011002',
+                'no_hp' => '6281234567893',
                 'password' => Hash::make('password'),
                 'role' => User::ROLE_PETUGAS,
             ]
@@ -82,6 +92,8 @@ class DatabaseSeeder extends Seeder
             ['email' => 'petugas3@tpu.test'],
             [
                 'name' => 'Petugas Air Dingin',
+                'nip' => '199003032020011003',
+                'no_hp' => '6281234567894',
                 'password' => Hash::make('password'),
                 'role' => User::ROLE_PETUGAS,
             ]
@@ -106,6 +118,7 @@ class DatabaseSeeder extends Seeder
                 'ringkasan' => 'TPU terbesar dan paling dikenal di Kota Padang dengan akses layanan yang terintegrasi.',
                 'highlight' => 'Pusat layanan pemakaman yang aktif, luas, dan mudah dijangkau.',
                 'deskripsi' => 'TPU unggulan yang menjadi pusat layanan pemakaman untuk wilayah Tunggul Hitam.',
+                'wa_petugas_id' => $petugas1->id,
             ],
             [
                 'nama' => 'TPU Air Dingin',
@@ -113,6 +126,7 @@ class DatabaseSeeder extends Seeder
                 'ringkasan' => 'Melayani kebutuhan pemakaman masyarakat dengan tata ruang yang tertib dan informatif.',
                 'highlight' => 'Cocok untuk pengajuan yang membutuhkan alur layanan yang cepat dan terpantau.',
                 'deskripsi' => 'TPU dengan pengelolaan administrasi yang tertib dan terintegrasi penuh.',
+                'wa_petugas_id' => $petugas3->id,
             ],
             [
                 'nama' => 'TPU Bungus Teluk Kabung',
@@ -120,6 +134,7 @@ class DatabaseSeeder extends Seeder
                 'ringkasan' => 'Terintegrasi untuk wilayah selatan Kota Padang dengan informasi layanan yang mudah diakses.',
                 'highlight' => 'Memberikan alternatif lokasi pemakaman yang terhubung dalam satu sistem.',
                 'deskripsi' => 'TPU yang melayani wilayah selatan kota dengan koordinasi terpadu.',
+                'wa_petugas_id' => $petugas2->id,
             ],
         ] as $tpuData) {
             Tpu::updateOrCreate(['nama' => $tpuData['nama']], $tpuData);

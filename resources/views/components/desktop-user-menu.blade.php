@@ -20,8 +20,8 @@
         <flux:menu.separator />
         <flux:menu.radio.group>
             @unless(auth()->user()->isAdmin())
-                <flux:menu.item :href="route('profile.edit')" icon="cog" wire:navigate>
-                    {{ __('Settings') }}
+                <flux:menu.item :href="route('profile.page')" icon="cog" wire:navigate>
+                    {{ __('Profile') }}
                 </flux:menu.item>
             @endunless
             <form method="POST" action="{{ route('logout') }}" class="w-full">
