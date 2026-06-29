@@ -711,7 +711,7 @@
         </section>
 
         <div class="footer-note d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <span>© {{ date('Y') }} TAMPU — Sistem Informasi Tempat Pemakaman Umum</span>
+            <span>© {{ date('Y') }} TAMPU — Website Tempat Pemakaman Umum Terintegrasi</span>
         </div>
     </div>
 </div>

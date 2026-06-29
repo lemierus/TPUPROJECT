@@ -13,6 +13,15 @@ class ProfileController extends Controller
 {
     use ProfileValidationRules;
 
+    public function show()
+    {
+        $user = auth()->user();
+
+        abort_if($user?->isAdmin(), 403);
+
+        return view('profile.show', compact('user'));
+    }
+
     public function edit()
     {
         $user = auth()->user();
@@ -55,7 +64,7 @@ class ProfileController extends Controller
 
         $user->update($updateData);
 
-        return redirect()->route('profile.page')
+        return redirect()->route('profile.show')
             ->with('success', 'Profil berhasil diperbarui.');
     }
 }

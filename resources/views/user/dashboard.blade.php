@@ -322,12 +322,6 @@
                         <i class="bi bi-shield-check"></i>
                         {{ strtoupper(auth()->user()->role) }}
                     </span>
-                    <div class="d-flex flex-column align-items-lg-end gap-2">
-                        <div class="text-muted fw-semibold">
-                            <i class="bi bi-person-circle me-1"></i>
-                            {{ auth()->user()->name ?? 'Pengguna' }}
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>

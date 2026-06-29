@@ -168,7 +168,7 @@
         <hr class="border-light">
 
         @unless($currentUser?->isAdmin())
-            <a href="{{ route('profile.page') }}">
+            <a href="{{ route('profile.show') }}">
                 <i class="bi bi-person-circle me-2"></i> Profil
             </a>
         @endunless
@@ -187,7 +187,7 @@
         {{-- Navbar --}}
         <div class="navbar-admin d-flex justify-content-between align-items-center">
             <div>
-                <span class="fw-bold text-dark">Sistem Informasi Pemakaman</span>
+                <span class="fw-bold text-dark">Sistem Informasi TPU</span>
             </div>
 
             <div class="text-end">
@@ -208,7 +208,7 @@
                             </span>
                         </div>
                     @else
-                        <a href="{{ route('profile.page') }}" class="navbar-user-link">
+                        <a href="{{ route('profile.show') }}" class="navbar-user-link">
                             <span class="navbar-user-avatar">
                                 @if($currentUser?->profile_photo_path)
                                     <img src="{{ \Illuminate\Support\Facades\Storage::url($currentUser->profile_photo_path) }}" alt="Foto profil {{ $currentUser->name }}">

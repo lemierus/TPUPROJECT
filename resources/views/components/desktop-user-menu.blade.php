@@ -20,7 +20,7 @@
         <flux:menu.separator />
         <flux:menu.radio.group>
             @unless(auth()->user()->isAdmin())
-                <flux:menu.item :href="route('profile.page')" icon="cog" wire:navigate>
+                <flux:menu.item :href="route('profile.show')" icon="cog" wire:navigate>
                     {{ __('Profile') }}
                 </flux:menu.item>
             @endunless
