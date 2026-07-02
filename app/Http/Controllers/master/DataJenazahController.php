@@ -72,6 +72,10 @@ class DataJenazahController extends Controller
             'tanggal_lahir' => ['nullable', 'date'],
             'tanggal_wafat' => ['required', 'date'],
             'alamat' => ['nullable', 'string'],
+            'nama_ahli_waris' => ['nullable', 'string', 'max:255'],
+            'hubungan_keluarga' => ['nullable', 'string', 'max:100'],
+            'no_hp_ahli_waris' => ['nullable', 'string', 'max:50'],
+            'catatan' => ['nullable', 'string'],
             'keterangan' => ['nullable', 'string'],
             'tpu' => ['nullable', Rule::in(User::tpuOptions())],
             'makam_id' => ['nullable', 'exists:makams,id'],
@@ -92,6 +96,7 @@ class DataJenazahController extends Controller
         $this->validateAvailableMakam($request);
         $this->validateAccessibleMakam($request);
         $this->syncTenggatSewaField($data);
+        $this->syncAhliWarisFields($data);
 
         if (auth()->user()?->isPetugas()) {
             $data['tpu'] = auth()->user()->tpu;
@@ -155,6 +160,7 @@ class DataJenazahController extends Controller
         $this->validateAvailableMakam($request, $jenazah);
         $this->validateAccessibleMakam($request);
         $this->syncTenggatSewaField($data);
+        $this->syncAhliWarisFields($data);
 
         if (auth()->user()?->isPetugas()) {
             $data['tpu'] = auth()->user()->tpu;
@@ -312,6 +318,13 @@ class DataJenazahController extends Controller
         }
 
         $data['tenggat_sewa_makam'] = $data['tenggat_sewa_makam'] ?? null;
+    }
+
+    private function syncAhliWarisFields(array &$data): void
+    {
+        foreach (['nama_ahli_waris', 'hubungan_keluarga', 'no_hp_ahli_waris', 'catatan'] as $field) {
+            $data[$field] = $data[$field] ?? null;
+        }
     }
 
     private function syncApprovedPermohonanJenazah(): void

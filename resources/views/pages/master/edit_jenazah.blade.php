@@ -59,17 +59,19 @@
                                 <div class="p-3 bg-white rounded-3 h-100 border">
                                     <div class="fw-semibold mb-2">Data Ahli Waris</div>
                                     <div class="small text-muted">Nama</div>
-                                    <div class="mb-2">{{ $linkedPermohonan?->nama_ahli_waris ?? '-' }}</div>
+                                    <div class="mb-2">{{ $jenazah->nama_ahli_waris ?? $linkedPermohonan?->nama_ahli_waris ?? '-' }}</div>
                                     <div class="small text-muted">No HP</div>
-                                    <div class="mb-2">{{ $linkedPermohonan?->no_hp_ahli_waris ?? '-' }}</div>
+                                    <div class="mb-2">{{ $jenazah->no_hp_ahli_waris ?? $linkedPermohonan?->no_hp_ahli_waris ?? '-' }}</div>
                                     <div class="small text-muted">Hubungan Keluarga</div>
-                                    <div class="mb-2">{{ $linkedPermohonan?->hubungan_keluarga ?? '-' }}</div>
+                                    <div class="mb-2">{{ $jenazah->hubungan_keluarga ?? $linkedPermohonan?->hubungan_keluarga ?? '-' }}</div>
                                     <div class="small text-muted">Akun Pemohon</div>
                                     <div class="mb-2">{{ $linkedPermohonan?->user?->name ?? '-' }}</div>
                                     <div class="small text-muted">TPU</div>
                                     <div class="mb-2">{{ $linkedPermohonan?->tpu ?? $jenazah->tpu ?? '-' }}</div>
                                     <div class="small text-muted">Status Permohonan</div>
-                                    <div>{{ $linkedPermohonan?->status ?? '-' }}</div>
+                                    <div class="mb-2">{{ $linkedPermohonan?->status ?? '-' }}</div>
+                                    <div class="small text-muted">Catatan</div>
+                                    <div>{{ $jenazah->catatan ?? $linkedPermohonan?->catatan ?? '-' }}</div>
                                 </div>
                             </div>
 

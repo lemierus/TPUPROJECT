@@ -229,6 +229,10 @@ class Permohonan extends Model
             'tanggal_lahir' => $this->tanggal_lahir,
             'tanggal_wafat' => $this->tanggal_wafat,
             'alamat' => $this->alamat,
+            'nama_ahli_waris' => $this->nama_ahli_waris,
+            'no_hp_ahli_waris' => $this->no_hp_ahli_waris,
+            'hubungan_keluarga' => $this->hubungan_keluarga,
+            'catatan' => $this->catatan,
             'tpu' => $this->tpu,
         ];
 

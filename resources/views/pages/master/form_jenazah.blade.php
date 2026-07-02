@@ -112,25 +112,25 @@
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label class="form-label">Nama Ahli Waris</label>
-                            <input type="text" name="nama_ahli_waris" class="form-control @error('nama_ahli_waris') is-invalid @enderror" value="{{ old('nama_ahli_waris', $relatedPermohonan?->nama_ahli_waris) }}">
+                            <input type="text" name="nama_ahli_waris" class="form-control @error('nama_ahli_waris') is-invalid @enderror" value="{{ old('nama_ahli_waris', $jenazah->nama_ahli_waris ?? $relatedPermohonan?->nama_ahli_waris) }}">
                             @error('nama_ahli_waris')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
 
                         <div class="col-md-6">
                             <label class="form-label">Hubungan Keluarga</label>
-                            <input type="text" name="hubungan_keluarga" class="form-control @error('hubungan_keluarga') is-invalid @enderror" value="{{ old('hubungan_keluarga', $relatedPermohonan?->hubungan_keluarga) }}">
+                            <input type="text" name="hubungan_keluarga" class="form-control @error('hubungan_keluarga') is-invalid @enderror" value="{{ old('hubungan_keluarga', $jenazah->hubungan_keluarga ?? $relatedPermohonan?->hubungan_keluarga) }}">
                             @error('hubungan_keluarga')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
 
                         <div class="col-md-6">
                             <label class="form-label">No HP Ahli Waris</label>
-                            <input type="text" name="no_hp_ahli_waris" class="form-control @error('no_hp_ahli_waris') is-invalid @enderror" value="{{ old('no_hp_ahli_waris', $relatedPermohonan?->no_hp_ahli_waris) }}">
+                            <input type="text" name="no_hp_ahli_waris" class="form-control @error('no_hp_ahli_waris') is-invalid @enderror" value="{{ old('no_hp_ahli_waris', $jenazah->no_hp_ahli_waris ?? $relatedPermohonan?->no_hp_ahli_waris) }}">
                             @error('no_hp_ahli_waris')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
 
                         <div class="col-md-6">
                             <label class="form-label">Catatan</label>
-                            <input type="text" name="catatan" class="form-control @error('catatan') is-invalid @enderror" value="{{ old('catatan', $relatedPermohonan?->catatan) }}">
+                            <input type="text" name="catatan" class="form-control @error('catatan') is-invalid @enderror" value="{{ old('catatan', $jenazah->catatan ?? $relatedPermohonan?->catatan) }}">
                             @error('catatan')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                     </div>
