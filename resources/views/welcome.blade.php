@@ -402,7 +402,7 @@
         }
 
         .tpu-feature-list span {
-            padding: .35rem .75rem;
+            padding: .50rem .75rem;
             border-radius: 999px;
             border: 1.5px solid #d1d5db;
             background: #f8fafc;
@@ -668,7 +668,7 @@
 
                             @if($tpu['wa_nomor'])
                                 <div class="tpu-footer">
-                                    <hr>
+                                    <!-- <hr> -->
                                     <p class="small text-muted mb-2 fw-semibold">
                                         <i class="bi bi-whatsapp text-success me-1"></i>
                                         Butuh penguburan segera?

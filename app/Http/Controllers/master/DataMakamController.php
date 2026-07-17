@@ -28,7 +28,7 @@ class DataMakamController extends Controller
                 ->orWhere('nomor', 'like', "%$search%");
         });
 
-        $makams = $makamQuery->latest()->get();
+        $makams = $makamQuery->latest()->paginate(10)->withQueryString();
 
         return view('pages.master.data_makam', compact('makams', 'selectedTpu', 'tpuOptions'));
     }

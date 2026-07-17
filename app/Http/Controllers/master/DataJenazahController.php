@@ -40,7 +40,7 @@ class DataJenazahController extends Controller
                 });
             });
 
-        $jenazah = $jenazahQuery->latest()->get();
+        $jenazah = $jenazahQuery->latest()->paginate(10)->withQueryString();
 
         return view('pages.master.data_jenazah', [
             'jenazah' => $jenazah,
@@ -159,7 +159,7 @@ class DataJenazahController extends Controller
         $this->applyMakamSnapshot($request, $data);
         $this->validateAvailableMakam($request, $jenazah);
         $this->validateAccessibleMakam($request);
-        $this->syncTenggatSewaField($data);
+        $this->syncTenggatSewaField($data, $jenazah);
         $this->syncAhliWarisFields($data);
 
         if (auth()->user()?->isPetugas()) {
@@ -178,7 +178,7 @@ class DataJenazahController extends Controller
                     'hubungan_keluarga' => $data['hubungan_keluarga'] ?? null,
                     'no_hp_ahli_waris' => $data['no_hp_ahli_waris'] ?? null,
                     'catatan' => $data['catatan'] ?? null,
-                    'tenggat_sewa_makam' => $data['tenggat_sewa_makam'] ?? null,
+                    'tenggat_sewa_makam' => $data['tenggat_sewa_makam'] ?? $permohonan->tenggat_sewa_makam,
                 ]);
             }
         });
@@ -310,14 +310,18 @@ class DataJenazahController extends Controller
         }
     }
 
-    private function syncTenggatSewaField(array &$data): void
+    private function syncTenggatSewaField(array &$data, ?Jenazah $jenazah = null): void
     {
         if (! Schema::hasColumn('jenazah', 'tenggat_sewa_makam')) {
             unset($data['tenggat_sewa_makam']);
             return;
         }
 
-        $data['tenggat_sewa_makam'] = $data['tenggat_sewa_makam'] ?? null;
+        // Kalau field tidak diisi/dikirim kosong, pertahankan nilai lama (kalau sedang edit)
+        if (blank($data['tenggat_sewa_makam'] ?? null)) {
+            $data['tenggat_sewa_makam'] = $jenazah?->tenggat_sewa_makam;
+            return;
+        }
     }
 
     private function syncAhliWarisFields(array &$data): void

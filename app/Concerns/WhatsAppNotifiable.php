@@ -123,4 +123,32 @@ trait WhatsAppNotifiable
 
         return $this->buildWhatsAppMessage($waPetugas->no_hp, $message);
     }
+
+    public function notifyDaruratPermohonan(Permohonan $permohonan): ?string
+    {
+        $tpu = Tpu::where('nama', $permohonan->tpu)->with('waPetugas')->first();
+        $waPetugas = $tpu?->waPetugas;
+
+        if (! $waPetugas || empty($waPetugas->no_hp)) {
+            return null;
+        }
+
+        $message = sprintf(
+            "Assalamu'alaikum Wr. Wb.\n\n"
+            . "Permohonan darurat baru telah diajukan.\n\n"
+            . "Nama jenazah: %s\n"
+            . "TPU tujuan: %s\n"
+            . "Nama ahli waris: %s\n"
+            . "No. HP ahli waris: %s\n"
+            . "Catatan: %s\n\n"
+            . "Mohon segera ditindaklanjuti.\n\n",
+            $permohonan->nama_jenazah ?? '-',
+            $permohonan->tpu ?? '-',
+            $permohonan->nama_ahli_waris ?? '-',
+            $permohonan->no_hp_ahli_waris ?? '-',
+            $permohonan->catatan ?? '-'
+        );
+
+        return $this->buildWhatsAppMessage($waPetugas->no_hp, $message);
+    }
 }

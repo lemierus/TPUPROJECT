@@ -22,14 +22,38 @@ class PermohonanController extends Controller
     {
         $petugas = auth()->user();
 
-        $permohonans = Permohonan::with(['user', 'jenazah.makam', 'makam'])
+        $pendingPermohonans = Permohonan::with(['user', 'jenazah.makam', 'makam'])
             ->where('tpu', $petugas->tpu)
-            ->latest('created_at')
+            ->whereIn('status', $this->pendingStatuses())
+            // Prioritaskan darurat yang menunggu konfirmasi/diproses di urutan atas,
+            // lalu lanjutkan FIFO reguler berdasarkan waktu masuk paling lama.
+            ->orderByRaw("
+                CASE
+                    WHEN jenis_permohonan = 'darurat' AND status IN ('menunggu_konfirmasi', 'diproses_darurat') THEN 0
+                    ELSE 1
+                END ASC
+            ")
+            ->orderBy('created_at', 'asc')
             ->get();
 
-        $permohonans->each(function (Permohonan $permohonan) {
+        $processedPermohonans = Permohonan::with(['user', 'jenazah.makam', 'makam'])
+            ->where('tpu', $petugas->tpu)
+            ->whereNotIn('status', $this->pendingStatuses())
+            ->orderByDesc('updated_at')
+            ->paginate(10);
+
+        $pendingPermohonans->each(function (Permohonan $permohonan) {
             $permohonan->syncLinkedJenazahData();
+            $permohonan->waiting_days = (int) floor($permohonan->created_at?->diffInDays(now()) ?? 0);
+            $permohonan->is_overdue_queue = $permohonan->waiting_days > 3;
         });
+
+        $processedPermohonans->each(function (Permohonan $permohonan) {
+            $permohonan->syncLinkedJenazahData();
+            return $permohonan;
+        });
+
+        $oldestPendingPermohonanId = $pendingPermohonans->first()?->id;
 
         $perpanjanganPerluDiingatkan = Permohonan::with(['user', 'jenazah.makam', 'makam'])
             ->where('tpu', $petugas->tpu)
@@ -48,7 +72,7 @@ class PermohonanController extends Controller
 
         $stats = [
             'menunggu' => Permohonan::where('tpu', $petugas->tpu)
-                ->whereIn('status', ['pending', 'menunggu'])
+                ->whereIn('status', $this->pendingStatuses())
                 ->count(),
             'disetujui' => Permohonan::where('tpu', $petugas->tpu)
                 ->where('status', 'disetujui')
@@ -59,7 +83,14 @@ class PermohonanController extends Controller
             'total' => Permohonan::where('tpu', $petugas->tpu)->count(),
         ];
 
-        return view('petugas.permohonan.index', compact('permohonans', 'stats', 'petugas', 'perpanjanganPerluDiingatkan'));
+        return view('petugas.permohonan.index', compact(
+            'pendingPermohonans',
+            'processedPermohonans',
+            'stats',
+            'petugas',
+            'perpanjanganPerluDiingatkan',
+            'oldestPendingPermohonanId'
+        ));
     }
 
     public function create()
@@ -145,7 +176,29 @@ class PermohonanController extends Controller
         $permohonan->loadMissing(['user', 'makam', 'jenazah.makam']);
         $permohonan->syncLinkedJenazahData();
 
-        return view('petugas.permohonan.show', compact('permohonan'));
+        $oldestPendingPermohonanId = $this->oldestPendingPermohonanIdForTpu(auth()->user()->tpu);
+        $isPendingQueue = in_array($permohonan->status, $this->pendingStatuses(), true);
+        $isOutOfOrder = $isPendingQueue
+            && $oldestPendingPermohonanId !== null
+            && $permohonan->id !== $oldestPendingPermohonanId;
+        $waitingDays = (int) floor($permohonan->created_at?->diffInDays(now()) ?? 0);
+        $makamKosong = Makam::where('tpu', auth()->user()->tpu)
+            ->where('status', 'kosong')
+            ->orderBy('kode_makam')
+            ->get();
+
+        $renewalReminderWaUrl = $permohonan->renewalAlertLevel() === 'expired'
+            ? $this->notifySewaReminder($permohonan)
+            : null;
+
+        return view('petugas.permohonan.show', compact(
+            'permohonan',
+            'renewalReminderWaUrl',
+            'oldestPendingPermohonanId',
+            'isOutOfOrder',
+            'waitingDays',
+            'makamKosong'
+        ));
     }
 
     public function edit(Permohonan $permohonan)
@@ -237,9 +290,114 @@ class PermohonanController extends Controller
             ->with('success', 'Data permohonan berhasil diperbarui.');
     }
 
+    public function prosesDarurat(Permohonan $permohonan)
+    {
+        $this->authorizePermohonan($permohonan);
+        abort_unless($permohonan->isDarurat(), 404);
+        abort_unless($permohonan->status === Permohonan::STATUS_MENUNGGU_KONFIRMASI, 422, 'Permohonan darurat ini tidak dapat diproses.');
+
+        $permohonan->update([
+            'status' => Permohonan::STATUS_DIPROSES_DARURAT,
+        ]);
+
+        return redirect()->route('petugas.permohonan.show', $permohonan)
+            ->with('success', 'Permohonan darurat sedang diproses.');
+    }
+
+    public function selesaikanPemakaman(Request $request, Permohonan $permohonan)
+    {
+        $this->authorizePermohonan($permohonan);
+        abort_unless($permohonan->isDarurat(), 404);
+        abort_unless($permohonan->status === Permohonan::STATUS_DIPROSES_DARURAT, 422, 'Permohonan darurat ini belum berada pada tahap penyelesaian.');
+
+        $data = $request->validate([
+            'makam_id' => ['required', 'exists:makams,id'],
+            'catatan' => ['nullable', 'string', 'max:1000'],
+        ], [
+            'makam_id.required' => 'Silakan pilih makam kosong untuk penyelesaian pemakaman darurat.',
+            'makam_id.exists' => 'Makam yang dipilih tidak ditemukan.',
+        ]);
+
+        DB::transaction(function () use ($permohonan, $data) {
+            $makam = Makam::where('id', $data['makam_id'])
+                ->where('tpu', auth()->user()->tpu)
+                ->firstOrFail();
+
+            if ($makam->status !== 'kosong') {
+                throw ValidationException::withMessages([
+                    'makam_id' => 'Makam yang dipilih sudah terisi. Pilih makam kosong lainnya.',
+                ]);
+            }
+
+            $permohonan->fill([
+                'makam_id' => $makam->id,
+                'status' => Permohonan::STATUS_ADMINISTRASI_BELUM_LENGKAP,
+                'catatan' => $data['catatan'] ?? $permohonan->catatan,
+            ]);
+            $permohonan->save();
+
+            $jenazah = $permohonan->persistJenazahRecord();
+            $jenazah->update([
+                'makam_id' => $makam->id,
+            ]);
+
+            $makam->update([
+                'status' => 'terisi',
+            ]);
+        });
+
+        return redirect()->route('petugas.permohonan.show', $permohonan)
+            ->with('success', 'Pemakaman darurat selesai. Ahli waris sekarang perlu melengkapi administrasi.');
+    }
+
+    public function verifikasiDokumen(Request $request, Permohonan $permohonan)
+    {
+        $this->authorizePermohonan($permohonan);
+        abort_unless($permohonan->status === Permohonan::STATUS_MENUNGGU_VERIFIKASI_DOKUMEN, 422, 'Dokumen belum siap diverifikasi.');
+
+        $data = $request->validate([
+            'aksi' => ['required', Rule::in(['setujui', 'perbaikan'])],
+            'tenggat_sewa_makam' => ['nullable', 'date', 'required_if:aksi,setujui'],
+            'catatan_revisi' => ['nullable', 'string', 'required_if:aksi,perbaikan'],
+        ], [
+            'aksi.required' => 'Aksi verifikasi wajib dipilih.',
+            'tenggat_sewa_makam.required_if' => 'Tenggat sewa makam wajib diisi saat menyetujui dokumen.',
+            'catatan_revisi.required_if' => 'Catatan revisi wajib diisi jika dokumen perlu perbaikan.',
+        ]);
+
+        DB::transaction(function () use ($permohonan, $data) {
+            if ($data['aksi'] === 'setujui') {
+                $permohonan->update([
+                    'status' => Permohonan::STATUS_SELESAI,
+                    'catatan_revisi' => null,
+                    'tenggat_sewa_makam' => $data['tenggat_sewa_makam'],
+                    'approved_at' => $permohonan->approved_at ?? now(),
+                ]);
+
+                $permohonan->loadMissing('jenazah');
+                if ($permohonan->jenazah) {
+                    $permohonan->jenazah->update([
+                        'tenggat_sewa_makam' => $data['tenggat_sewa_makam'],
+                    ]);
+                }
+            } else {
+                $permohonan->update([
+                    'status' => Permohonan::STATUS_PERLU_PERBAIKAN_DOKUMEN,
+                    'catatan_revisi' => $data['catatan_revisi'],
+                ]);
+            }
+        });
+
+        return redirect()->route('petugas.permohonan.show', $permohonan)
+            ->with('success', $data['aksi'] === 'setujui'
+                ? 'Dokumen permohonan darurat berhasil diverifikasi.'
+                : 'Permohonan dikembalikan ke ahli waris untuk perbaikan dokumen.');
+    }
+
     public function approve(Request $request, Permohonan $permohonan)
     {
         $this->authorizePermohonan($permohonan);
+        $wasOutOfOrder = $this->isProcessingOutOfOrder($permohonan);
 
         $request->validate([
             'tenggat_sewa_makam' => ['nullable', 'date'],
@@ -296,7 +454,10 @@ class PermohonanController extends Controller
 
         $successMsg = 'Permohonan berhasil disetujui dan data jenazah tersimpan.';
         if ($waUrl) {
-            $successMsg .= ' <a href="' . e($waUrl) . '" target="_blank" class="alert-link"><i class="bi bi-whatsapp"></i> Kirim notifikasi WhatsApp ke ahli waris</a>';
+            $successMsg .= ' <a href="' . e($waUrl) . '" target="_blank" class="whatsapp-link-inline"><i class="bi bi-whatsapp"></i> Kirim notifikasi WhatsApp ke ahli waris</a>';
+        }
+        if ($wasOutOfOrder) {
+            $successMsg = '<strong>Catatan FIFO:</strong> permohonan ini diproses tidak dari urutan paling awal. ' . $successMsg;
         }
 
         return redirect()->route('petugas.permohonan')
@@ -306,6 +467,7 @@ class PermohonanController extends Controller
     public function reject(Request $request, Permohonan $permohonan)
     {
         $this->authorizePermohonan($permohonan);
+        $wasOutOfOrder = $this->isProcessingOutOfOrder($permohonan);
 
         $request->validate([
             'catatan' => ['required', 'string', 'max:1000'],
@@ -322,7 +484,10 @@ class PermohonanController extends Controller
 
         $successMsg = 'Permohonan berhasil ditolak.';
         if ($waUrl) {
-            $successMsg .= ' <a href="' . e($waUrl) . '" target="_blank" class="alert-link"><i class="bi bi-whatsapp"></i> Kirim notifikasi WhatsApp ke ahli waris</a>';
+            $successMsg .= ' <a href="' . e($waUrl) . '" target="_blank" class="whatsapp-link-inline"><i class="bi bi-whatsapp"></i> Kirim notifikasi WhatsApp ke ahli waris</a>';
+        }
+        if ($wasOutOfOrder) {
+            $successMsg = '<strong>Catatan FIFO:</strong> permohonan ini diproses tidak dari urutan paling awal. ' . $successMsg;
         }
 
         return redirect()->route('petugas.permohonan')
@@ -336,6 +501,37 @@ class PermohonanController extends Controller
             403,
             'Anda tidak memiliki akses ke permohonan ini.'
         );
+    }
+
+    private function pendingStatuses(): array
+    {
+        return [
+            Permohonan::STATUS_PENDING,
+            Permohonan::STATUS_MENUNGGU,
+            Permohonan::STATUS_MENUNGGU_KONFIRMASI,
+            Permohonan::STATUS_DIPROSES_DARURAT,
+            Permohonan::STATUS_MENUNGGU_VERIFIKASI_DOKUMEN,
+            Permohonan::STATUS_PERLU_PERBAIKAN_DOKUMEN,
+        ];
+    }
+
+    private function oldestPendingPermohonanIdForTpu(string $tpu): ?int
+    {
+        return Permohonan::where('tpu', $tpu)
+            ->whereIn('status', $this->pendingStatuses())
+            ->orderBy('created_at', 'asc')
+            ->value('id');
+    }
+
+    private function isProcessingOutOfOrder(Permohonan $permohonan): bool
+    {
+        if (! in_array($permohonan->status, $this->pendingStatuses(), true)) {
+            return false;
+        }
+
+        $oldestPendingId = $this->oldestPendingPermohonanIdForTpu($permohonan->tpu);
+
+        return $oldestPendingId !== null && $oldestPendingId !== $permohonan->id;
     }
 
     private function eligibleRenewalJenazahs(string $tpu)

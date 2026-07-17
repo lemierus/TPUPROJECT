@@ -194,7 +194,7 @@
                             @error('keterangan')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
 
-                        @if($isEdit)
+                        <!-- @if($isEdit)
                             <div class="col-md-6">
                                 <label class="form-label">Tenggat Masa Sewa Makam</label>
                                 <input
@@ -206,7 +206,7 @@
                                 <small class="text-muted d-block mt-1">Tanggal ini dipakai sebagai batas akhir sewa makam untuk data jenazah ini.</small>
                                 @error('tenggat_sewa_makam')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
-                        @endif
+                        @endif -->
 
                     </div>
                 </div>

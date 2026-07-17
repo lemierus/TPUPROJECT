@@ -12,6 +12,21 @@ class Permohonan extends Model
 {
     use HasFactory;
 
+    public const JENIS_MAKAM_BARU = 'makam_baru';
+    public const JENIS_PERPANJANGAN = 'perpanjangan';
+    public const JENIS_DARURAT = 'darurat';
+
+    public const STATUS_PENDING = 'pending';
+    public const STATUS_MENUNGGU = 'menunggu';
+    public const STATUS_MENUNGGU_KONFIRMASI = 'menunggu_konfirmasi';
+    public const STATUS_DIPROSES_DARURAT = 'diproses_darurat';
+    public const STATUS_ADMINISTRASI_BELUM_LENGKAP = 'administrasi_belum_lengkap';
+    public const STATUS_MENUNGGU_VERIFIKASI_DOKUMEN = 'menunggu_verifikasi_dokumen';
+    public const STATUS_PERLU_PERBAIKAN_DOKUMEN = 'perlu_perbaikan_dokumen';
+    public const STATUS_DISETUJUI = 'disetujui';
+    public const STATUS_DITOLAK = 'ditolak';
+    public const STATUS_SELESAI = 'selesai';
+
     protected $fillable = [
         'user_id',
         'tpu',
@@ -40,6 +55,7 @@ class Permohonan extends Model
         'jenazah_deleted_at',
         'petugas_id',
         'catatan',
+        'catatan_revisi',
     ];
 
     protected $casts = [
@@ -125,11 +141,49 @@ class Permohonan extends Model
 
     public function hasCompleteJenazahData(): bool
     {
-        return $this->jenis_permohonan === 'makam_baru'
+        return in_array($this->jenis_permohonan, [self::JENIS_MAKAM_BARU, self::JENIS_DARURAT], true)
             && filled($this->nama_jenazah)
             && filled($this->nik_jenazah)
             && filled($this->jenis_kelamin)
             && filled($this->tanggal_wafat);
+    }
+
+    public function isDarurat(): bool
+    {
+        return $this->jenis_permohonan === self::JENIS_DARURAT;
+    }
+
+    public function isPendingQueue(): bool
+    {
+        return in_array($this->status, [
+            self::STATUS_PENDING,
+            self::STATUS_MENUNGGU,
+            self::STATUS_MENUNGGU_KONFIRMASI,
+            self::STATUS_DIPROSES_DARURAT,
+            self::STATUS_MENUNGGU_VERIFIKASI_DOKUMEN,
+            self::STATUS_PERLU_PERBAIKAN_DOKUMEN,
+        ], true);
+    }
+
+    public function needsDocumentCompletion(): bool
+    {
+        return in_array($this->status, [
+            self::STATUS_ADMINISTRASI_BELUM_LENGKAP,
+            self::STATUS_PERLU_PERBAIKAN_DOKUMEN,
+        ], true);
+    }
+
+    public function statusLabel(): string
+    {
+        return match ($this->status) {
+            self::STATUS_MENUNGGU_KONFIRMASI => 'Menunggu Konfirmasi',
+            self::STATUS_DIPROSES_DARURAT => 'Diproses Darurat',
+            self::STATUS_ADMINISTRASI_BELUM_LENGKAP => 'Administrasi Belum Lengkap',
+            self::STATUS_MENUNGGU_VERIFIKASI_DOKUMEN => 'Menunggu Verifikasi Dokumen',
+            self::STATUS_PERLU_PERBAIKAN_DOKUMEN => 'Perlu Perbaikan Dokumen',
+            self::STATUS_SELESAI => 'Selesai',
+            default => ucfirst(str_replace('_', ' ', $this->status ?? '-')),
+        };
     }
 
     public function approvedAt(): ?CarbonInterface

@@ -213,8 +213,8 @@
     }
 
     .user-pill-secondary {
-        background: #f2f4f7;
-        color: #344054;
+        background: #ffeaea;
+        color: #b42318;
     }
 
     .user-pill-warning {
@@ -330,6 +330,43 @@
     @if(session('success'))
         <div class="alert alert-success border-2 border-dark shadow-sm mb-4">
             <i class="bi bi-check-circle-fill me-2"></i>{{ session('success') }}
+        </div>
+    @endif
+
+    @if(isset($permohonanLengkapiDokumen) && $permohonanLengkapiDokumen->isNotEmpty())
+        <div class="user-notice-card mb-4">
+            <div class="user-notice-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div>
+                    <h4 class="user-section-title mb-1">Lengkapi Dokumen Pemakaman</h4>
+                    <p class="text-muted mb-0">Permohonan darurat berikut membutuhkan kelengkapan administrasi dari Anda.</p>
+                </div>
+                <span class="user-pill user-pill-danger">
+                    <i class="bi bi-folder-plus"></i>
+                    {{ $permohonanLengkapiDokumen->count() }} perlu dilengkapi
+                </span>
+            </div>
+
+            <div class="p-3 p-lg-4">
+                @foreach($permohonanLengkapiDokumen as $item)
+                    <div class="user-notice-item">
+                        <div class="flex-grow-1">
+                            <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                                <strong class="text-dark">{{ $item->nama_jenazah ?? '-' }}</strong>
+                                <span class="user-pill user-pill-danger">{{ $item->statusLabel() }}</span>
+                            </div>
+                            <div class="small text-muted">TPU: {{ $item->tpu }}</div>
+                            @if($item->catatan_revisi)
+                                <div class="small text-danger mt-1">Catatan revisi: {{ $item->catatan_revisi }}</div>
+                            @endif
+                        </div>
+                        <div class="text-end">
+                            <a href="{{ route('user.permohonan.lengkapi-dokumen', $item) }}" class="btn btn-sm btn-outline-dark">
+                                Lengkapi Dokumen
+                            </a>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
         </div>
     @endif
 
@@ -476,7 +513,7 @@
                         <p class="mb-3 small text-muted">{{ $tpu['ringkasan'] }}</p>
 
                         <div class="d-flex align-items-center gap-2 flex-wrap">
-                            <span class="badge rounded-pill text-bg-light border border-dark-subtle py-2 px-3">
+                            <span class="badge rounded-pill text-bg-light border border-dark-subtle py-3 px-6">
                                 <i class="bi bi-grid-3x3-gap me-1"></i>
                                 {{ $tpu['makam_tersedia'] }} makam tersedia
                             </span>
@@ -495,7 +532,7 @@
                 <h4 class="user-section-title">Permohonan Saya</h4>
                 <p class="text-muted mb-0">Riwayat permohonan yang sudah Anda ajukan.</p>
             </div>
-            <span class="user-pill user-pill-secondary">
+            <span class="user-pill user-pill-primary">
                 <i class="bi bi-file-earmark-text"></i>
                 {{ $totalPermohonan }} data
             </span>
@@ -520,7 +557,7 @@
                         @forelse($permohonanSaya as $item)
                             @php
                                 $status = strtolower($item->status ?? '');
-                                $statusLabel = ucfirst(str_replace('_', ' ', $status ?: 'proses'));
+                                $statusLabel = $item->statusLabel();
                             @endphp
                             <tr>
                                 <td class="fw-semibold">{{ $loop->iteration }}</td>
@@ -531,8 +568,13 @@
                                             <i class="bi bi-arrow-repeat"></i>
                                             Perpanjangan
                                         </span>
+                                    @elseif($item->jenis_permohonan === 'darurat')
+                                        <span class="user-pill user-pill-danger">
+                                            <i class="bi bi-exclamation-diamond"></i>
+                                            Darurat
+                                        </span>
                                     @else
-                                        <span class="user-pill user-pill-success">
+                                        <span class="user-pill user-pill-primary">
                                             <i class="bi bi-plus-circle"></i>
                                             Makam Baru
                                         </span>
@@ -562,21 +604,27 @@
                                 </td>
                                 <td>{{ $item->created_at?->format('d-m-Y') }}</td>
                                 <td>
-                                    @if($status === 'disetujui')
+                                    @if(in_array($status, ['disetujui', 'selesai'], true))
                                         <span class="user-pill user-pill-success">{{ $statusLabel }}</span>
                                     @elseif($status === 'ditolak')
                                         <span class="user-pill user-pill-secondary">{{ $statusLabel }}</span>
+                                    @elseif(in_array($status, ['administrasi_belum_lengkap', 'perlu_perbaikan_dokumen'], true))
+                                        <span class="user-pill user-pill-danger">{{ $statusLabel }}</span>
+                                    @elseif(in_array($status, ['menunggu_verifikasi_dokumen', 'diproses_darurat', 'menunggu_konfirmasi'], true))
+                                        <span class="user-pill user-pill-warning">{{ $statusLabel }}</span>
                                     @else
                                         <span class="user-pill user-pill-primary">{{ $statusLabel }}</span>
                                     @endif
                                 </td>
-                                <td>{{ $item->catatan ?? '-' }}</td>
+                                <td>{{ $item->catatan_revisi ?? $item->catatan ?? '-' }}</td>
                             <td>
                                 <div class="d-flex flex-wrap gap-2">
-                                    @if($item->jenis_permohonan === 'makam_baru')
+                                    @if(in_array($item->jenis_permohonan, ['makam_baru', 'darurat'], true))
                                         <a href="{{ route('user.permohonan.summary', $item) }}" class="btn btn-sm btn-success">Lihat Ringkasan</a>
                                     @endif
-                                    @if($status !== 'disetujui')
+                                    @if(in_array($status, ['administrasi_belum_lengkap', 'perlu_perbaikan_dokumen'], true))
+                                        <a href="{{ route('user.permohonan.lengkapi-dokumen', $item) }}" class="btn btn-sm btn-outline-dark">Lengkapi Dokumen</a>
+                                    @elseif(! in_array($status, ['disetujui', 'selesai'], true))
                                         <a href="{{ route('user.permohonan.edit', $item) }}" class="btn btn-sm btn-outline-primary">Detail / Edit</a>
                                     @endif
                                 </div>

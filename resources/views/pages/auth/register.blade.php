@@ -133,6 +133,13 @@
         margin-bottom: 10px;
     }
 
+    .field-error {
+        display: block;
+        margin-top: 6px;
+        color: #c0392b;
+        font-size: 12px;
+    }
+
     @media (max-width: 768px) {
         .register-card {
             flex-direction: column;
@@ -164,31 +171,47 @@
                     </div>
                 @endif
 
+                @if(session('error'))
+                    <div class="alert alert-danger">
+                        {{ session('error') }}
+                    </div>
+                @endif
+
                 <form method="POST" action="{{ route('register.proses') }}">
                     @csrf
 
                     {{-- NAMA --}}
                     <div class="form-group">
                         <label class="form-label">Nama Lengkap</label>
-                        <input type="text" name="name" class="form-control" required>
+                        <input type="text" name="name" class="form-control" value="{{ old('name') }}" required>
+                        @error('name')
+                            <span class="field-error">{{ $message }}</span>
+                        @enderror
                     </div>
 
                     {{-- EMAIL --}}
                     <div class="form-group">
                         <label class="form-label">Email</label>
-                        <input type="email" name="email" class="form-control" required>
+                        <input type="email" name="email" class="form-control" value="{{ old('email') }}" required>
+                        @error('email')
+                            <span class="field-error">{{ $message }}</span>
+                        @enderror
                     </div>
 
                     {{-- PASSWORD --}}
                     <div class="form-group">
                         <label class="form-label">Password</label>
-                        <input type="password" name="password" class="form-control" required>
+                        <input type="password" name="password" class="form-control" minlength="8" required>
+                        <small style="font-size:12px;color:#6b7785;">Minimal 8 karakter.</small>
+                        @error('password')
+                            <span class="field-error">{{ $message }}</span>
+                        @enderror
                     </div>
 
                     {{-- KONFIRMASI --}}
                     <div class="form-group">
                         <label class="form-label">Konfirmasi Password</label>
-                        <input type="password" name="password_confirmation" class="form-control" required>
+                        <input type="password" name="password_confirmation" class="form-control" minlength="8" required>
                     </div>
 
                     {{-- BUTTON --}}

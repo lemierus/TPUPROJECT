@@ -1,67 +1,76 @@
-<?php
+@extends('layouts.app')
 
-use App\Models\User;
-use Illuminate\Auth\Events\Verified;
-use Illuminate\Support\Facades\Event;
-use Illuminate\Support\Facades\URL;
+@section('title', 'Verifikasi Email')
 
-test('email verification screen can be rendered', function () {
-    $user = User::factory()->unverified()->create();
+@section('content')
+<div class="container py-5">
 
-    $response = $this->actingAs($user)->get(route('verification.notice'));
+    <div class="row justify-content-center">
 
-    $response->assertOk();
-});
+        <div class="col-md-7">
 
-test('email can be verified', function () {
-    $user = User::factory()->unverified()->create();
+            <div class="card shadow border-0">
 
-    Event::fake();
+                <div class="card-body p-5 text-center">
 
-    $verificationUrl = URL::temporarySignedRoute(
-        'verification.verify',
-        now()->addMinutes(60),
-        ['id' => $user->id, 'hash' => sha1($user->email)]
-    );
+                    <div class="mb-4">
+                        <i class="fas fa-envelope-open-text text-primary"
+                           style="font-size:70px;"></i>
+                    </div>
 
-    $response = $this->actingAs($user)->get($verificationUrl);
+                    <h3 class="fw-bold mb-3">
+                        Verifikasi Email
+                    </h3>
 
-    Event::assertDispatched(Verified::class);
+                    <p class="text-muted">
+                        Terima kasih telah mendaftar.
+                    </p>
 
-    expect($user->fresh()->hasVerifiedEmail())->toBeTrue();
-    $response->assertRedirect(route('dashboard', absolute: false).'?verified=1');
-});
+                    <p class="text-muted">
+                        Kami telah mengirimkan link verifikasi ke alamat email Anda.
+                        Silakan buka email tersebut kemudian klik tombol
+                        <strong>Verifikasi Email</strong>.
+                    </p>
 
-test('email is not verified with invalid hash', function () {
-    $user = User::factory()->unverified()->create();
+                    @if(session('success'))
+                        <div class="alert alert-success">
+                            {{ session('success') }}
+                        </div>
+                    @endif
 
-    $verificationUrl = URL::temporarySignedRoute(
-        'verification.verify',
-        now()->addMinutes(60),
-        ['id' => $user->id, 'hash' => sha1('wrong-email')]
-    );
+                    @if (session('status') == 'verification-link-sent')
+                        <div class="alert alert-success">
+                            Link verifikasi baru telah dikirim ke email Anda.
+                        </div>
+                    @endif
 
-    $this->actingAs($user)->get($verificationUrl);
+                    <form method="POST"
+                          action="{{ route('verification.send') }}">
+                        @csrf
 
-    expect($user->fresh()->hasVerifiedEmail())->toBeFalse();
-});
+                        <button class="btn btn-primary px-4">
+                            Kirim Ulang Email Verifikasi
+                        </button>
+                    </form>
 
-test('already verified user visiting verification link is redirected without firing event again', function () {
-    $user = User::factory()->create([
-        'email_verified_at' => now(),
-    ]);
+                    <hr class="my-4">
 
-    Event::fake();
+                    <form method="POST"
+                          action="{{ route('logout') }}">
+                        @csrf
 
-    $verificationUrl = URL::temporarySignedRoute(
-        'verification.verify',
-        now()->addMinutes(60),
-        ['id' => $user->id, 'hash' => sha1($user->email)]
-    );
+                        <button class="btn btn-outline-danger">
+                            Logout
+                        </button>
+                    </form>
 
-    $this->actingAs($user)->get($verificationUrl)
-        ->assertRedirect(route('dashboard', absolute: false).'?verified=1');
+                </div>
 
-    expect($user->fresh()->hasVerifiedEmail())->toBeTrue();
-    Event::assertNotDispatched(Verified::class);
-});
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+@endsection

@@ -257,6 +257,14 @@
                             @endforelse
                         </tbody>
                     </table>
+                    @if($reportRows->hasPages())
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3 pt-3 border-top">
+                                <small class="text-muted">
+                                     Menampilkan {{ $reportRows->firstItem() }} - {{ $reportRows->lastItem() }} dari {{ $reportRows->total() }} data
+                                </small>
+                                    {{ $reportRows->onEachSide(1)->links('pagination::bootstrap-5') }}
+                            </div>
+                    @endif                      
                 </div>
             </div>
         </div>
@@ -424,6 +432,14 @@
                         @endforelse
                     </tbody>
                 </table>
+                    @if($reportRows->hasPages())
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3 pt-3 border-top">
+                                <small class="text-muted">
+                                     Menampilkan {{ $reportRows->firstItem() }} - {{ $reportRows->lastItem() }} dari {{ $reportRows->total() }} data
+                                </small>
+                                    {{ $reportRows->onEachSide(1)->links('pagination::bootstrap-5') }}
+                            </div>
+                    @endif                 
             </div>
         </div>
     </div>

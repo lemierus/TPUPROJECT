@@ -25,15 +25,24 @@ class DashboardController extends Controller
         $totalPermohonan = Permohonan::where('tpu', $petugas->tpu)->count();
 
         $permohonanMenunggu = Permohonan::where('tpu', $petugas->tpu)
-            ->whereIn('status', ['pending', 'menunggu'])
+            ->whereIn('status', [
+                Permohonan::STATUS_PENDING,
+                Permohonan::STATUS_MENUNGGU,
+                Permohonan::STATUS_MENUNGGU_KONFIRMASI,
+                Permohonan::STATUS_DIPROSES_DARURAT,
+                Permohonan::STATUS_MENUNGGU_VERIFIKASI_DOKUMEN,
+                Permohonan::STATUS_PERLU_PERBAIKAN_DOKUMEN,
+            ])
             ->count();
 
-        // Permohonan terbaru untuk ditampilkan di tabel
+        // === PERUBAHAN: seluruh permohonan (bukan cuma 10 terbaru), dengan
+        // pagination 10 data per halaman menggunakan paginate() bawaan Laravel.
         $permohonanTerbaru = Permohonan::with(['user', 'jenazah.makam', 'makam'])
             ->where('tpu', $petugas->tpu)
             ->latest('created_at')
-            ->take(10)
-            ->get();
+            ->paginate(10)
+            ->withQueryString();
+        // === AKHIR PERUBAHAN ===
 
         $perpanjanganPerluDiingatkan = Permohonan::with(['user', 'jenazah.makam', 'makam'])
             ->where('tpu', $petugas->tpu)

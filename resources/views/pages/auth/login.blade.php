@@ -23,10 +23,9 @@
         max-width: 850px;
         width: 100%;
         display: flex;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.12);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
     }
 
-    /* LEFT */
     .left-panel {
         flex: 1;
         background: #1E3E62;
@@ -51,12 +50,6 @@
         letter-spacing: 1px;
     }
 
-    .left-panel img {
-        width: 90px;
-        margin-top: 18px;
-    }
-
-    /* RIGHT */
     .right-panel {
         flex: 1;
         padding: 40px;
@@ -65,14 +58,12 @@
         justify-content: center;
     }
 
-    /* FORM WRAPPER (INI KUNCI CENTER) */
     .form-wrapper {
         max-width: 320px;
         width: 100%;
         margin: 0 auto;
     }
 
-    /* TITLE */
     .login-title {
         font-weight: 700;
         margin-bottom: 25px;
@@ -81,7 +72,6 @@
         text-align: center;
     }
 
-    /* FORM */
     .form-group {
         margin-bottom: 18px;
     }
@@ -105,7 +95,7 @@
 
     .form-control:focus {
         border-color: #1E3E62;
-        box-shadow: 0 0 0 1px rgba(30,62,98,0.2);
+        box-shadow: 0 0 0 1px rgba(30, 62, 98, 0.2);
         outline: none;
     }
 
@@ -154,6 +144,13 @@
         margin-bottom: 15px;
     }
 
+    .field-error {
+        display: block;
+        margin-top: 6px;
+        color: #c0392b;
+        font-size: 12px;
+    }
+
     @media (max-width: 768px) {
         .login-card {
             flex-direction: column;
@@ -162,19 +159,13 @@
 </style>
 
 <div class="login-container">
-
     <div class="login-card">
-
-        {{-- LEFT --}}
         <div class="left-panel">
             <h4>Selamat Datang di <span>TAMPU</span></h4>
         </div>
 
-        {{-- RIGHT --}}
         <div class="right-panel">
-
             <div class="form-wrapper">
-
                 <div class="login-title">Login Sistem</div>
 
                 @if(session('error'))
@@ -183,21 +174,29 @@
                     </div>
                 @endif
 
+                @if(session('success'))
+                    <div class="alert alert-success text-center">
+                        {{ session('success') }}
+                    </div>
+                @endif
+
                 <form method="POST" action="{{ route('login.proses') }}">
                     @csrf
 
                     <div class="form-group">
                         <label class="form-label">Email</label>
-                        <input type="email" name="email"
-                            class="form-control"
-                            required>
+                        <input type="email" name="email" class="form-control" value="{{ old('email') }}" required>
+                        @error('email')
+                            <span class="field-error">{{ $message }}</span>
+                        @enderror
                     </div>
 
                     <div class="form-group">
                         <label class="form-label">Password</label>
-                        <input type="password" name="password"
-                            class="form-control"
-                            required>
+                        <input type="password" name="password" class="form-control" minlength="8" required>
+                        @error('password')
+                            <span class="field-error">{{ $message }}</span>
+                        @enderror
                     </div>
 
                     <div class="form-check">
@@ -214,17 +213,12 @@
                     <div class="small-link">
                         <small>
                             Belum punya akun?
-                                <a href="{{ route('register') }}">Daftar disini</a>
+                            <a href="{{ route('register') }}">Daftar disini</a>
                         </small>
                     </div>
-
                 </form>
-
             </div>
-
         </div>
-
     </div>
-
 </div>
 @endsection

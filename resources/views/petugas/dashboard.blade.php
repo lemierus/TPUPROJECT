@@ -194,6 +194,28 @@
         text-decoration: none;
     }
 
+    .petugas-btn-inline {
+        display: inline-flex;
+        align-items: center;
+        gap: .35rem;
+        border: 2px solid #1E3E62;
+        background: #1E3E62;
+        color: #fff;
+        font-weight: 700;
+        border-radius: 10px;
+        padding: .45rem .8rem;
+        font-size: .82rem;
+        text-decoration: none !important;
+        transition: all .18s ease;
+    }
+
+    .petugas-btn-inline:hover {
+        background: #152d47;
+        border-color: #152d47;
+        color: #fff;
+        text-decoration: none;
+    }
+
     .petugas-system-info {
         border: 2px solid #111827;
         border-radius: 24px;
@@ -291,6 +313,7 @@
                                 <th>TPU</th>
                                 <th style="width: 150px;">Batas 2 Tahun</th>
                                 <th style="width: 140px;">Status</th>
+                                <th style="width: 120px;">Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -325,6 +348,12 @@
                                                 Aman
                                             </span>
                                         @endif
+                                    </td>
+                                    <td>
+                                        <a href="{{ route('petugas.permohonan.show', $item) }}" class="petugas-btn-inline">
+                                            <i class="bi bi-arrow-right-circle"></i>
+                                            Proses
+                                        </a>
                                     </td>
                                 </tr>
                             @endforeach
@@ -429,7 +458,7 @@
                         </div>
                         <div>
                             <div class="fw-semibold text-dark">Total Makam</div>
-                            <p class="mb-0 text-muted">{{ $totalMakam }} lokasi makam tersedia</p>
+                            <p class="mb-0 text-muted">{{ $totalMakam }} lokasi makam</p>
                         </div>
                     </div>
                 </div>
@@ -441,8 +470,8 @@
     <div class="petugas-section-card mb-4">
         <div class="petugas-section-header d-flex justify-content-between align-items-center flex-wrap gap-2">
             <div>
-                <h4 class="petugas-section-title">Permohonan Terbaru</h4>
-                <p class="text-muted mb-0">Daftar permohonan yang masuk ke TPU Anda</p>
+                <h4 class="petugas-section-title">Seluruh Permohonan</h4>
+                <p class="text-muted mb-0">Daftar seluruh permohonan yang masuk ke TPU Anda</p>
             </div>
             <a href="{{ route('petugas.permohonan') }}" class="petugas-btn-process">
                 <i class="bi bi-arrow-right me-2"></i>Proses Permohonan
@@ -475,10 +504,17 @@
                                 };
                             @endphp
                             <tr>
-                                <td class="fw-semibold">{{ $loop->iteration }}</td>
+                                <td class="fw-semibold">
+                                    {{ $permohonanTerbaru->firstItem() + $loop->index }}
+                                </td>
                                 <td class="fw-semibold">{{ $item->nama_pemohon ?? '-' }}</td>
                                 <td>
-                                    @if($item->jenis_permohonan === 'perpanjangan')
+                                    @if($item->jenis_permohonan === 'darurat')
+                                        <span class="petugas-pill petugas-pill-danger">
+                                            <i class="bi bi-exclamation-diamond"></i>
+                                            Darurat
+                                        </span>
+                                    @elseif($item->jenis_permohonan === 'perpanjangan')
                                         <span class="petugas-pill petugas-pill-primary">
                                             <i class="bi bi-arrow-repeat"></i>
                                             Perpanjangan
@@ -496,7 +532,7 @@
                                         <span class="petugas-pill petugas-pill-success">{{ $statusLabel }}</span>
                                     @elseif($status === 'ditolak')
                                         <span class="petugas-pill petugas-pill-danger">{{ $statusLabel }}</span>
-                                    @elseif(in_array($status, ['pending', 'menunggu']))
+                                    @elseif(in_array($status, ['pending', 'menunggu', 'menunggu_konfirmasi', 'diproses_darurat', 'menunggu_verifikasi_dokumen', 'perlu_perbaikan_dokumen']))
                                         <span class="petugas-pill petugas-pill-warning">{{ $statusLabel }}</span>
                                     @else
                                         <span class="petugas-pill petugas-pill-secondary">{{ $statusLabel }}</span>
@@ -521,6 +557,15 @@
                     </tbody>
                 </table>
             </div>
+
+            @if($permohonanTerbaru->hasPages())
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3 pt-3 border-top">
+                    <small class="text-muted">
+                        Menampilkan {{ $permohonanTerbaru->firstItem() }} - {{ $permohonanTerbaru->lastItem() }} dari {{ $permohonanTerbaru->total() }} data
+                    </small>
+                    {{ $permohonanTerbaru->onEachSide(1)->links('pagination::bootstrap-5') }}
+                </div>
+            @endif
         </div>
     </div>
 </div>

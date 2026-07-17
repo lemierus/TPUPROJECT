@@ -76,7 +76,7 @@
                             <th>TPU</th>
                             <th>Kode Makam</th>
                             <th>Blok</th>
-                            <th>Zona</th>
+                            <!-- <th>Zona</th> -->
                             <th>Nomor</th>
                             <th>Status</th>
                             <th>Keterangan</th>
@@ -89,11 +89,11 @@
                     <tbody>
                         @forelse($makams as $makam)
                         <tr>
-                            <td>{{ $loop->iteration }}</td>
+                            <td>{{ ($makams->firstItem() ?? 1) + $loop->index }}</td>
                             <td>{{ $makam->tpu ?? '-' }}</td>
                             <td>{{ $makam->kode_makam }}</td>
                             <td>{{ $makam->blok ?? '-' }}</td>
-                            <td>{{ $makam->zona ?? '-' }}</td>
+                            <!-- <td>{{ $makam->zona ?? '-' }}</td> -->
                             <td>{{ $makam->nomor ?? '-' }}</td>
                             <td>
                                 <span class="badge {{ $makam->status === 'kosong' ? 'bg-secondary' : 'bg-success' }}">
@@ -132,6 +132,14 @@
                     </tbody>
                 </table>
             </div>
+            @if($makams->hasPages())
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3 pt-3 border-top">
+                    <small class="text-muted">
+                        Menampilkan {{ $makams->firstItem() }} - {{ $makams->lastItem() }} dari {{ $makams->total() }} data
+                    </small>
+                    {{ $makams->onEachSide(1)->links('pagination::bootstrap-5') }}
+                </div>
+            @endif
         </div>
     </div>
 

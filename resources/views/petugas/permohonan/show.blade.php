@@ -101,6 +101,53 @@
         border-color: #1E3E62;
     }
 
+    .whatsapp-link {
+        display: inline-flex;
+        align-items: center;
+        gap: .5rem;
+        padding: .45rem .8rem;
+        border: 2px solid #198754;
+        border-radius: 999px;
+        text-decoration: none;
+        color: #198754;
+        font-weight: 600;
+        font-size: .82rem;
+        line-height: 1;
+        transition: all .2s ease;
+        background: #fff;
+    }
+
+    .whatsapp-link:hover {
+        background: #198754;
+        color: #fff;
+        border-color: #198754;
+    }
+
+    .whatsapp-link-inline {
+        display: inline-flex;
+        align-items: center;
+        gap: .45rem;
+        margin-left: .65rem;
+        padding: .45rem .8rem;
+        border: 2px solid #198754;
+        border-radius: 999px;
+        text-decoration: none;
+        color: #198754;
+        font-weight: 600;
+        font-size: .82rem;
+        line-height: 1;
+        background: #fff;
+        transition: all .2s ease;
+        vertical-align: middle;
+    }
+
+    .whatsapp-link-inline:hover {
+        background: #198754;
+        color: #fff;
+        border-color: #198754;
+        text-decoration: none;
+    }
+
     .action-buttons {
         display: flex;
         gap: 1rem;
@@ -224,13 +271,12 @@
                 $badgeClass = match($status) {
                     'disetujui' => 'detail-badge-success',
                     'ditolak' => 'detail-badge-danger',
+                    'administrasi_belum_lengkap', 'perlu_perbaikan_dokumen' => 'detail-badge-danger',
+                    'menunggu_verifikasi_dokumen', 'diproses_darurat', 'menunggu_konfirmasi' => 'detail-badge-warning',
+                    'selesai' => 'detail-badge-success',
                     default => 'detail-badge-warning'
                 };
-                $statusLabel = match($status) {
-                    'disetujui' => 'Disetujui',
-                    'ditolak' => 'Ditolak',
-                    default => 'Menunggu'
-                };
+                $statusLabel = $permohonan->statusLabel();
             @endphp
             <span class="detail-badge {{ $badgeClass }}">
                 <i class="bi @if($status === 'disetujui') bi-check-circle @elseif($status === 'ditolak') bi-x-circle @else bi-hourglass-split @endif"></i>
@@ -238,6 +284,20 @@
             </span>
         </div>
     </div>
+
+    @if($isOutOfOrder ?? false)
+        <div class="alert alert-warning border-2 border-dark shadow-sm mb-4">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            <strong>Peringatan FIFO:</strong> permohonan ini belum berada di urutan paling awal.
+            Saat ini masih ada permohonan yang lebih dulu masuk dan sebaiknya diproses terlebih dahulu.
+            Permohonan ini sudah menunggu selama <strong>{{ $waitingDays ?? 0 }} hari</strong>.
+        </div>
+    @elseif(in_array(strtolower($permohonan->status ?? ''), ['pending', 'menunggu'], true))
+        <div class="alert alert-info border-2 border-dark shadow-sm mb-4">
+            <i class="bi bi-info-circle-fill me-2"></i>
+            Permohonan ini berada dalam antrian aktif dan sudah menunggu selama <strong>{{ $waitingDays ?? 0 }} hari</strong>.
+        </div>
+    @endif
 
     @if($permohonan->jenis_permohonan === 'makam_baru' && $permohonan->status === 'disetujui')
         <div class="alert {{ $permohonan->jenazah_id ? 'alert-info' : 'alert-warning' }} border-2 border-dark shadow-sm mb-4">
@@ -298,6 +358,14 @@
                 <div class="text-md-end">
                     @if($renewalLevel === 'expired')
                         <span class="detail-badge detail-badge-danger">Lewat batas</span>
+                        @if(! empty($renewalReminderWaUrl))
+                            <div class="mt-2">
+                                <a href="{{ $renewalReminderWaUrl }}" target="_blank" class="whatsapp-link">
+                                    <i class="bi bi-whatsapp"></i>
+                                    Kirim pengingat ke ahli waris
+                                </a>
+                            </div>
+                        @endif
                     @elseif($renewalLevel === 'soon')
                         <span class="detail-badge detail-badge-warning">Mendekati batas</span>
                     @else
@@ -317,8 +385,16 @@
         <div class="detail-row">
             <div>
                 <div class="detail-label">Jenis Permohonan</div>
-                <div class="detail-badge {{ $permohonan->jenis_permohonan === 'perpanjangan' ? 'detail-badge-primary' : 'detail-badge-success' }}">
-                    {{ $permohonan->jenis_permohonan === 'perpanjangan' ? 'Perpanjangan Makam' : 'Makam Baru' }}
+                <div class="detail-badge {{
+                    $permohonan->jenis_permohonan === 'darurat'
+                        ? 'detail-badge-danger'
+                        : ($permohonan->jenis_permohonan === 'perpanjangan' ? 'detail-badge-primary' : 'detail-badge-success')
+                }}">
+                    {{
+                        $permohonan->jenis_permohonan === 'darurat'
+                            ? 'Permohonan Darurat'
+                            : ($permohonan->jenis_permohonan === 'perpanjangan' ? 'Perpanjangan Makam' : 'Makam Baru')
+                    }}
                 </div>
             </div>
             <div>
@@ -547,8 +623,102 @@
         </div>
     @endif
 
+    @if($permohonan->catatan_revisi)
+        <div class="detail-section">
+            <div class="detail-section-title">
+                <i class="bi bi-pencil-square"></i>
+                Catatan Revisi Dokumen
+            </div>
+            <div class="detail-value">{{ $permohonan->catatan_revisi }}</div>
+        </div>
+    @endif
+
     <!-- Action Buttons (hanya jika status masih menunggu) -->
-    @if($permohonan->status === 'menunggu' || $permohonan->status === 'pending')
+    @if($permohonan->jenis_permohonan === 'darurat' && $permohonan->status === 'menunggu_konfirmasi')
+        <div class="detail-section">
+            <div class="detail-section-title">
+                <i class="bi bi-lightning-charge"></i>
+                Tindakan Darurat
+            </div>
+            <form action="{{ route('petugas.permohonan.proses-darurat', $permohonan) }}" method="POST">
+                @csrf
+                <button type="submit" class="action-btn action-btn-approve w-100">
+                    <i class="bi bi-lightning-charge-fill me-2"></i> Proses Darurat
+                </button>
+            </form>
+        </div>
+    @elseif($permohonan->jenis_permohonan === 'darurat' && $permohonan->status === 'diproses_darurat')
+        <div class="detail-section">
+            <div class="detail-section-title">
+                <i class="bi bi-geo-alt"></i>
+                Selesaikan Pemakaman Darurat
+            </div>
+            <form action="{{ route('petugas.permohonan.selesaikan-pemakaman', $permohonan) }}" method="POST">
+                @csrf
+                <div class="mb-3">
+                    <label class="form-label">Pilih Makam Kosong</label>
+                    <select name="makam_id" class="form-select form-control-custom" required>
+                        <option value="">Pilih makam kosong</option>
+                        @foreach($makamKosong as $makam)
+                            <option value="{{ $makam->id }}" @selected($permohonan->makam_id == $makam->id)>
+                                {{ $makam->kode_makam }} - {{ $makam->blok ?? '-' }} / No {{ $makam->nomor ?? '-' }} / {{ $makam->keterangan ?? '-' }} 
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Catatan Petugas</label>
+                    <textarea name="catatan" class="form-control form-control-custom" rows="3">{{ old('catatan', $permohonan->catatan) }}</textarea>
+                </div>
+                <button type="submit" class="action-btn action-btn-approve w-100">
+                    <i class="bi bi-check2-square me-2"></i> Selesaikan Pemakaman
+                </button>
+            </form>
+        </div>
+    @elseif($permohonan->status === 'menunggu_verifikasi_dokumen')
+        <div class="detail-section">
+            <div class="detail-section-title">
+                <i class="bi bi-file-earmark-check"></i>
+                Verifikasi Dokumen Darurat
+            </div>
+            <form action="{{ route('petugas.permohonan.verifikasi-dokumen', $permohonan) }}" method="POST">
+                @csrf
+
+                {{-- Tenggat sewa makam diisi saat dokumen disetujui, alurnya sama
+                     seperti permohonan makam baru reguler (lihat Modal Approve di bawah) --}}
+                <div class="mb-3">
+                    <label class="form-label">Tenggat Sewa Makam</label>
+                    <input
+                        type="date"
+                        name="tenggat_sewa_makam"
+                        class="form-control form-control-custom @error('tenggat_sewa_makam') is-invalid @enderror"
+                        value="{{ old('tenggat_sewa_makam', optional($permohonan->tenggat_sewa_makam ?? $renewalDueAt)->format('Y-m-d')) }}"
+                    >
+                    <small class="text-muted d-block mt-1">Isi tanggal batas akhir masa sewa makam (berlaku saat dokumen disetujui).</small>
+                    @error('tenggat_sewa_makam')
+                        <small class="text-danger d-block mt-1">{{ $message }}</small>
+                    @enderror
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Catatan Revisi</label>
+                    <textarea name="catatan_revisi" class="form-control form-control-custom" rows="3" placeholder="Isi jika dokumen perlu diperbaiki.">{{ old('catatan_revisi') }}</textarea>
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <button type="submit" name="aksi" value="setujui" class="action-btn action-btn-approve w-100">
+                            <i class="bi bi-check-circle me-2"></i> Setujui Dokumen
+                        </button>
+                    </div>
+                    <div class="col-md-6">
+                        <button type="submit" name="aksi" value="perbaikan" class="action-btn action-btn-reject w-100">
+                            <i class="bi bi-arrow-counterclockwise me-2"></i> Perlu Perbaikan
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    @elseif($permohonan->status === 'menunggu' || $permohonan->status === 'pending')
         <div class="detail-section">
             <div class="detail-section-title">
                 <i class="bi bi-check2-all"></i>

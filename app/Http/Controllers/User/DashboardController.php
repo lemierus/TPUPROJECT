@@ -38,6 +38,10 @@ class DashboardController extends Controller
             ->latest()
             ->get();
 
+        $permohonanLengkapiDokumen = $permohonanSemua
+            ->filter(fn (Permohonan $permohonan) => $permohonan->needsDocumentCompletion())
+            ->values();
+
         $permohonanSaya = $permohonanSemua
             ->filter(function (Permohonan $permohonan) {
                 return ! ($permohonan->jenis_permohonan === 'perpanjangan' && $permohonan->status === 'disetujui');
@@ -46,34 +50,27 @@ class DashboardController extends Controller
 
         $pengingatSewaMakam = $permohonanSemua
             ->filter(function (Permohonan $permohonan) {
+                if ($permohonan->jenis_permohonan !== 'makam_baru') {
+                    return false;
+                }
+
                 // Tampilkan pengingat untuk semua item yang memiliki tenggat mendekati/terlewat
                 if (! in_array($permohonan->renewalAlertLevel(), ['soon', 'expired'], true)) {
                     return false;
                 }
 
-                // Untuk makam_baru: hanya tampilkan jika sudah disetujui dan memiliki jenazah_id
-                if ($permohonan->jenis_permohonan === 'makam_baru') {
-                    if ($permohonan->status !== 'disetujui' || ! $permohonan->jenazah_id) {
-                        return false;
-                    }
+                if ($permohonan->status !== 'disetujui' || ! $permohonan->jenazah_id) {
+                    return false;
                 }
-
+                
                 return true;
             })
             ->filter(function (Permohonan $permohonan) use ($permohonanSemua) {
-                // Sembunyikan makam_baru jika sudah ada pengajuan perpanjangan untuk jenazah yang sama
-                if ($permohonan->jenis_permohonan !== 'makam_baru') {
-                    return true;
-                }
-
-                if (! $permohonan->jenazah_id) {
-                    return true;
-                }
-
                 return ! $permohonanSemua->contains(function (Permohonan $other) use ($permohonan) {
                     return $other->id !== $permohonan->id
                         && $other->jenis_permohonan === 'perpanjangan'
-                        && $other->jenazah_id === $permohonan->jenazah_id;
+                        && $other->jenazah_id === $permohonan->jenazah_id
+                        && in_array($other->status, ['pending', 'menunggu'], true);
                 });
             })
             ->sortBy(function (Permohonan $permohonan) {
@@ -82,13 +79,26 @@ class DashboardController extends Controller
             ->values();
 
         $totalPermohonan = $permohonanSemua->count();
-        $permohonanMenunggu = $permohonanSemua->where('status', 'menunggu')->count();
-        $permohonanDisetujui = $permohonanSemua->where('status', 'disetujui')->count();
+        $permohonanMenunggu = $permohonanSemua->filter(function (Permohonan $permohonan) {
+            return in_array($permohonan->status, [
+                Permohonan::STATUS_MENUNGGU,
+                Permohonan::STATUS_PENDING,
+                Permohonan::STATUS_MENUNGGU_KONFIRMASI,
+                Permohonan::STATUS_DIPROSES_DARURAT,
+                Permohonan::STATUS_ADMINISTRASI_BELUM_LENGKAP,
+                Permohonan::STATUS_MENUNGGU_VERIFIKASI_DOKUMEN,
+                Permohonan::STATUS_PERLU_PERBAIKAN_DOKUMEN,
+            ], true);
+        })->count();
+        $permohonanDisetujui = $permohonanSemua->filter(function (Permohonan $permohonan) {
+            return in_array($permohonan->status, [Permohonan::STATUS_DISETUJUI, Permohonan::STATUS_SELESAI], true);
+        })->count();
         $totalTpu = count($daftarTpu);
 
         return view('user.dashboard', compact(
             'daftarTpu',
             'permohonanSaya',
+            'permohonanLengkapiDokumen',
             'pengingatSewaMakam',
             'totalPermohonan',
             'permohonanMenunggu',

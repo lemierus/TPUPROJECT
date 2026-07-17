@@ -241,7 +241,7 @@
                         <label class="form-label">Tenggat Masa Sewa Makam</label>
                         <input type="date" name="tenggat_sewa_makam"
                                class="form-control @error('tenggat_sewa_makam') is-invalid @enderror"
-                               value="{{ old('tenggat_sewa_makam', optional($jenazah->renewalDueAt())->format('Y-m-d')) }}">
+                               value="{{ old('tenggat_sewa_makam', $jenazah->tenggat_sewa_makam?->format('Y-m-d')) }}">
 
                         <small class="text-muted d-block mt-1">Tanggal ini dipakai sebagai batas akhir sewa makam untuk data jenazah ini.</small>
 

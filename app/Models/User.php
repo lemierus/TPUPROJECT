@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Support\Str;
 
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
     use HasFactory, Notifiable;
 
@@ -38,13 +39,17 @@ class User extends Authenticatable
         'password' => 'hashed',
     ];
 
-    // Relasi ke Permohonan (User sebagai pemohon)
+    /**
+     * Relasi ke Permohonan (User sebagai pemohon)
+     */
     public function permohonans()
     {
         return $this->hasMany(Permohonan::class, 'user_id');
     }
 
-    // Relasi ke Permohonan (User sebagai petugas)
+    /**
+     * Relasi ke Permohonan (User sebagai petugas)
+     */
     public function permohonansTangani()
     {
         return $this->hasMany(Permohonan::class, 'petugas_id');

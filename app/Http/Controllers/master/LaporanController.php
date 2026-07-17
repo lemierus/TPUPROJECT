@@ -13,6 +13,8 @@ use DOMDocument;
 use DOMElement;
 use DOMXPath;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
@@ -29,11 +31,16 @@ class LaporanController extends Controller
         if (auth()->user()?->isKepala() || auth()->user()?->isKdlh()) {
             $report = $this->buildKepalaReport($filter, $start, $end);
 
+            // === PAGINATION: 10 data per halaman untuk tabel laporan gabungan ===
+            // Dilakukan di akhir (setelah semua statistik dihitung dari data utuh)
+            // supaya angka kartu statistik tidak ikut terpotong oleh pagination.
+            $report['reportRows'] = $this->paginateRows($report['reportRows']);
+
             return view('pages.master.laporan', array_merge($report, [
                 'routePrefix' => auth()->user()?->isKdlh() ? 'kdlh' : 'kepala',
                 'isPetugasReport' => false,
                 'isKepalaReport' => true,
-                'wordRoute' => route((auth()->user()?->isKdlh() ? 'kdlh' : 'kepala').'.laporan.word', $request->query()),
+                'wordRoute' => null,
                 'filter' => $filter,
                 'start' => $start,
                 'end' => $end,
@@ -42,6 +49,9 @@ class LaporanController extends Controller
 
         if (auth()->user()?->isPetugas()) {
             $report = $this->buildPetugasReport($filter, $start, $end);
+
+            // === PAGINATION: 10 data per halaman untuk tabel laporan gabungan ===
+            $report['reportRows'] = $this->paginateRows($report['reportRows']);
 
             return view('pages.master.laporan', array_merge($report, [
                 'routePrefix' => 'petugas',
@@ -83,7 +93,9 @@ class LaporanController extends Controller
         $data = $query->get();
 
         return view('pages.master.laporan', [
-            'data' => $data,
+            // Untuk role selain petugas/kepala/kdlh, tabel yang dipakai adalah $data,
+            // bukan $reportRows, sehingga cukup gunakan paginate() bawaan Eloquent.
+            'data' => $this->paginateRows($data),
             'total' => $data->count(),
             'laki' => $data->whereIn('jenis_kelamin', ['L', 'Laki-laki'])->count(),
             'perempuan' => $data->whereIn('jenis_kelamin', ['P', 'Perempuan'])->count(),
@@ -92,7 +104,7 @@ class LaporanController extends Controller
             'isKepalaReport' => false,
             'selectedTpu' => $selectedTpu,
             'tpuOptions' => $tpuOptions,
-            'wordRoute' => route('admin.master.laporan.word', $request->query()),
+            'wordRoute' => null,
             'routePrefix' => request()->routeIs('petugas.*') ? 'petugas' : 'admin',
         ]);
     }
@@ -140,6 +152,8 @@ class LaporanController extends Controller
         $end = $request->end;
 
         abort_unless(auth()->user()?->isPetugas() || auth()->user()?->isKepala(), 403);
+        // Halaman print/cetak TIDAK dipaginate — harus menampilkan seluruh data
+        // agar hasil cetak lengkap, bukan hanya 10 data pertama.
         $report = auth()->user()?->isKepala()
             ? $this->buildKepalaReport($filter, $start, $end)
             : $this->buildPetugasReport($filter, $start, $end);
@@ -157,14 +171,10 @@ class LaporanController extends Controller
         $start = $request->start;
         $end = $request->end;
 
-        abort_unless(auth()->user()?->isAdmin() || auth()->user()?->isPetugas() || auth()->user()?->isKepala() || auth()->user()?->isKdlh(), 403);
-        $report = auth()->user()->isKepala() || auth()->user()->isKdlh()
-            ? $this->buildKepalaReport($filter, $start, $end)
-            : $this->buildWordReport($filter, $start, $end, $request->tpu);
+        abort_unless(auth()->user()?->isPetugas(), 403);
+        $report = $this->buildWordReport($filter, $start, $end, $request->tpu);
 
-        $prefix = auth()->user()->isAdmin()
-            ? 'laporan-admin'
-            : (auth()->user()->isKepala() ? 'laporan-kepala' : (auth()->user()->isKdlh() ? 'laporan-kdlh' : 'laporan-petugas'));
+        $prefix = 'laporan-petugas';
         $scopeSlug = Str::slug($report['scopeLabel'] ?? auth()->user()->tpu ?? 'semua-tpu');
         $filename = $prefix . '-' . $scopeSlug . '-' . now()->format('Ymd-His') . '.docx';
 
@@ -183,6 +193,7 @@ class LaporanController extends Controller
         $end = $request->end;
 
         abort_unless(auth()->user()?->isPetugas() || auth()->user()?->isKepala(), 403);
+        // Export Excel TIDAK dipaginate — harus menampilkan seluruh data.
         $report = auth()->user()->isKepala()
             ? $this->buildKepalaReport($filter, $start, $end)
             : $this->buildPetugasReport($filter, $start, $end);
@@ -218,6 +229,34 @@ class LaporanController extends Controller
     private function routePrefix(): string
     {
         return request()->routeIs('petugas.*') ? 'petugas' : 'admin';
+    }
+
+    /**
+     * Memotong sebuah Collection menjadi halaman-halaman berisi 10 data,
+     * lalu membungkusnya dengan LengthAwarePaginator supaya bisa dipakai
+     * seperti hasil paginate() biasa di view (links(), total(), dst).
+     *
+     * Dipakai khusus untuk halaman index (tampilan web), TIDAK dipakai
+     * untuk print/word/excel karena laporan cetak/unduh harus lengkap.
+     */
+    private function paginateRows(Collection $rows, int $perPage = 10, string $pageName = 'page'): LengthAwarePaginator
+    {
+        $currentPage = Paginator::resolveCurrentPage($pageName);
+        $currentPage = $currentPage && $currentPage > 0 ? (int) $currentPage : 1;
+
+        $items = $rows->slice(($currentPage - 1) * $perPage, $perPage)->values();
+
+        return new LengthAwarePaginator(
+            $items,
+            $rows->count(),
+            $perPage,
+            $currentPage,
+            [
+                'path' => Paginator::resolveCurrentPath(),
+                'pageName' => $pageName,
+                'query' => request()->query(),
+            ]
+        );
     }
 
     private function buildPetugasReport(string $filter, ?string $start, ?string $end): array

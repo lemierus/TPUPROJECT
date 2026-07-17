@@ -17,6 +17,7 @@ use App\Http\Controllers\User\PermohonanController as UserPermohonanController;
 use App\Models\Tpu;
 use Illuminate\Support\Facades\Route;
 
+
 /*
 |--------------------------------------------------------------------------
 | PUBLIC ROUTES (Tanpa Login)
@@ -52,6 +53,19 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 Route::get('/register', [AuthController::class, 'register'])->name('register');
 Route::post('/register', [AuthController::class, 'prosesRegister'])->name('register.proses');
+
+// Verifikasi Email
+Route::get('/email/verify', [AuthController::class, 'verifyEmailNotice'])
+    ->middleware('auth')
+    ->name('verification.notice');
+
+Route::get('/email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail'])
+    ->middleware(['auth', 'signed'])
+    ->name('verification.verify');
+
+Route::post('/email/verification-notification', [AuthController::class, 'resendVerificationEmail'])
+    ->middleware(['auth', 'throttle:6,1'])
+    ->name('verification.send');
 
 /*
 |--------------------------------------------------------------------------
@@ -166,6 +180,9 @@ Route::middleware(['auth', 'petugas'])->prefix('petugas')->name('petugas.')->gro
     Route::get('/permohonan/{permohonan}', [PetugasPermohonanController::class, 'show'])->name('permohonan.show');
     Route::get('/permohonan/{permohonan}/edit', [PetugasPermohonanController::class, 'edit'])->name('permohonan.edit');
     Route::put('/permohonan/{permohonan}', [PetugasPermohonanController::class, 'update'])->name('permohonan.update');
+    Route::post('/permohonan/{permohonan}/proses-darurat', [PetugasPermohonanController::class, 'prosesDarurat'])->name('permohonan.proses-darurat');
+    Route::post('/permohonan/{permohonan}/selesaikan-pemakaman', [PetugasPermohonanController::class, 'selesaikanPemakaman'])->name('permohonan.selesaikan-pemakaman');
+    Route::post('/permohonan/{permohonan}/verifikasi-dokumen', [PetugasPermohonanController::class, 'verifikasiDokumen'])->name('permohonan.verifikasi-dokumen');
     Route::post('/permohonan/{permohonan}/approve', [PetugasPermohonanController::class, 'approve'])->name('permohonan.approve');
     Route::post('/permohonan/{permohonan}/reject', [PetugasPermohonanController::class, 'reject'])->name('permohonan.reject');
 
@@ -267,14 +284,17 @@ Route::middleware(['auth', 'kdlh'])->prefix('kdlh')->name('kdlh.')->group(functi
 | USER / AHLI WARIS ROUTES
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth', 'user'])->prefix('user')->name('user.')->group(function () {
+Route::middleware(['auth', 'user', 'verified'])->prefix('user')->name('user.')->group(function () {
     // Dashboard
     Route::get('/dashboard', [UserDashboardController::class, 'index'])->name('dashboard');
 
     // Permohonan
     Route::get('/permohonan/create', [UserPermohonanController::class, 'create'])->name('permohonan.create');
     Route::post('/permohonan', [UserPermohonanController::class, 'store'])->name('permohonan.store');
+    Route::get('/permohonan/{permohonan}/darurat-sukses', [UserPermohonanController::class, 'daruratSukses'])->name('permohonan.darurat-sukses');
     Route::get('/permohonan/{permohonan}/ringkasan', [UserPermohonanController::class, 'summary'])->name('permohonan.summary');
+    Route::get('/permohonan/{permohonan}/lengkapi-dokumen', [UserPermohonanController::class, 'lengkapiDokumen'])->name('permohonan.lengkapi-dokumen');
+    Route::put('/permohonan/{permohonan}/lengkapi-dokumen', [UserPermohonanController::class, 'updateDokumen'])->name('permohonan.update-dokumen');
     Route::get('/permohonan/{permohonan}/edit', [UserPermohonanController::class, 'edit'])->name('permohonan.edit');
     Route::put('/permohonan/{permohonan}', [UserPermohonanController::class, 'update'])->name('permohonan.update');
 });

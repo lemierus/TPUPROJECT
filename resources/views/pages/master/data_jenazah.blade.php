@@ -20,11 +20,11 @@
             </p>
         </div>
         <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end">
-            @if($canManage)
+            <!-- @if($canManage)
                 <a href="{{ route($routePrefix.'.data-jenazah.create', request()->only('tpu')) }}" class="btn btn-sm me-2" style="background-color:#1E3E62;color:white;">
                     <i class="bi bi-plus-circle"></i> Tambah Jenazah
                 </a>
-            @endif
+            @endif -->
             <span class="badge px-3 py-2" style="background-color: #1E3E62; color: white;">
                 {{ now()->translatedFormat('l, d F Y') }}
             </span>
@@ -226,7 +226,7 @@
                         <tbody>
                             @forelse($jenazah as $item)
                                 <tr>
-                                    <td class="text-muted">{{ $loop->iteration }}</td>
+                                    <td class="text-muted">{{ ($jenazah->firstItem() ?? 1) + $loop->index }}</td>
                                     <td>
                                         <div class="fw-semibold text-dark">{{ $item->nama }}</div>
                                         <div class="small text-muted">NIK: {{ $item->nik }}</div>
@@ -298,6 +298,14 @@
                         </tbody>
                     </table>
                 </div>
+                @if($jenazah->hasPages())
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 px-3 py-3 border-top">
+                        <small class="text-muted">
+                            Menampilkan {{ $jenazah->firstItem() }} - {{ $jenazah->lastItem() }} dari {{ $jenazah->total() }} data
+                        </small>
+                        {{ $jenazah->onEachSide(1)->links('pagination::bootstrap-5') }}
+                    </div>
+                @endif
             </div>
         </div>
     @endif

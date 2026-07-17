@@ -4,25 +4,13 @@
 
 @section('content')
 
-@php
-    $role = auth()->user()->role ?? 'admin';
-@endphp
-
 <div class="container-fluid py-4">
 
     {{-- HEADER --}}
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h4 class="fw-bold text-dark mb-1">
-                @if($role == 'admin')
-                    Dashboard Admin
-                @elseif($role == 'petugas')
-                    Dashboard Petugas
-                @elseif($role == 'kepala')
-                    Dashboard Kepala UPT
-                @else
-                    Dashboard
-                @endif
+                Dashboard Admin
             </h4>
             <p class="text-muted mb-0">Ringkasan informasi pengelolaan Sistem Informasi Pemakaman</p>
         </div>
@@ -83,18 +71,16 @@
             </div>
         </div>
 
-        {{-- KHUSUS KEPALA --}}
-        @if($role == 'kepala')
         <div class="col-lg-3 col-md-6">
             <div class="card shadow-sm border-0 rounded-4">
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
-                        <p class="text-muted mb-1">Permohonan Masuk</p>
-                        <h4 class="fw-bold mb-0">{{ $totalPermohonan ?? 0 }}</h4>
-                        <small class="text-muted">Total permohonan</small>
+                        <p class="text-muted mb-1">Permohonan Disetujui</p>
+                        <h4 class="fw-bold mb-0 text-success">{{ $permohonanDisetujui ?? 0 }}</h4>
+                        <small class="text-muted">Data selesai diproses</small>
                     </div>
-                    <div class="bg-warning text-white rounded-circle d-flex align-items-center justify-content-center" style="width:50px;height:50px;">
-                        <i class="bi bi-envelope-paper-fill"></i>
+                    <div class="bg-success text-white rounded-circle d-flex align-items-center justify-content-center" style="width:50px;height:50px;">
+                        <i class="bi bi-check2-circle"></i>
                     </div>
                 </div>
             </div>
@@ -104,17 +90,16 @@
             <div class="card shadow-sm border-0 rounded-4">
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
-                        <p class="text-muted mb-1">Menunggu Verifikasi</p>
-                        <h4 class="fw-bold mb-0">{{ $permohonanPending ?? 0 }}</h4>
-                        <small class="text-muted">Belum diproses</small>
+                        <p class="text-muted mb-1">Permohonan Ditolak</p>
+                        <h4 class="fw-bold mb-0 text-danger">{{ $permohonanDitolak ?? 0 }}</h4>
+                        <small class="text-muted">Data ditolak sistem</small>
                     </div>
                     <div class="bg-danger text-white rounded-circle d-flex align-items-center justify-content-center" style="width:50px;height:50px;">
-                        <i class="bi bi-exclamation-triangle-fill"></i>
+                        <i class="bi bi-x-circle"></i>
                     </div>
                 </div>
             </div>
         </div>
-        @endif
 
     </div>
 
@@ -185,8 +170,6 @@
                 <div class="card-body px-4">
 
                     <ul class="list-group list-group-flush">
-
-                        @if($role == 'kepala')
                         <li class="list-group-item d-flex justify-content-between px-0">
                             <span>Jumlah Petugas</span>
                             <strong>{{ $totalPetugas ?? 0 }}</strong>
@@ -196,7 +179,11 @@
                             <span>Jumlah Pengguna</span>
                             <strong>{{ $totalUser ?? 0 }}</strong>
                         </li>
-                        @endif
+
+                        <li class="list-group-item d-flex justify-content-between px-0">
+                            <span>Menunggu Proses</span>
+                            <strong class="text-warning">{{ $permohonanPending ?? 0 }}</strong>
+                        </li>
 
                         <li class="list-group-item d-flex justify-content-between px-0">
                             <span>Disetujui</span>
@@ -207,25 +194,19 @@
                             <span>Ditolak</span>
                             <strong class="text-danger">{{ $permohonanDitolak ?? 0 }}</strong>
                         </li>
-
                     </ul>
 
                     <div class="mt-4">
-                        @if($role == 'admin' || $role == 'petugas')
-                            <a href="#" class="btn btn-primary w-100" style="background:#1E3E62;color:white;">
-                                Proses Permohonan
-                            </a>
-                        @else
-                            <a href="#" class="btn btn-success w-100">
-                                Lihat Laporan
-                            </a>
-                        @endif
+                        <a href="{{ route('admin.master.permohonan') }}" class="btn btn-primary w-100" style="background:#1E3E62;color:white;">
+                            Proses Permohonan
+                        </a>
+                        <a href="{{ route('admin.master.laporan') }}" class="btn btn-outline-success w-100 mt-2">
+                            Lihat Laporan
+                        </a>
                     </div>
-
                 </div>
             </div>
         </div>
-
     </div>
 
     {{-- TABEL --}}
