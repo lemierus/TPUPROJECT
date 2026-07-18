@@ -38,11 +38,11 @@
                         <textarea name="highlight" class="form-control @error('highlight') is-invalid @enderror" rows="3">{{ old('highlight', $tpu->highlight) }}</textarea>
                         @error('highlight')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
-                    <div class="col-md-12">
+                    <!-- <div class="col-md-12">
                         <label class="form-label">Deskripsi</label>
                         <textarea name="deskripsi" class="form-control @error('deskripsi') is-invalid @enderror" rows="4">{{ old('deskripsi', $tpu->deskripsi) }}</textarea>
                         @error('deskripsi')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                    </div>
+                    </div> -->
                     <div class="col-md-6">
                         <label class="form-label">Nomor WhatsApp Petugas <i class="bi bi-whatsapp text-success"></i></label>
                         <select name="wa_petugas_id" class="form-select @error('wa_petugas_id') is-invalid @enderror">

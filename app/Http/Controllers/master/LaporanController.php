@@ -28,22 +28,40 @@ class LaporanController extends Controller
         $selectedTpu = $request->tpu;
         $tpuOptions = User::tpuOptions();
 
-        if (auth()->user()?->isKepala() || auth()->user()?->isKdlh()) {
-            $report = $this->buildKepalaReport($filter, $start, $end);
+        // === Admin, Kepala TPU, dan Kepala Dinas Lingkungan Hidup (KDLH) ===
+        // Ketiga role ini punya hak akses laporan yang SAMA: bisa melihat data
+        // gabungan (Permohonan + Jenazah) untuk SEMUA TPU, dengan dropdown
+        // filter TPU. Karena itu ketiganya memakai branch & builder yang sama
+        // (buildKepalaReport) supaya perilakunya konsisten dan tidak dobel logic.
+        if (auth()->user()?->isKepala() || auth()->user()?->isKdlh() || auth()->user()?->isAdmin()) {
+            // Validasi dulu supaya nilai sembarangan di query string tidak lolos ke query.
+            $selectedTpuForKepala = filled($selectedTpu) && in_array($selectedTpu, $tpuOptions, true)
+                ? $selectedTpu
+                : null;
+
+            $report = $this->buildKepalaReport($filter, $start, $end, $selectedTpuForKepala);
 
             // === PAGINATION: 10 data per halaman untuk tabel laporan gabungan ===
             // Dilakukan di akhir (setelah semua statistik dihitung dari data utuh)
             // supaya angka kartu statistik tidak ikut terpotong oleh pagination.
             $report['reportRows'] = $this->paginateRows($report['reportRows']);
 
+            $routePrefix = match (true) {
+                auth()->user()?->isKdlh()   => 'kdlh',
+                auth()->user()?->isKepala() => 'kepala',
+                default                     => 'admin',
+            };
+
             return view('pages.master.laporan', array_merge($report, [
-                'routePrefix' => auth()->user()?->isKdlh() ? 'kdlh' : 'kepala',
+                'routePrefix' => $routePrefix,
                 'isPetugasReport' => false,
                 'isKepalaReport' => true,
                 'wordRoute' => null,
                 'filter' => $filter,
                 'start' => $start,
                 'end' => $end,
+                'tpuOptions' => $tpuOptions,
+                'selectedTpu' => $selectedTpuForKepala,
             ]));
         }
 
@@ -64,11 +82,10 @@ class LaporanController extends Controller
             ]));
         }
 
+        // Fallback untuk role lain di luar admin/petugas/kepala/kdlh (jika ada).
+        // Hanya menampilkan data Jenazah tanpa gabungan Permohonan.
         $query = Jenazah::with('makam')
-            ->when(auth()->user()?->isPetugas(), function ($query) {
-                $query->where('tpu', auth()->user()->tpu);
-            })
-            ->when(auth()->user()?->isAdmin() && filled($selectedTpu) && in_array($selectedTpu, $tpuOptions, true), function ($query) use ($selectedTpu) {
+            ->when(filled($selectedTpu) && in_array($selectedTpu, $tpuOptions, true), function ($query) use ($selectedTpu) {
                 $query->where('tpu', $selectedTpu);
             });
 
@@ -92,10 +109,30 @@ class LaporanController extends Controller
 
         $data = $query->get();
 
+        $rows = $data->map(function (Jenazah $item) {
+            $makam = $item->makam;
+
+            return [
+                'source' => 'jenazah',
+                'source_label' => 'Data Jenazah',
+                'nama' => $item->nama ?? '-',
+                'nik' => $item->nik ?? '-',
+                'jenis_kelamin' => $item->jenis_kelamin ?? '-',
+                'tanggal_wafat_label' => $this->formatDate($item->tanggal_wafat),
+                'tanggal_input_label' => $this->formatDate($item->created_at),
+                'kode_makam' => $item->kode_makam ?? $makam?->kode_makam ?? '-',
+                'blok' => $item->blok ?? $makam?->blok ?? '-',
+                'zona' => $item->zona ?? $makam?->zona ?? '-',
+                'nomor_makam' => $item->nomor_makam ?? $makam?->nomor ?? '-',
+                'status_makam' => $makam?->status ?? '-',
+                'status_permohonan' => '-',
+                'catatan' => $item->keterangan ?? '-',
+                'nama_ahli_waris' => '-',
+            ];
+        });
+
         return view('pages.master.laporan', [
-            // Untuk role selain petugas/kepala/kdlh, tabel yang dipakai adalah $data,
-            // bukan $reportRows, sehingga cukup gunakan paginate() bawaan Eloquent.
-            'data' => $this->paginateRows($data),
+            'reportRows' => $this->paginateRows($rows),
             'total' => $data->count(),
             'laki' => $data->whereIn('jenis_kelamin', ['L', 'Laki-laki'])->count(),
             'perempuan' => $data->whereIn('jenis_kelamin', ['P', 'Perempuan'])->count(),
@@ -150,13 +187,30 @@ class LaporanController extends Controller
         $filter = $request->filter ?? 'harian';
         $start = $request->start;
         $end = $request->end;
+        $selectedTpu = $request->tpu;
+        $tpuOptions = User::tpuOptions();
 
-        abort_unless(auth()->user()?->isPetugas() || auth()->user()?->isKepala(), 403);
-        // Halaman print/cetak TIDAK dipaginate — harus menampilkan seluruh data
-        // agar hasil cetak lengkap, bukan hanya 10 data pertama.
-        $report = auth()->user()?->isKepala()
-            ? $this->buildKepalaReport($filter, $start, $end)
-            : $this->buildPetugasReport($filter, $start, $end);
+        // Admin sekarang punya hak akses yang sama dengan Kepala TPU / KDLH,
+        // termasuk untuk fitur cetak (print).
+        abort_unless(
+            auth()->user()?->isPetugas()
+                || auth()->user()?->isKepala()
+                || auth()->user()?->isKdlh()
+                || auth()->user()?->isAdmin(),
+            403
+        );
+
+        if (auth()->user()?->isKepala() || auth()->user()?->isKdlh() || auth()->user()?->isAdmin()) {
+            $selectedTpuForKepala = filled($selectedTpu) && in_array($selectedTpu, $tpuOptions, true)
+                ? $selectedTpu
+                : null;
+
+            // Halaman print/cetak TIDAK dipaginate — harus menampilkan seluruh data
+            // agar hasil cetak lengkap, bukan hanya 10 data pertama.
+            $report = $this->buildKepalaReport($filter, $start, $end, $selectedTpuForKepala);
+        } else {
+            $report = $this->buildPetugasReport($filter, $start, $end);
+        }
 
         return view('pages.master.laporan_print', array_merge($report, [
             'filter' => $filter,
@@ -191,14 +245,34 @@ class LaporanController extends Controller
         $filter = $request->filter ?? 'harian';
         $start = $request->start;
         $end = $request->end;
+        $selectedTpu = $request->tpu;
+        $tpuOptions = User::tpuOptions();
 
-        abort_unless(auth()->user()?->isPetugas() || auth()->user()?->isKepala(), 403);
-        // Export Excel TIDAK dipaginate — harus menampilkan seluruh data.
-        $report = auth()->user()->isKepala()
-            ? $this->buildKepalaReport($filter, $start, $end)
-            : $this->buildPetugasReport($filter, $start, $end);
-        $prefix = auth()->user()->isKepala() ? 'laporan-kepala' : 'laporan-petugas';
-        $filename = $prefix . '-' . auth()->user()->tpu . '-' . now()->format('Ymd-His') . '.xls';
+        // Admin sekarang punya hak akses yang sama dengan Kepala TPU / KDLH,
+        // termasuk untuk fitur export Excel.
+        abort_unless(
+            auth()->user()?->isPetugas()
+                || auth()->user()?->isKepala()
+                || auth()->user()?->isKdlh()
+                || auth()->user()?->isAdmin(),
+            403
+        );
+
+        if (auth()->user()?->isKepala() || auth()->user()?->isKdlh() || auth()->user()?->isAdmin()) {
+            $selectedTpuForKepala = filled($selectedTpu) && in_array($selectedTpu, $tpuOptions, true)
+                ? $selectedTpu
+                : null;
+
+            // Export Excel TIDAK dipaginate — harus menampilkan seluruh data.
+            $report = $this->buildKepalaReport($filter, $start, $end, $selectedTpuForKepala);
+            $prefix = 'laporan-kepala';
+        } else {
+            $report = $this->buildPetugasReport($filter, $start, $end);
+            $prefix = 'laporan-petugas';
+        }
+
+        $tpuLabel = auth()->user()->tpu ?? Str::slug($report['scopeLabel'] ?? 'semua-tpu');
+        $filename = $prefix . '-' . $tpuLabel . '-' . now()->format('Ymd-His') . '.xls';
 
         $html = view('pages.master.laporan_export', $report + [
             'filter' => $filter,
@@ -297,13 +371,15 @@ class LaporanController extends Controller
         ];
     }
 
-    private function buildKepalaReport(string $filter, ?string $start, ?string $end): array
+    private function buildKepalaReport(string $filter, ?string $start, ?string $end, ?string $tpu = null): array
     {
-        $permohonanQuery = Permohonan::with(['makam', 'jenazah', 'user']);
+        $permohonanQuery = Permohonan::with(['makam', 'jenazah', 'user'])
+            ->when($tpu, fn ($query) => $query->where('tpu', $tpu));
         $this->applyDateFilter($permohonanQuery, $filter, $start, $end, 'created_at');
         $permohonans = $permohonanQuery->latest('created_at')->get();
 
-        $jenazahQuery = Jenazah::with('makam');
+        $jenazahQuery = Jenazah::with('makam')
+            ->when($tpu, fn ($query) => $query->where('tpu', $tpu));
         $this->applyDateFilter($jenazahQuery, $filter, $start, $end, 'tanggal_wafat');
         $jenazahs = $jenazahQuery->latest('created_at')->get();
 
@@ -312,7 +388,7 @@ class LaporanController extends Controller
         return [
             'isPetugasReport' => false,
             'isKepalaReport' => true,
-            'scopeLabel' => 'Semua TPU',
+            'scopeLabel' => $tpu ?: 'Semua TPU',
             'reportRows' => $rows,
             'permohonansReport' => $permohonans,
             'jenazahsReport' => $jenazahs,

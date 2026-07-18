@@ -623,9 +623,16 @@
                                         <a href="{{ route('user.permohonan.summary', $item) }}" class="btn btn-sm btn-success">Lihat Ringkasan</a>
                                     @endif
                                     @if(in_array($status, ['administrasi_belum_lengkap', 'perlu_perbaikan_dokumen'], true))
-                                        <a href="{{ route('user.permohonan.lengkapi-dokumen', $item) }}" class="btn btn-sm btn-outline-dark">Lengkapi Dokumen</a>
-                                    @elseif(! in_array($status, ['disetujui', 'selesai'], true))
-                                        <a href="{{ route('user.permohonan.edit', $item) }}" class="btn btn-sm btn-outline-primary">Detail / Edit</a>
+                                        <a href="{{ route('user.permohonan.lengkapi-dokumen', $item) }}"
+                                        class="btn btn-sm btn-outline-dark">
+                                            Lengkapi Dokumen
+                                        </a>
+
+                                    @elseif(in_array($status, ['menunggu', 'pending'], true))
+                                        <a href="{{ route('user.permohonan.edit', $item) }}"
+                                        class="btn btn-sm btn-outline-primary">
+                                            Edit Data
+                                        </a>
                                     @endif
                                 </div>
                             </td>

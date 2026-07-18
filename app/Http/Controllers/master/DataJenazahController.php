@@ -27,18 +27,22 @@ class DataJenazahController extends Controller
             $this->syncApprovedPermohonanJenazah();
         }
 
-        $jenazahQuery = $this->accessibleJenazah()
-            ->with(['makam', 'permohonan'])
-            ->when((auth()->user()?->isAdmin() || auth()->user()?->isKdlh() || auth()->user()?->isKepala()) && filled($selectedTpu) && in_array($selectedTpu, $tpuOptions, true), function ($query) use ($selectedTpu) {
-                $query->where('tpu', $selectedTpu);
-            })
-            ->when($search, function ($query) use ($search) {
-                $query->where(function ($subQuery) use ($search) {
-                    $subQuery->where('nama', 'like', "%$search%")
-                        ->orWhere('nik', 'like', "%$search%")
-                        ->orWhere('alamat', 'like', "%$search%");
-                });
+    $jenazahQuery = $this->accessibleJenazah()
+        ->with(['makam', 'permohonan'])
+        ->when((auth()->user()?->isAdmin() || auth()->user()?->isKdlh() || auth()->user()?->isKepala()) && filled($selectedTpu) && in_array($selectedTpu, $tpuOptions, true), function ($query) use ($selectedTpu) {
+            $query->where('tpu', $selectedTpu);
+        })
+        ->when($search, function ($query) use ($search) {
+            $query->where(function ($subQuery) use ($search) {
+                $subQuery->where('nama', 'like', "%$search%")
+                    ->orWhere('nik', 'like', "%$search%")
+                    ->orWhere('alamat', 'like', "%$search%")
+                    ->orWhere('blok', 'like', "%$search%")
+                    ->orWhere('kode_makam', 'like', "%$search%")
+                    ->orWhere('zona', 'like', "%$search%")
+                    ->orWhere('nomor_makam', 'like', "%$search%");
             });
+        });
 
         $jenazah = $jenazahQuery->latest()->paginate(10)->withQueryString();
 

@@ -224,6 +224,21 @@
         box-shadow: 0 0 0 3px rgba(30, 62, 98, 0.1);
     }
 
+    /* Tumpang sari toggle di Modal Approve */
+    .tipe-pemakaman-toggle .form-check {
+        border: 2px solid #d0d5dd;
+        border-radius: 10px;
+        padding: .6rem 1rem .6rem 2.2rem;
+        flex: 1;
+        cursor: pointer;
+        transition: all .2s ease;
+    }
+
+    .tipe-pemakaman-toggle .form-check:has(.form-check-input:checked) {
+        border-color: #1E3E62;
+        background: #ecf2ff;
+    }
+
     @media (max-width: 767.98px) {
         .detail-section {
             padding: 1rem;
@@ -253,11 +268,16 @@
             <i class="bi bi-exclamation-circle-fill me-2"></i>{{ $errors->first() }}
         </div>
     @endif
+    @if(session('error'))
+        <div class="alert alert-danger border-2 border-dark shadow-sm mb-4">
+            <i class="bi bi-exclamation-circle-fill me-2"></i>{!! session('error') !!}
+        </div>
+    @endif
 
     <div class="detail-header d-flex justify-content-between align-items-start gap-3 flex-wrap">
         <div>
             <h3 class="mb-2">Detail Permohonan</h3>
-            <p class="mb-0 opacity-75">ID: #{{ $permohonan->id }} |
+            <p class="mb-0 opacity-75">
                 @if($permohonan->created_at)
                     {{ \Carbon\Carbon::parse($permohonan->created_at)->format('d F Y H:i') }}
                 @else
@@ -285,7 +305,7 @@
         </div>
     </div>
 
-    @if($isOutOfOrder ?? false)
+    <!-- @if($isOutOfOrder ?? false)
         <div class="alert alert-warning border-2 border-dark shadow-sm mb-4">
             <i class="bi bi-exclamation-triangle-fill me-2"></i>
             <strong>Peringatan FIFO:</strong> permohonan ini belum berada di urutan paling awal.
@@ -297,7 +317,7 @@
             <i class="bi bi-info-circle-fill me-2"></i>
             Permohonan ini berada dalam antrian aktif dan sudah menunggu selama <strong>{{ $waitingDays ?? 0 }} hari</strong>.
         </div>
-    @endif
+    @endif -->
 
     @if($permohonan->jenis_permohonan === 'makam_baru' && $permohonan->status === 'disetujui')
         <div class="alert {{ $permohonan->jenazah_id ? 'alert-info' : 'alert-warning' }} border-2 border-dark shadow-sm mb-4">
@@ -640,12 +660,24 @@
                 <i class="bi bi-lightning-charge"></i>
                 Tindakan Darurat
             </div>
-            <form action="{{ route('petugas.permohonan.proses-darurat', $permohonan) }}" method="POST">
-                @csrf
-                <button type="submit" class="action-btn action-btn-approve w-100">
-                    <i class="bi bi-lightning-charge-fill me-2"></i> Proses Darurat
-                </button>
-            </form>
+            <p class="text-muted mb-3">
+                Jika TPU ini tidak dapat menampung pemakaman darurat ini (misal: makam kosong tidak tersedia atau di luar wilayah layanan), tolak permohonan dengan alasan yang jelas agar keluarga dapat segera mencari TPU lain.
+            </p>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <form action="{{ route('petugas.permohonan.proses-darurat', $permohonan) }}" method="POST">
+                        @csrf
+                        <button type="submit" class="action-btn action-btn-approve w-100">
+                            <i class="bi bi-lightning-charge-fill me-2"></i> Proses Darurat
+                        </button>
+                    </form>
+                </div>
+                <div class="col-md-6">
+                    <button class="action-btn action-btn-reject w-100" data-bs-toggle="modal" data-bs-target="#rejectModal">
+                        <i class="bi bi-x-circle me-2"></i> Tolak
+                    </button>
+                </div>
+            </div>
         </div>
     @elseif($permohonan->jenis_permohonan === 'darurat' && $permohonan->status === 'diproses_darurat')
         <div class="detail-section">
@@ -770,6 +802,64 @@
                 @csrf
                 <div class="modal-body">
                     <p class="text-muted mb-3">Anda akan menyetujui permohonan ini. Apakah ada catatan untuk ahli waris?</p>
+
+                    {{-- ===== TAMBAHAN: Jenis Pemakaman (Baru / Tumpang Sari) =====
+                         Hanya relevan untuk permohonan makam baru. Perpanjangan/darurat
+                         punya alurnya sendiri dan tidak perlu opsi ini. --}}
+                    @if($permohonan->jenis_permohonan === 'makam_baru')
+                        <div class="mb-3">
+                            <label class="form-label">Jenis Pemakaman</label>
+                            <div class="d-flex gap-2 tipe-pemakaman-toggle">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="tipe_pemakaman"
+                                           id="tipeBaru" value="baru" checked>
+                                    <label class="form-check-label" for="tipeBaru">Makam Baru</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="tipe_pemakaman"
+                                           id="tipeTumpangSari" value="tumpang_sari">
+                                    <label class="form-check-label" for="tipeTumpangSari">Tumpang Sari</label>
+                                </div>
+                            </div>
+                            <small class="text-muted d-block mt-1">
+                                Cek catatan ahli waris di atas &mdash; jika berisi permintaan tumpang sari,
+                                pilih "Tumpang Sari" lalu tentukan makam tujuannya di bawah.
+                            </small>
+                        </div>
+
+                        <div class="mb-3" id="makamBaruWrapper">
+                            <label class="form-label">Pilih Makam Kosong</label>
+                            <select name="makam_id" class="form-select form-control-custom" id="makamBaruSelect">
+                                <option value="">-- Tidak mengubah makam saat ini --</option>
+                                @foreach($makamKosong as $makam)
+                                    <option value="{{ $makam->id }}" @selected($permohonan->makam_id == $makam->id)>
+                                        {{ $makam->kode_makam }} - {{ $makam->blok ?? '-' }} / No {{ $makam->nomor ?? '-' }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="mb-3 d-none" id="makamTumpangSariWrapper">
+                            <label class="form-label">Pilih Makam Tujuan (Tumpang Sari)</label>
+                            <select name="makam_id" class="form-select form-control-custom" id="makamTumpangSariSelect" disabled>
+                                <option value="">-- Pilih makam yang sudah terisi --</option>
+                                @foreach($makamTerisi as $makam)
+                                    <option value="{{ $makam->id }}">
+                                        {{ $makam->kode_makam }} - {{ $makam->blok ?? '-' }} / No {{ $makam->nomor ?? '-' }}
+                                        @if($makam->jenazahs->isNotEmpty())
+                                            (sudah berisi: {{ $makam->jenazahs->pluck('nama')->join(', ') }})
+                                        @endif
+                                    </option>
+                                @endforeach
+                            </select>
+                            <small class="text-muted d-block mt-1">
+                                Daftar ini hanya menampilkan makam yang sudah terisi, beserta nama jenazah
+                                yang sudah dimakamkan, untuk memudahkan pencocokan dengan permintaan ahli waris.
+                            </small>
+                        </div>
+                    @endif
+                    {{-- ===== AKHIR TAMBAHAN ===== --}}
+
                     <div class="mb-3">
                         <label class="form-label">Tenggat Sewa Baru</label>
                         <input type="date" name="tenggat_sewa_makam" class="form-control form-control-custom" value="{{ old('tenggat_sewa_makam', optional($permohonan->tenggat_sewa_makam ?? $renewalDueAt)->format('Y-m-d')) }}">
@@ -804,14 +894,27 @@
             <form action="{{ route('petugas.permohonan.reject', $permohonan) }}" method="POST">
                 @csrf
                 <div class="modal-body">
-                    <p class="text-muted mb-3">Anda akan menolak permohonan ini. Harap berikan alasan penolakan.</p>
-                    <div class="mb-3">
-                        <label class="form-label">Alasan Penolakan <span class="text-danger">*</span></label>
-                        <textarea name="catatan" class="form-control form-control-custom" rows="4" placeholder="Masukkan alasan penolakan..." required></textarea>
-                        @error('catatan')
-                            <small class="text-danger d-block mt-2">{{ $message }}</small>
-                        @enderror
-                    </div>
+                    @if($permohonan->jenis_permohonan === 'darurat')
+                        <p class="text-muted mb-3">
+                            Anda akan menolak permohonan pemakaman darurat ini. Karena keluarga sedang dalam kondisi mendesak, jelaskan alasan penolakan secara spesifik agar mereka tahu langkah selanjutnya.
+                        </p>
+                        <div class="mb-3">
+                            <label class="form-label">Alasan Penolakan <span class="text-danger">*</span></label>
+                            <textarea name="catatan" class="form-control form-control-custom" rows="4" placeholder="Contoh: Makam kosong di TPU ini sudah penuh / lokasi wafat di luar wilayah layanan TPU ini. Silakan segera hubungi TPU terdekat lainnya." required></textarea>
+                            @error('catatan')
+                                <small class="text-danger d-block mt-2">{{ $message }}</small>
+                            @enderror
+                        </div>
+                    @else
+                        <p class="text-muted mb-3">Anda akan menolak permohonan ini. Harap berikan alasan penolakan.</p>
+                        <div class="mb-3">
+                            <label class="form-label">Alasan Penolakan <span class="text-danger">*</span></label>
+                            <textarea name="catatan" class="form-control form-control-custom" rows="4" placeholder="Masukkan alasan penolakan..." required></textarea>
+                            @error('catatan')
+                                <small class="text-danger d-block mt-2">{{ $message }}</small>
+                            @enderror
+                        </div>
+                    @endif
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-dark" data-bs-dismiss="modal">Batal</button>
@@ -823,4 +926,41 @@
         </div>
     </div>
 </div>
+
+{{-- ===== TAMBAHAN: script toggle tipe pemakaman ===== --}}
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var radios = document.querySelectorAll('input[name="tipe_pemakaman"]');
+        var makamBaruWrapper = document.getElementById('makamBaruWrapper');
+        var makamTumpangSariWrapper = document.getElementById('makamTumpangSariWrapper');
+        var makamBaruSelect = document.getElementById('makamBaruSelect');
+        var makamTumpangSariSelect = document.getElementById('makamTumpangSariSelect');
+
+        if (!radios.length) return;
+
+        function toggleTipePemakaman() {
+            var tipe = document.querySelector('input[name="tipe_pemakaman"]:checked').value;
+
+            if (tipe === 'tumpang_sari') {
+                makamBaruWrapper.classList.add('d-none');
+                makamTumpangSariWrapper.classList.remove('d-none');
+                makamBaruSelect.disabled = true;
+                makamTumpangSariSelect.disabled = false;
+            } else {
+                makamBaruWrapper.classList.remove('d-none');
+                makamTumpangSariWrapper.classList.add('d-none');
+                makamBaruSelect.disabled = false;
+                makamTumpangSariSelect.disabled = true;
+            }
+        }
+
+        radios.forEach(function (radio) {
+            radio.addEventListener('change', toggleTipePemakaman);
+        });
+
+        toggleTipePemakaman();
+    });
+</script>
+@endpush
 @endsection

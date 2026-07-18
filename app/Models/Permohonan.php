@@ -27,6 +27,10 @@ class Permohonan extends Model
     public const STATUS_DITOLAK = 'ditolak';
     public const STATUS_SELESAI = 'selesai';
 
+    // ===== TAMBAHAN: konstanta tipe pemakaman (baru / tumpang sari) =====
+    public const TIPE_PEMAKAMAN_BARU = 'baru';
+    public const TIPE_PEMAKAMAN_TUMPANG_SARI = 'tumpang_sari';
+
     protected $fillable = [
         'user_id',
         'tpu',
@@ -48,6 +52,7 @@ class Permohonan extends Model
         'surat_kematian',
         'jenazah_id',
         'makam_id',
+        'tipe_pemakaman', // TAMBAHAN
         'tahun_pemakaman',
         'tenggat_sewa_makam',
         'status',
@@ -109,6 +114,12 @@ class Permohonan extends Model
     public function makam()
     {
         return $this->belongsTo(Makam::class);
+    }
+
+    // ===== TAMBAHAN: helper untuk mengecek apakah permohonan ini tumpang sari =====
+    public function isTumpangSari(): bool
+    {
+        return $this->tipe_pemakaman === self::TIPE_PEMAKAMAN_TUMPANG_SARI;
     }
 
     public function syncLinkedJenazahData(): void

@@ -28,6 +28,10 @@
 
     <div class="card border-0 shadow-sm">
         <div class="card-body p-4">
+            <small class="text-muted d-block mb-3">
+                <span class="text-danger">*</span> menandakan data wajib diisi
+            </small>
+
             <form action="{{ route('user.permohonan.store') }}" method="POST" enctype="multipart/form-data" id="permohonan-form">
                 @csrf
                 <input type="hidden" name="tpu" value="{{ $tpu }}">
@@ -61,7 +65,7 @@
                             <h6 class="fw-bold">Data Perpanjangan Makam</h6>
                         </div>
                         <div class="col-12">
-                            <label class="form-label">Pilih Nama Jenazah</label>
+                            <label class="form-label">Pilih Nama Jenazah <span class="text-danger">*</span></label>
                             <select name="jenazah_id" class="form-select">
                                 <option value="">Pilih jenazah</option>
                                 @foreach($perpanjanganJenazahs as $item)
@@ -89,15 +93,18 @@
                             <h6 class="fw-bold">Data Jenazah</h6>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Nama Jenazah</label>
+                            <label class="form-label">Nama Jenazah <span class="text-danger">*</span></label>
                             <input type="text" name="nama_jenazah" class="form-control" value="{{ old('nama_jenazah') }}">
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">NIK Jenazah</label>
+                            <label class="form-label">
+                                NIK Jenazah
+                                <span class="text-danger req-makam-baru" style="{{ $isDarurat ? 'display:none;' : '' }}">*</span>
+                            </label>
                             <input type="text" name="nik_jenazah" class="form-control" value="{{ old('nik_jenazah') }}">
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">Jenis Kelamin</label>
+                            <label class="form-label">Jenis Kelamin <span class="text-danger">*</span></label>
                             <select name="jenis_kelamin" class="form-select">
                                 <option value="">Pilih</option>
                                 <option value="Laki-laki" @selected(old('jenis_kelamin') === 'Laki-laki')>Laki-laki</option>
@@ -105,7 +112,7 @@
                             </select>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">Agama</label>
+                            <label class="form-label">Agama <span class="text-danger">*</span></label>
                             <select name="agama" class="form-select">
                                 <option value="">Pilih</option>
                                 @foreach(['Islam', 'Kristen', 'Katolik', 'Hindu', 'Buddha', 'Konghucu'] as $agama)
@@ -114,19 +121,28 @@
                             </select>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">Tanggal Meninggal</label>
+                            <label class="form-label">Tanggal Meninggal <span class="text-danger">*</span></label>
                             <input type="date" name="tanggal_wafat" class="form-control" value="{{ old('tanggal_wafat') }}">
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Tempat Lahir</label>
+                            <label class="form-label">
+                                Tempat Lahir
+                                <span class="text-danger req-makam-baru" style="{{ $isDarurat ? 'display:none;' : '' }}">*</span>
+                            </label>
                             <input type="text" name="tempat_lahir" class="form-control" value="{{ old('tempat_lahir') }}">
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Tanggal Lahir</label>
+                            <label class="form-label">
+                                Tanggal Lahir
+                                <span class="text-danger req-makam-baru" style="{{ $isDarurat ? 'display:none;' : '' }}">*</span>
+                            </label>
                             <input type="date" name="tanggal_lahir" class="form-control" value="{{ old('tanggal_lahir') }}">
                         </div>
                         <div class="col-12">
-                            <label class="form-label">Alamat</label>
+                            <label class="form-label">
+                                Alamat
+                                <span class="text-danger req-makam-baru" style="{{ $isDarurat ? 'display:none;' : '' }}">*</span>
+                            </label>
                             <textarea name="alamat" class="form-control" rows="3">{{ old('alamat') }}</textarea>
                         </div>
                     </div>
@@ -137,56 +153,66 @@
                         <h6 class="fw-bold">Data Ahli Waris</h6>
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label">Nama Ahli Waris</label>
+                        <label class="form-label">Nama Ahli Waris <span class="text-danger">*</span></label>
                         <input type="text" name="nama_ahli_waris" class="form-control" value="{{ old('nama_ahli_waris', auth()->user()->name) }}">
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label">Nomor HP Ahli Waris</label>
+                        <label class="form-label">Nomor HP Ahli Waris <span class="text-danger">*</span></label>
                         <input type="text" name="no_hp_ahli_waris" class="form-control" value="{{ old('no_hp_ahli_waris', auth()->user()->no_hp) }}">
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label">Hubungan dengan Jenazah</label>
+                        <label class="form-label">Hubungan dengan Jenazah <span class="text-danger">*</span></label>
                         <input type="text" name="hubungan_keluarga" class="form-control" value="{{ old('hubungan_keluarga') }}">
                     </div>
                     <div class="col-12">
-                        <label class="form-label">Keterangan / Catatan</label>
+                        <label class="form-label"> Keterangan / Catatan <span class="text-danger">*</span></label>
                         <textarea name="catatan" class="form-control" rows="3">{{ old('catatan') }}</textarea>
                     </div>
                 </div>
 
-                <!-- <div id="section-regular-extra" style="{{ $isDarurat ? 'display:none;' : '' }}">
-                    <div id="section-makam-baru-extra" style="{{ $isPerpanjangan ? 'display:none;' : '' }}">
-                        <div class="row g-3 mt-1">
-                            <div class="col-md-6">
-                                <label class="form-label">Pilih Makam</label>
-                                <select name="makam_id" class="form-select">
-                                    <option value="">Pilih makam</option>
-                                    @foreach($makams as $makam)
-                                        <option value="{{ $makam->id }}" @selected(old('makam_id') == $makam->id)>
-                                            {{ $makam->kode_makam }} - {{ $makam->blok ?? '-' }} / {{ $makam->zona ?? '-' }} / No {{ $makam->nomor ?? '-' }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-                        </div>
-                    </div> -->
+                <!--
+                <div class="row g-3 mt-1">
+                    <div class="col-md-6">
+                        <label class="form-label">Pilih Makam</label>
+                        <select name="makam_id" class="form-select">
+                            <option value="">Pilih makam</option>
+                            @foreach($makams as $makam)
+                                <option value="{{ $makam->id }}" @selected(old('makam_id') == $makam->id)>
+                                    {{ $makam->kode_makam }} - {{ $makam->blok ?? '-' }} / {{ $makam->zona ?? '-' }} / No {{ $makam->nomor ?? '-' }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+                -->
 
-                    <div id="section-dokumen" class="row g-3 mt-1" style="{{ $isPerpanjangan ? 'display:none;' : '' }}">
-                        <div class="col-12">
-                            <h6 class="fw-bold">Upload Dokumen (maks 2MB)</h6>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Scan KTP Ahli Waris</label>
-                            <input type="file" name="scan_ktp_ahli_waris" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Scan KK</label>
-                            <input type="file" name="scan_kk" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Surat Kematian</label>
-                            <input type="file" name="surat_kematian" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
-                        </div>
+                <div id="section-dokumen" class="row g-3 mt-1" style="{{ $isPerpanjangan ? 'display:none;' : '' }}">
+                    <div class="col-12">
+                        <h6 class="fw-bold">Upload Dokumen (maks 2MB)</h6>
+                        @if($isDarurat)
+                            <small class="text-muted d-block">Opsional untuk permohonan darurat — bisa dilengkapi menyusul.</small>
+                        @endif
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">
+                            Scan KTP Ahli Waris
+                            <span class="text-danger req-makam-baru" style="{{ $isDarurat ? 'display:none;' : '' }}">*</span>
+                        </label>
+                        <input type="file" name="scan_ktp_ahli_waris" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">
+                            Scan KK
+                            <span class="text-danger req-makam-baru" style="{{ $isDarurat ? 'display:none;' : '' }}">*</span>
+                        </label>
+                        <input type="file" name="scan_kk" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">
+                            Surat Kematian
+                            <span class="text-danger req-makam-baru" style="{{ $isDarurat ? 'display:none;' : '' }}">*</span>
+                        </label>
+                        <input type="file" name="surat_kematian" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
                     </div>
                 </div>
 
@@ -207,18 +233,23 @@ document.addEventListener('DOMContentLoaded', function () {
     const perpanjangan = document.getElementById('section-perpanjangan');
     const dataJenazah = document.getElementById('section-data-jenazah');
     const daruratAlert = document.getElementById('darurat-alert');
-    const regularExtra = document.getElementById('section-regular-extra');
-    const makamBaruExtra = document.getElementById('section-makam-baru-extra');
     const dokumen = document.getElementById('section-dokumen');
+    const reqMakamBaru = document.querySelectorAll('.req-makam-baru');
+    const reqDarurat = document.querySelectorAll('.req-darurat');
 
     function refreshSection() {
         const selected = document.querySelector('input[name="jenis_permohonan"]:checked')?.value || 'makam_baru';
         perpanjangan.style.display = selected === 'perpanjangan' ? '' : 'none';
         dataJenazah.style.display = selected === 'perpanjangan' ? 'none' : '';
         daruratAlert.style.display = selected === 'darurat' ? '' : 'none';
-        regularExtra.style.display = selected === 'darurat' ? 'none' : '';
-        makamBaruExtra.style.display = selected === 'makam_baru' ? '' : 'none';
-        dokumen.style.display = selected === 'makam_baru' ? '' : 'none';
+        dokumen.style.display = selected === 'perpanjangan' ? 'none' : '';
+
+        reqMakamBaru.forEach((el) => {
+            el.style.display = selected === 'makam_baru' ? '' : 'none';
+        });
+        reqDarurat.forEach((el) => {
+            el.style.display = selected === 'darurat' ? '' : 'none';
+        });
     }
 
     radios.forEach((radio) => radio.addEventListener('change', refreshSection));

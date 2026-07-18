@@ -200,7 +200,7 @@
                     </div>
 
                     <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="remember">
+                        <input class="form-check-input" type="checkbox" name="remember" id="remember" value="1" @checked(old('remember'))>
                         <label class="form-check-label" for="remember">
                             Ingat Saya
                         </label>

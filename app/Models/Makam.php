@@ -39,4 +39,12 @@ class Makam extends Model
             'status' => $this->jenazahs()->exists() ? 'terisi' : 'kosong',
         ]);
     }
+
+    // ===== TAMBAHAN: jumlah jenazah dalam satu makam =====
+    // Berguna untuk ditampilkan ke petugas saat memilih makam tujuan tumpang sari,
+    // supaya petugas tahu makam tersebut sudah berisi berapa jenazah.
+    public function jumlahJenazah(): int
+    {
+        return $this->jenazahs()->count();
+    }
 }

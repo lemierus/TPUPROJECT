@@ -150,7 +150,7 @@
                 </div>
                 <h1 class="mb-3">Data jenazah, ahli waris, dan makam dalam satu halaman</h1>
                 <p class="mb-0">
-                    Permohonan ini sudah disetujui, jadi Anda bisa melihat rangkuman informasi yang terhubung
+                    Anda bisa melihat rangkuman informasi yang terhubung
                     antara data pengajuan, data jenazah, dan data makam tujuan.
                 </p>
             </div>
@@ -324,12 +324,12 @@
                                 <th>Petugas Penanggungjawab</th>
                                 <td>{{ $permohonan->petugas?->name ?? '-' }}</td>
                             </tr>
-                            <tr>
+                            <!-- <tr>
                                 <th>Catatan</th>
                                 <td>{{ $permohonan->catatan ?? '-' }}</td>
-                            </tr>
+                            </tr> -->
                             <tr>
-                                <th>Waktu Disetujui</th>
+                                <th>Waktu Diajukan</th>
                                 <td>{{ $permohonan->updated_at?->format('d-m-Y H:i') ?? '-' }}</td>
                             </tr>
                         </tbody>
@@ -392,7 +392,6 @@
             <div>
                 <div class="fw-bold text-dark mb-1">Catatan</div>
                 <div>
-                    Halaman ini hanya tersedia untuk permohonan <strong>pembuatan makam baru</strong> yang sudah disetujui.
                     Jika ada data yang belum tampil lengkap, pastikan petugas sudah menyetujui permohonan pada TPU tujuan.
                 </div>
             </div>

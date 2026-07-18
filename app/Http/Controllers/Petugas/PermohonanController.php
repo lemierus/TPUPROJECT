@@ -182,8 +182,18 @@ class PermohonanController extends Controller
             && $oldestPendingPermohonanId !== null
             && $permohonan->id !== $oldestPendingPermohonanId;
         $waitingDays = (int) floor($permohonan->created_at?->diffInDays(now()) ?? 0);
+
         $makamKosong = Makam::where('tpu', auth()->user()->tpu)
             ->where('status', 'kosong')
+            ->orderBy('kode_makam')
+            ->get();
+
+        // ===== TAMBAHAN: daftar makam yang sudah terisi, untuk opsi tumpang sari =====
+        // Ikutkan nama jenazah yang sudah dimakamkan agar petugas mudah mencari makam
+        // yang dimaksud ahli waris di kolom catatan.
+        $makamTerisi = Makam::where('tpu', auth()->user()->tpu)
+            ->where('status', 'terisi')
+            ->with('jenazahs:id,makam_id,nama')
             ->orderBy('kode_makam')
             ->get();
 
@@ -197,7 +207,8 @@ class PermohonanController extends Controller
             'oldestPendingPermohonanId',
             'isOutOfOrder',
             'waitingDays',
-            'makamKosong'
+            'makamKosong',
+            'makamTerisi'
         ));
     }
 
@@ -399,13 +410,43 @@ class PermohonanController extends Controller
         $this->authorizePermohonan($permohonan);
         $wasOutOfOrder = $this->isProcessingOutOfOrder($permohonan);
 
-        $request->validate([
+        // ===== TAMBAHAN: validasi tipe_pemakaman & makam_id =====
+        $data = $request->validate([
             'tenggat_sewa_makam' => ['nullable', 'date'],
             'catatan' => ['nullable', 'string', 'max:1000'],
+            'tipe_pemakaman' => ['nullable', Rule::in(['baru', 'tumpang_sari'])],
+            'makam_id' => ['nullable', 'exists:makams,id'],
         ]);
 
         try {
-            DB::transaction(function () use ($request, $permohonan) {
+            DB::transaction(function () use ($request, $data, $permohonan) {
+                // ===== TAMBAHAN: penetapan makam berdasarkan tipe_pemakaman =====
+                // Jika petugas tidak mengirim makam_id sama sekali (misalnya makam
+                // sudah ditentukan sebelumnya lewat halaman edit), alur lama tetap
+                // berjalan tanpa perubahan apa pun di sini.
+                if (! empty($data['makam_id'])) {
+                    $makam = Makam::where('id', $data['makam_id'])
+                        ->where('tpu', auth()->user()->tpu)
+                        ->firstOrFail();
+
+                    $tipe = $data['tipe_pemakaman'] ?? 'baru';
+
+                    if ($tipe === 'tumpang_sari' && $makam->status !== 'terisi') {
+                        throw ValidationException::withMessages([
+                            'makam_id' => 'Makam yang dipilih belum terisi, tidak bisa dijadikan tujuan tumpang sari.',
+                        ]);
+                    }
+
+                    if ($tipe === 'baru' && $makam->status !== 'kosong') {
+                        throw ValidationException::withMessages([
+                            'makam_id' => 'Makam yang dipilih sudah terisi. Gunakan opsi tumpang sari jika memang disengaja.',
+                        ]);
+                    }
+
+                    $permohonan->makam_id = $makam->id;
+                    $permohonan->tipe_pemakaman = $tipe;
+                }
+
                 $permohonan->status = 'disetujui';
                 $permohonan->approved_at = now();
                 if ($request->filled('catatan')) {
@@ -419,6 +460,7 @@ class PermohonanController extends Controller
                 \Log::info('Permohonan disetujui', [
                     'id' => $permohonan->id,
                     'jenis_permohonan' => $permohonan->jenis_permohonan,
+                    'tipe_pemakaman' => $permohonan->tipe_pemakaman,
                     'jenazah_id' => $permohonan->jenazah_id,
                     'nama_jenazah' => $permohonan->nama_jenazah,
                     'nik_jenazah' => $permohonan->nik_jenazah,
@@ -437,6 +479,14 @@ class PermohonanController extends Controller
                             'tenggat_sewa_makam' => $permohonan->tenggat_sewa_makam,
                         ]);
                     }
+                }
+
+                // ===== TAMBAHAN: pastikan status makam ikut tersinkron =====
+                // Baik makam baru (kosong -> terisi) maupun makam tumpang sari
+                // (tetap terisi, jumlah jenazah bertambah) sama-sama tercakup
+                // oleh syncStatusFromJenazah().
+                if ($permohonan->makam) {
+                    $permohonan->makam->syncStatusFromJenazah();
                 }
             });
         } catch (ValidationException $e) {

@@ -52,7 +52,7 @@
                     @endif
                     <div class="{{ ($isAdmin || auth()->user()?->isKepala() || auth()->user()?->isKdlh()) ? 'col-md-7' : 'col-md-10' }}">
                         <input type="text" name="search" class="form-control"
-                               placeholder="Cari kode, blok, zona..."
+                               placeholder="Cari kode, blok, status..."
                                value="{{ request('search') }}">
                     </div>
                     <div class="{{ ($isAdmin || auth()->user()?->isKepala() || auth()->user()?->isKdlh()) ? 'col-md-2' : 'col-md-2' }}">

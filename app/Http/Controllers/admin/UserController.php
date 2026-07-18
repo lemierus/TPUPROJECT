@@ -22,7 +22,12 @@ class UserController extends Controller
             $query->where('name', 'like', "%$search%")
                 ->orWhere('email', 'like', "%$search%")
                 ->orWhere('role', 'like', "%$search%");
-        })->latest()->get();
+        })
+            ->latest()
+            // === PAGINATION: 10 data per halaman ===
+            // withQueryString() supaya filter 'search' tidak hilang saat pindah halaman.
+            ->paginate(10)
+            ->withQueryString();
 
         return view('admin.pages.users.index', compact('users'));
     }

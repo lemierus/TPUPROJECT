@@ -16,23 +16,59 @@ class PermohonanController extends Controller
     /**
      * Menampilkan semua data permohonan
      */
-    public function index()
+    public function index(Request $request)
     {
-        $selectedTpu = request()->tpu;
+        $selectedTpu = $request->tpu;
+        $selectedStatus = $request->status;
+        $search = $request->search;
         $tpuOptions = User::tpuOptions();
 
         $permohonanQuery = $this->accessiblePermohonans()
             ->when(auth()->user()?->isAdmin() && filled($selectedTpu) && in_array($selectedTpu, $tpuOptions, true), function ($query) use ($selectedTpu) {
                 $query->where('tpu', $selectedTpu);
+            })
+            ->when(filled($selectedStatus), function ($query) use ($selectedStatus) {
+                $query->where('status', $selectedStatus);
+            })
+            ->when(filled($search), function ($query) use ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('nama_jenazah', 'like', "%{$search}%")
+                        ->orWhereHas('user', function ($userQuery) use ($search) {
+                            $userQuery->where('name', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('jenazah', function ($jenazahQuery) use ($search) {
+                            $jenazahQuery->where('nama', 'like', "%{$search}%");
+                        });
+                });
             });
 
-        $permohonans = $permohonanQuery->latest()->get();
+        // === Ringkasan status dihitung dari query (di-clone) SEBELUM paginate() ===
+        // supaya angkanya tetap mencerminkan keseluruhan hasil filter,
+        // bukan cuma 10 data yang tampil di halaman saat ini.
+        $totalPermohonan = (clone $permohonanQuery)->count();
+        $countMenunggu = (clone $permohonanQuery)->where('status', 'menunggu')->count();
+        $countDisetujui = (clone $permohonanQuery)->where('status', 'disetujui')->count();
+        $countDitolak = (clone $permohonanQuery)->where('status', 'ditolak')->count();
 
-        $permohonans->each(function (Permohonan $permohonan) {
+        // === PAGINATION: 10 data per halaman ===
+        // withQueryString() supaya filter search/status/tpu tidak hilang saat pindah halaman.
+        $permohonans = $permohonanQuery->latest()->paginate(10)->withQueryString();
+
+        $permohonans->getCollection()->each(function (Permohonan $permohonan) {
             $permohonan->syncLinkedJenazahData();
         });
 
-        return view('pages.master.permohonan', compact('permohonans', 'selectedTpu', 'tpuOptions'));
+        return view('pages.master.permohonan', compact(
+            'permohonans',
+            'selectedTpu',
+            'tpuOptions',
+            'selectedStatus',
+            'search',
+            'totalPermohonan',
+            'countMenunggu',
+            'countDisetujui',
+            'countDitolak'
+        ));
     }
 
     public function create()

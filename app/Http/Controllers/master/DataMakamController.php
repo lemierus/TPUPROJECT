@@ -21,12 +21,20 @@ class DataMakamController extends Controller
                 $query->where('tpu', $selectedTpu);
             })
             ->when($search, function ($query) use ($search) {
-            $query->where('tpu', 'like', "%$search%")
-                ->orWhere('kode_makam', 'like', "%$search%")
-                ->orWhere('blok', 'like', "%$search%")
-                ->orWhere('zona', 'like', "%$search%")
-                ->orWhere('nomor', 'like', "%$search%");
-        });
+                // PENTING: seluruh kondisi orWhere() di sini DIBUNGKUS dalam satu
+                // closure where() supaya jadi satu grup "(...)" di SQL. Kalau tidak
+                // dibungkus, orWhere akan "keluar" dari grouping filter tpu milik
+                // petugas (accessibleMakams()) sehingga petugas bisa menemukan data
+                // makam TPU lain selama kata kuncinya cocok di kolom selain 'tpu'.
+                $query->where(function ($subQuery) use ($search) {
+                    $subQuery->where('tpu', 'like', "%$search%")
+                        ->orWhere('kode_makam', 'like', "%$search%")
+                        ->orWhere('blok', 'like', "%$search%")
+                        ->orWhere('status', 'like', "%$search%")
+                        ->orWhere('nomor', 'like', "%$search%")
+                        ->orWhere('keterangan', 'like', "%$search%");
+                });
+            });
 
         $makams = $makamQuery->latest()->paginate(10)->withQueryString();
 

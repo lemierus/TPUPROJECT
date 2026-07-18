@@ -282,7 +282,7 @@
                     <div>
                         <div class="text-muted fw-semibold mb-1">Menunggu</div>
                         <h3 class="mb-1 fw-bold text-dark">{{ $stats['menunggu'] }}</h3>
-                        <small class="text-muted">Antrian aktif FIFO</small>
+                        <small class="text-muted">Antrian aktif</small>
                     </div>
                     <div class="petugas-stat-icon">
                         <i class="bi bi-hourglass-split"></i>
@@ -394,7 +394,7 @@
                                     ? 'petugas-queue-badge-overdue'
                                     : ($item->waiting_days >= 2 ? 'petugas-queue-badge-aging' : 'petugas-queue-badge-safe');
                                 $waitingLabel = $item->waiting_days > 3
-                                    ? 'Menunggu > 3 hari'
+                                    ? 'Menunggu > 2 hari'
                                     : ($item->waiting_days >= 2 ? 'Menunggu cukup lama' : 'Masih normal');
                             @endphp
                             <tr @class(['petugas-row-priority' => $loop->first])>

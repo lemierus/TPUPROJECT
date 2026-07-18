@@ -27,7 +27,7 @@
                             <th>Nama TPU</th>
                             <th>Lokasi</th>
                             <th>Ringkasan</th>
-                            <th>Deskripsi</th>
+                            <!-- <th>Deskripsi</th> -->
                             <th>Kontak WhatsApp</th>
                             <th>Aksi</th>
                         </tr>
@@ -41,7 +41,7 @@
                                 <td class="fw-semibold">{{ $tpu->nama }}</td>
                                 <td>{{ $tpu->lokasi ?? '-' }}</td>
                                 <td>{{ \Illuminate\Support\Str::limit($tpu->ringkasan ?? '-', 70) }}</td>
-                                <td>{{ \Illuminate\Support\Str::limit($tpu->deskripsi ?? '-', 70) }}</td>
+                                <!-- <td>{{ \Illuminate\Support\Str::limit($tpu->deskripsi ?? '-', 70) }}</td> -->
                                 <td>
                                     @if($waPetugas && $waPetugas->no_hp)
                                         <a href="https://wa.me/{{ $waPetugas->no_hp }}" target="_blank" class="text-decoration-none">

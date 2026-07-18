@@ -30,7 +30,12 @@ class AuthController extends Controller
             'password.required' => 'Password wajib diisi.',
         ]);
 
-        if (Auth::attempt($credentials)) {
+        // Checkbox "Ingat Saya" dikirim sebagai string '1' kalau dicentang,
+        // dan tidak dikirim sama sekali kalau tidak dicentang.
+        // boolean() akan mengonversinya jadi true/false dengan aman.
+        $remember = $request->boolean('remember');
+
+        if (Auth::attempt($credentials, $remember)) {
             $user = Auth::user();
 
             $request->session()->regenerate();
@@ -38,7 +43,9 @@ class AuthController extends Controller
             return redirect()->intended($this->redirectPathFor($user));
         }
 
-        return back()->with('error', 'Email atau password salah');
+        return back()
+            ->withInput($request->only('email', 'remember'))
+            ->with('error', 'Email atau password salah');
     }
 
     public function logout()
