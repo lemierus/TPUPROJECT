@@ -179,8 +179,10 @@
                         <i class="fas fa-info-circle text-primary me-1"></i>
                         <strong>Informasi:</strong> Apabila Anda ingin mengajukan <strong>pemakaman tumpang sari</strong>,
                         silakan tuliskan pada kolom keterangan dengan kalimat
-                        <strong>"Ingin melakukan pemakaman tumpang sari."</strong>
-                        Permohonan akan diproses sesuai dengan ketentuan yang berlaku.
+                        <strong>"Ingin melakukan pemakaman tumpang sari"</strong>
+                        dan sebutkan
+                        <strong>nama jenazah</strong>  
+                        yang sudah dikubur di TPU terkait. Permohonan akan diproses sesuai dengan ketentuan yang berlaku.
                     </small>
                 </div>
                 </div>

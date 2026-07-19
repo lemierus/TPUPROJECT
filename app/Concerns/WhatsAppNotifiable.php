@@ -151,4 +151,29 @@ trait WhatsAppNotifiable
 
         return $this->buildWhatsAppMessage($waPetugas->no_hp, $message);
     }
+    public function notifyDaruratAdminReminder(Permohonan $permohonan): ?string
+        {
+            $phoneNumber = $permohonan->no_hp_ahli_waris ?? $permohonan->user?->no_hp;
+            if (empty($phoneNumber)) {
+                return null;
+            }
+    
+            $kodeMakam = $permohonan->makam?->kode_makam ?? '-';
+    
+            $message = sprintf(
+                "Assalamu'alaikum Wr. Wb.\n\n"
+                . "Yth. Bpk/Ibu %s,\n\n"
+                . "Kami informasikan bahwa proses pemakaman darurat untuk jenazah a/n %s di %s (makam %s) telah *SELESAI*.\n\n"
+                . "Selanjutnya, Bpk/Ibu diminta untuk segera melengkapi data administrasi permohonan, meliputi data jenazah, scan KTP ahli waris, scan Kartu Keluarga, dan surat kematian, melalui akun TAMPU Anda.\n\n"
+                . "Permohonan baru dapat diverifikasi dan diselesaikan oleh petugas setelah seluruh data administrasi dilengkapi.\n\n"
+                . "Terima kasih.\n\n"
+                . "— Sistem Informasi Tempat Pemakaman Umum Kota Padang (TAMPU)",
+                $permohonan->nama_ahli_waris ?? $permohonan->user?->name ?? 'Ahli Waris',
+                $permohonan->nama_jenazah ?? $permohonan->jenazah?->nama ?? '-',
+                $permohonan->tpu ?? 'TPU terkait',
+                $kodeMakam
+            );
+    
+            return $this->buildWhatsAppMessage($phoneNumber, $message);
+        }    
 }

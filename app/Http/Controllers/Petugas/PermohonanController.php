@@ -23,12 +23,16 @@ class PermohonanController extends Controller
 {
     $petugas = auth()->user();
 
+    // Rule-based prioritization: seluruh permohonan darurat (di status
+    // pending apa pun) selalu diletakkan di atas antrian, baru permohonan
+    // jenis lain. Tie-breaker berikutnya tetap 'created_at' ASC (FIFO)
+    // baik di antara sesama darurat maupun sesama non-darurat.
     $pendingPermohonans = Permohonan::with(['user', 'jenazah.makam', 'makam'])
         ->where('tpu', $petugas->tpu)
         ->whereIn('status', $this->pendingStatuses())
         ->orderByRaw("
             CASE
-                WHEN jenis_permohonan = 'darurat' AND status IN ('menunggu_konfirmasi', 'diproses_darurat') THEN 0
+                WHEN jenis_permohonan = 'darurat' THEN 0
                 ELSE 1
             END ASC
         ")
@@ -483,8 +487,25 @@ class PermohonanController extends Controller
             $makam->syncStatusFromJenazah();
         });
 
+        // === TAMBAHAN: notifikasi WA ke ahli waris ===
+        // Setelah transaksi berhasil (makam & jenazah tersimpan, status
+        // permohonan sudah berubah menjadi ADMINISTRASI_BELUM_LENGKAP),
+        // refresh dulu modelnya supaya relasi 'makam' & data terbaru ikut
+        // termuat, lalu kirim link notifikasi WA ke ahli waris yang
+        // memberitahukan bahwa pemakaman darurat sudah selesai dan mereka
+        // perlu melengkapi data administrasi. Pola penyisipan link WA ke
+        // pesan 'success' mengikuti approve()/reject() di bawah.
+        $permohonan->refresh();
+        $permohonan->loadMissing('makam');
+        $waUrl = $this->notifyDaruratAdminReminder($permohonan);
+
+        $successMsg = 'Pemakaman darurat selesai. Ahli waris sekarang perlu melengkapi administrasi.';
+        if ($waUrl) {
+            $successMsg .= ' <a href="' . e($waUrl) . '" target="_blank" class="whatsapp-link-inline"><i class="bi bi-whatsapp"></i> Kirim notifikasi WhatsApp ke ahli waris</a>';
+        }
+
         return redirect()->route('petugas.permohonan.show', $permohonan)
-            ->with('success', 'Pemakaman darurat selesai. Ahli waris sekarang perlu melengkapi administrasi.');
+            ->with('success', $successMsg);
     }
 
     public function verifikasiDokumen(Request $request, Permohonan $permohonan)
