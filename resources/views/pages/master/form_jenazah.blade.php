@@ -89,8 +89,12 @@
 
                         <div class="col-md-4">
                             <label class="form-label">Agama</label>
-                            <input type="text" name="agama" class="form-control @error('agama') is-invalid @enderror" value="{{ old('agama', $jenazah->agama) }}">
-                            @error('agama')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            <select name="agama" class="form-select">
+                                <option value="">Pilih</option>
+                                @foreach(['Islam', 'Kristen', 'Katolik', 'Hindu', 'Buddha', 'Konghucu'] as $agama)
+                                    <option value="{{ $agama }}" @selected(old('agama') === $agama)>{{ $agama }}</option>
+                                @endforeach
+                            </select>
                         </div>
 
                         <div class="col-12">
@@ -193,8 +197,6 @@
                             <textarea id="keterangan" name="keterangan" class="form-control @error('keterangan') is-invalid @enderror" rows="3" placeholder="Otomatis terisi saat makam dipilih">{{ old('keterangan', $jenazah->keterangan ?? $selectedMakam?->keterangan) }}</textarea>
                             @error('keterangan')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
-
-                        <!-- @if($isEdit)
                             <div class="col-md-6">
                                 <label class="form-label">Tenggat Masa Sewa Makam</label>
                                 <input
@@ -206,8 +208,6 @@
                                 <small class="text-muted d-block mt-1">Tanggal ini dipakai sebagai batas akhir sewa makam untuk data jenazah ini.</small>
                                 @error('tenggat_sewa_makam')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
-                        @endif -->
-
                     </div>
                 </div>
 

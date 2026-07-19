@@ -18,29 +18,50 @@ use Illuminate\Validation\ValidationException;
 class PermohonanController extends Controller
 {
     use WhatsAppNotifiable;
-    public function index()
-    {
-        $petugas = auth()->user();
 
-        $pendingPermohonans = Permohonan::with(['user', 'jenazah.makam', 'makam'])
-            ->where('tpu', $petugas->tpu)
-            ->whereIn('status', $this->pendingStatuses())
-            // Prioritaskan darurat yang menunggu konfirmasi/diproses di urutan atas,
-            // lalu lanjutkan FIFO reguler berdasarkan waktu masuk paling lama.
-            ->orderByRaw("
-                CASE
-                    WHEN jenis_permohonan = 'darurat' AND status IN ('menunggu_konfirmasi', 'diproses_darurat') THEN 0
-                    ELSE 1
-                END ASC
-            ")
-            ->orderBy('created_at', 'asc')
-            ->get();
+    public function index(Request $request)
+{
+    $petugas = auth()->user();
 
-        $processedPermohonans = Permohonan::with(['user', 'jenazah.makam', 'makam'])
-            ->where('tpu', $petugas->tpu)
-            ->whereNotIn('status', $this->pendingStatuses())
-            ->orderByDesc('updated_at')
-            ->paginate(10);
+    $pendingPermohonans = Permohonan::with(['user', 'jenazah.makam', 'makam'])
+        ->where('tpu', $petugas->tpu)
+        ->whereIn('status', $this->pendingStatuses())
+        ->orderByRaw("
+            CASE
+                WHEN jenis_permohonan = 'darurat' AND status IN ('menunggu_konfirmasi', 'diproses_darurat') THEN 0
+                ELSE 1
+            END ASC
+        ")
+        ->orderBy('created_at', 'asc')
+        ->get();
+
+    // === PENCARIAN: server-side search untuk tabel "Riwayat Permohonan Diproses" ===
+    $search = trim((string) $request->query('search', ''));
+
+    $processedPermohonans = Permohonan::with(['user', 'jenazah.makam', 'makam'])
+        ->where('tpu', $petugas->tpu)
+        ->whereNotIn('status', $this->pendingStatuses())
+        ->when($search !== '', function ($query) use ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('nama_pemohon', 'like', "%{$search}%")
+                    ->orWhere('nama_jenazah', 'like', "%{$search}%")
+                    ->orWhere('nik_jenazah', 'like', "%{$search}%")
+                    ->orWhere('nama_ahli_waris', 'like', "%{$search}%")
+                    ->orWhere('no_hp_ahli_waris', 'like', "%{$search}%")
+                    ->orWhere('jenis_permohonan', 'like', "%{$search}%")
+                    ->orWhere('status', 'like', "%{$search}%")
+                    ->orWhereHas('jenazah', function ($jq) use ($search) {
+                        $jq->where('nama', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('makam', function ($mq) use ($search) {
+                        $mq->where('kode_makam', 'like', "%{$search}%");
+                    });
+            });
+        })
+        ->orderByDesc('updated_at')
+        ->paginate(10)
+        ->withQueryString();
+    // === AKHIR PENCARIAN ===
 
         $pendingPermohonans->each(function (Permohonan $permohonan) {
             $permohonan->syncLinkedJenazahData();
@@ -89,7 +110,8 @@ class PermohonanController extends Controller
             'stats',
             'petugas',
             'perpanjanganPerluDiingatkan',
-            'oldestPendingPermohonanId'
+            'oldestPendingPermohonanId',
+            'search'
         ));
     }
 
@@ -188,9 +210,10 @@ class PermohonanController extends Controller
             ->orderBy('kode_makam')
             ->get();
 
-        // ===== TAMBAHAN: daftar makam yang sudah terisi, untuk opsi tumpang sari =====
-        // Ikutkan nama jenazah yang sudah dimakamkan agar petugas mudah mencari makam
-        // yang dimaksud ahli waris di kolom catatan.
+        // Daftar makam yang sudah terisi, untuk opsi tumpang sari (dipakai baik
+        // di modal approve untuk makam_baru maupun di form selesaikan pemakaman
+        // darurat). Ikutkan nama jenazah yang sudah dimakamkan agar petugas
+        // mudah mencocokkan dengan permintaan ahli waris.
         $makamTerisi = Makam::where('tpu', auth()->user()->tpu)
             ->where('status', 'terisi')
             ->with('jenazahs:id,makam_id,nama')
@@ -226,7 +249,7 @@ class PermohonanController extends Controller
         $this->authorizePermohonan($permohonan);
 
         $validator = Validator::make($request->all(), [
-            'jenis_permohonan' => ['required', Rule::in(['makam_baru', 'perpanjangan'])],
+            'jenis_permohonan' => ['required', Rule::in(['makam_baru', 'perpanjangan', 'darurat'])],
             'nama_jenazah' => ['nullable', 'string', 'max:255'],
             'nik_jenazah' => ['nullable', 'string', 'max:255'],
             'tempat_lahir' => ['nullable', 'string', 'max:255'],
@@ -287,18 +310,99 @@ class PermohonanController extends Controller
         $permohonan->save();
         $permohonan->syncLinkedJenazahData();
 
-        if ($permohonan->jenis_permohonan === 'perpanjangan' && $permohonan->tenggat_sewa_makam) {
-            $permohonan->loadMissing('jenazah');
+        // Dorong data terbaru ke record jenazah yang terhubung. Jika ini
+        // perpanjangan untuk makam tumpang sari, tenggat baru harus langsung
+        // diterapkan ke seluruh jenazah yang berbagi makam tersebut.
+        $this->syncPermohonanChangesToJenazahRecords($permohonan);
 
-            if ($permohonan->jenazah) {
-                $permohonan->jenazah->update([
-                    'tenggat_sewa_makam' => $permohonan->tenggat_sewa_makam,
-                ]);
-            }
+        // Untuk 'perpanjangan': petugas melengkapi data (termasuk tenggat
+        // sewa makam) -> status otomatis 'selesai' jika belum final.
+        //
+        // Untuk 'darurat': ahli waris kadang lupa mengisi data administrasi
+        // (data jenazah, dokumen, dst) setelah pemakaman darurat/tumpang
+        // sari selesai. Petugas boleh melengkapi data itu sendiri lewat
+        // form edit ini. Begitu datanya lengkap, "Status Kelengkapan
+        // Administrasi Darurat" dianggap terpenuhi dan status permohonan
+        // ikut diperbarui jadi 'selesai' -- tapi HANYA jika permohonan
+        // sedang berada di tahap administrasi (administrasi_belum_lengkap /
+        // menunggu_verifikasi_dokumen / perlu_perbaikan_dokumen). Tahap
+        // sebelumnya (menunggu_konfirmasi, diproses_darurat) tetap harus
+        // lewat prosesDarurat()/selesaikanPemakaman() seperti biasa, dan
+        // verifikasiDokumen() tetap tersedia sebagai jalur alternatif.
+        $terminalStatuses = ['disetujui', 'ditolak', Permohonan::STATUS_SELESAI];
+        $daruratAdminPendingStatuses = [
+            Permohonan::STATUS_ADMINISTRASI_BELUM_LENGKAP,
+            Permohonan::STATUS_MENUNGGU_VERIFIKASI_DOKUMEN,
+            Permohonan::STATUS_PERLU_PERBAIKAN_DOKUMEN,
+        ];
+
+        $eligibleForAutoSelesai = ! in_array($permohonan->status, $terminalStatuses, true) && (
+            $permohonan->jenis_permohonan === 'perpanjangan'
+            || (
+                $permohonan->jenis_permohonan === 'darurat'
+                && in_array($permohonan->status, $daruratAdminPendingStatuses, true)
+            )
+        );
+
+        if ($eligibleForAutoSelesai && $this->isPermohonanDataComplete($permohonan)) {
+            $permohonan->update([
+                'status' => Permohonan::STATUS_SELESAI,
+                'catatan_revisi' => null,
+                'approved_at' => $permohonan->approved_at ?? now(),
+            ]);
         }
 
         return redirect()->route('petugas.permohonan.show', $permohonan)
             ->with('success', 'Data permohonan berhasil diperbarui.');
+    }
+
+    /**
+     * Cek apakah data permohonan sudah lengkap, dipakai untuk menentukan
+     * apakah status bisa otomatis menjadi 'selesai' setelah petugas
+     * mengedit/melengkapi data. Berlaku untuk jenis 'perpanjangan' dan
+     * 'darurat' saja (lihat pemanggilnya).
+     */
+    private function isPermohonanDataComplete(Permohonan $permohonan): bool
+    {
+        // Data ahli waris wajib terisi.
+        if (blank($permohonan->nama_ahli_waris) || blank($permohonan->no_hp_ahli_waris) || blank($permohonan->hubungan_keluarga)) {
+            return false;
+        }
+
+        // Dokumen wajib (KTP ahli waris, KK, surat kematian) harus sudah ada,
+        // baik dari upload sebelumnya maupun yang baru saja diedit.
+        if (blank($permohonan->scan_ktp_ahli_waris) || blank($permohonan->scan_kk) || blank($permohonan->surat_kematian)) {
+            return false;
+        }
+
+        if (blank($permohonan->tenggat_sewa_makam)) {
+            return false;
+        }
+
+        if ($permohonan->jenis_permohonan === 'perpanjangan') {
+            return true;
+        }
+
+        // Untuk darurat: data jenazah lengkap dan makam sudah ditentukan
+        // (biasanya sudah terisi otomatis dari selesaikanPemakaman(), tapi
+        // tetap dicek ulang untuk berjaga-jaga).
+        $requiredJenazahFields = [
+            'nama_jenazah',
+            'nik_jenazah',
+            'tanggal_wafat',
+            'jenis_kelamin',
+            'tempat_lahir',
+            'tanggal_lahir',
+            'alamat',
+        ];
+
+        foreach ($requiredJenazahFields as $field) {
+            if (blank($permohonan->{$field})) {
+                return false;
+            }
+        }
+
+        return filled($permohonan->makam_id);
     }
 
     public function prosesDarurat(Permohonan $permohonan)
@@ -321,11 +425,19 @@ class PermohonanController extends Controller
         abort_unless($permohonan->isDarurat(), 404);
         abort_unless($permohonan->status === Permohonan::STATUS_DIPROSES_DARURAT, 422, 'Permohonan darurat ini belum berada pada tahap penyelesaian.');
 
+        // ===== TAMBAHAN: dukungan tumpang sari untuk pemakaman darurat =====
+        // Sebelumnya hanya menerima makam_id dan mewajibkan status makam
+        // 'kosong'. Sekarang, jika ahli waris/petugas memilih tumpang sari,
+        // makam yang sudah 'terisi' juga boleh dipilih sebagai tujuan.
         $data = $request->validate([
             'makam_id' => ['required', 'exists:makams,id'],
+            'tipe_pemakaman' => ['nullable', Rule::in([
+                Permohonan::TIPE_PEMAKAMAN_BARU,
+                Permohonan::TIPE_PEMAKAMAN_TUMPANG_SARI,
+            ])],
             'catatan' => ['nullable', 'string', 'max:1000'],
         ], [
-            'makam_id.required' => 'Silakan pilih makam kosong untuk penyelesaian pemakaman darurat.',
+            'makam_id.required' => 'Silakan pilih makam untuk penyelesaian pemakaman darurat.',
             'makam_id.exists' => 'Makam yang dipilih tidak ditemukan.',
         ]);
 
@@ -334,27 +446,41 @@ class PermohonanController extends Controller
                 ->where('tpu', auth()->user()->tpu)
                 ->firstOrFail();
 
-            if ($makam->status !== 'kosong') {
+            $tipe = $data['tipe_pemakaman'] ?? Permohonan::TIPE_PEMAKAMAN_BARU;
+
+            if ($tipe === Permohonan::TIPE_PEMAKAMAN_TUMPANG_SARI && $makam->status !== 'terisi') {
                 throw ValidationException::withMessages([
-                    'makam_id' => 'Makam yang dipilih sudah terisi. Pilih makam kosong lainnya.',
+                    'makam_id' => 'Makam yang dipilih belum terisi, tidak bisa dijadikan tujuan tumpang sari.',
+                ]);
+            }
+
+            if ($tipe === Permohonan::TIPE_PEMAKAMAN_BARU && $makam->status !== 'kosong') {
+                throw ValidationException::withMessages([
+                    'makam_id' => 'Makam yang dipilih sudah terisi. Pilih makam kosong lainnya, atau gunakan opsi tumpang sari jika memang disengaja.',
                 ]);
             }
 
             $permohonan->fill([
                 'makam_id' => $makam->id,
+                'tipe_pemakaman' => $tipe,
                 'status' => Permohonan::STATUS_ADMINISTRASI_BELUM_LENGKAP,
                 'catatan' => $data['catatan'] ?? $permohonan->catatan,
             ]);
             $permohonan->save();
 
+            // persistJenazahRecord() sekarang aman untuk tumpang sari: karena
+            // resolveLinkedJenazah() tidak lagi mencocokkan berdasarkan
+            // makam_id, jenazah baru akan dibuat sebagai BARIS BARU, bukan
+            // menimpa jenazah lain yang kebetulan berada di makam yang sama.
             $jenazah = $permohonan->persistJenazahRecord();
             $jenazah->update([
                 'makam_id' => $makam->id,
             ]);
 
-            $makam->update([
-                'status' => 'terisi',
-            ]);
+            // Sinkronkan ulang status makam dari jumlah jenazah yang sebenarnya,
+            // alih-alih memaksa set 'terisi' secara manual. Ini konsisten
+            // dengan pola yang dipakai approve() untuk makam_baru.
+            $makam->syncStatusFromJenazah();
         });
 
         return redirect()->route('petugas.permohonan.show', $permohonan)
@@ -378,6 +504,19 @@ class PermohonanController extends Controller
 
         DB::transaction(function () use ($permohonan, $data) {
             if ($data['aksi'] === 'setujui') {
+                $permohonan->refresh();
+                $permohonan->syncLinkedJenazahData();
+
+                if (! $permohonan->hasCompleteAdministrativeData()) {
+                    throw ValidationException::withMessages([
+                        'aksi' => 'Permohonan belum dapat diselesaikan karena masih ada data yang belum lengkap: ' . implode(', ', $permohonan->missingAdministrativeFields()) . '.',
+                    ]);
+                }
+
+                if ($permohonan->jenazah_id || filled($permohonan->nik_jenazah)) {
+                    $permohonan->persistJenazahRecord();
+                }
+
                 $permohonan->update([
                     'status' => Permohonan::STATUS_SELESAI,
                     'catatan_revisi' => null,
@@ -385,12 +524,10 @@ class PermohonanController extends Controller
                     'approved_at' => $permohonan->approved_at ?? now(),
                 ]);
 
-                $permohonan->loadMissing('jenazah');
-                if ($permohonan->jenazah) {
-                    $permohonan->jenazah->update([
-                        'tenggat_sewa_makam' => $data['tenggat_sewa_makam'],
-                    ]);
-                }
+                $this->syncPermohonanChangesToJenazahRecords($permohonan->fresh([
+                    'jenazah.makam',
+                    'makam',
+                ]));
             } else {
                 $permohonan->update([
                     'status' => Permohonan::STATUS_PERLU_PERBAIKAN_DOKUMEN,
@@ -410,7 +547,6 @@ class PermohonanController extends Controller
         $this->authorizePermohonan($permohonan);
         $wasOutOfOrder = $this->isProcessingOutOfOrder($permohonan);
 
-        // ===== TAMBAHAN: validasi tipe_pemakaman & makam_id =====
         $data = $request->validate([
             'tenggat_sewa_makam' => ['nullable', 'date'],
             'catatan' => ['nullable', 'string', 'max:1000'],
@@ -420,9 +556,9 @@ class PermohonanController extends Controller
 
         try {
             DB::transaction(function () use ($request, $data, $permohonan) {
-                // ===== TAMBAHAN: penetapan makam berdasarkan tipe_pemakaman =====
-                // Jika petugas tidak mengirim makam_id sama sekali (misalnya makam
-                // sudah ditentukan sebelumnya lewat halaman edit), alur lama tetap
+                // Penetapan makam berdasarkan tipe_pemakaman. Jika petugas
+                // tidak mengirim makam_id sama sekali (misalnya makam sudah
+                // ditentukan sebelumnya lewat halaman edit), alur lama tetap
                 // berjalan tanpa perubahan apa pun di sini.
                 if (! empty($data['makam_id'])) {
                     $makam = Makam::where('id', $data['makam_id'])
@@ -473,15 +609,12 @@ class PermohonanController extends Controller
                 }
 
                 if ($permohonan->tenggat_sewa_makam) {
-                    $permohonan->loadMissing('jenazah');
-                    if ($permohonan->jenazah) {
-                        $permohonan->jenazah->update([
-                            'tenggat_sewa_makam' => $permohonan->tenggat_sewa_makam,
-                        ]);
-                    }
+                    $this->syncPermohonanChangesToJenazahRecords($permohonan->fresh([
+                        'jenazah.makam',
+                        'makam',
+                    ]));
                 }
 
-                // ===== TAMBAHAN: pastikan status makam ikut tersinkron =====
                 // Baik makam baru (kosong -> terisi) maupun makam tumpang sari
                 // (tetap terisi, jumlah jenazah bertambah) sama-sama tercakup
                 // oleh syncStatusFromJenazah().
@@ -506,9 +639,9 @@ class PermohonanController extends Controller
         if ($waUrl) {
             $successMsg .= ' <a href="' . e($waUrl) . '" target="_blank" class="whatsapp-link-inline"><i class="bi bi-whatsapp"></i> Kirim notifikasi WhatsApp ke ahli waris</a>';
         }
-        if ($wasOutOfOrder) {
-            $successMsg = '<strong>Catatan FIFO:</strong> permohonan ini diproses tidak dari urutan paling awal. ' . $successMsg;
-        }
+        // if ($wasOutOfOrder) {
+        //     $successMsg = '<strong>Catatan FIFO:</strong> permohonan ini diproses tidak dari urutan paling awal. ' . $successMsg;
+        // }
 
         return redirect()->route('petugas.permohonan')
             ->with('success', $successMsg);
@@ -536,9 +669,9 @@ class PermohonanController extends Controller
         if ($waUrl) {
             $successMsg .= ' <a href="' . e($waUrl) . '" target="_blank" class="whatsapp-link-inline"><i class="bi bi-whatsapp"></i> Kirim notifikasi WhatsApp ke ahli waris</a>';
         }
-        if ($wasOutOfOrder) {
-            $successMsg = '<strong>Catatan FIFO:</strong> permohonan ini diproses tidak dari urutan paling awal. ' . $successMsg;
-        }
+        // if ($wasOutOfOrder) {
+        //     $successMsg = '<strong>Catatan FIFO:</strong> permohonan ini diproses tidak dari urutan paling awal. ' . $successMsg;
+        // }
 
         return redirect()->route('petugas.permohonan')
             ->with('success', $successMsg);
@@ -625,5 +758,38 @@ class PermohonanController extends Controller
         }
 
         return $query->first();
+    }
+
+    private function syncPermohonanChangesToJenazahRecords(Permohonan $permohonan): void
+    {
+        $permohonan->loadMissing(['jenazah.makam', 'makam']);
+
+        if (! $permohonan->jenazah) {
+            return;
+        }
+
+        $payload = array_filter([
+            'nama' => $permohonan->nama_jenazah,
+            'nik' => $permohonan->nik_jenazah,
+            'tempat_lahir' => $permohonan->tempat_lahir,
+            'tanggal_lahir' => $permohonan->tanggal_lahir,
+            'tanggal_wafat' => $permohonan->tanggal_wafat,
+            'jenis_kelamin' => $permohonan->jenis_kelamin,
+            'agama' => $permohonan->agama,
+            'alamat' => $permohonan->alamat,
+            'makam_id' => $permohonan->makam_id,
+            'tenggat_sewa_makam' => $permohonan->tenggat_sewa_makam,
+        ], fn ($value) => ! is_null($value));
+
+        $permohonan->jenazah->update($payload);
+
+        if (
+            $permohonan->jenis_permohonan === Permohonan::JENIS_PERPANJANGAN
+            && filled($permohonan->tenggat_sewa_makam)
+            && $permohonan->jenazah->makam
+            && $permohonan->jenazah->isTumpangSari()
+        ) {
+            $permohonan->jenazah->makam->applyRenewalDueAtToJenazahs($permohonan->tenggat_sewa_makam);
+        }
     }
 }

@@ -4,6 +4,8 @@
 
 @php
     $isPerpanjangan = $permohonan->jenis_permohonan === 'perpanjangan';
+    $isDarurat = $permohonan->jenis_permohonan === 'darurat';
+    $showDataPemakaman = $isPerpanjangan || $isDarurat;
     $linkedJenazah = $permohonan->jenazah;
     $linkedMakam = $permohonan->makam ?? $linkedJenazah?->makam;
     $renewalDueAt = $permohonan->renewalDueAt();
@@ -16,6 +18,15 @@
             <h4 class="fw-bold text-dark mb-1">Edit Permohonan Petugas</h4>
             <p class="text-muted mb-0">ID: #{{ $permohonan->id }} | TPU: {{ $permohonan->tpu }}</p>
         </div>
+        @if($isDarurat)
+            @php
+                $daruratAdminPendingStatuses = ['administrasi_belum_lengkap', 'menunggu_verifikasi_dokumen', 'perlu_perbaikan_dokumen'];
+                $isDaruratAdminPending = in_array($permohonan->status, $daruratAdminPendingStatuses, true);
+            @endphp
+            <span class="badge {{ $isDaruratAdminPending ? 'bg-warning text-dark' : 'bg-success' }} px-3 py-2">
+                Status Kelengkapan Administrasi Darurat: {{ $isDaruratAdminPending ? 'Belum Lengkap' : 'Lengkap' }}
+            </span>
+        @endif
     </div>
 
     @if($errors->any())
@@ -29,9 +40,26 @@
                 @method('PUT')
 
                 <input type="hidden" name="tpu" value="{{ $permohonan->tpu }}">
-                <input type="hidden" name="jenis_permohonan" value="{{ $permohonan->jenis_permohonan }}">
 
                 <div class="row g-3">
+                    <div class="col-12">
+                        <h6 class="fw-bold mb-0">Jenis Permohonan</h6>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Jenis Permohonan <span class="text-danger">*</span></label>
+                        <select name="jenis_permohonan" id="jenis_permohonan" class="form-select @error('jenis_permohonan') is-invalid @enderror">
+                            <option value="">Pilih Jenis Permohonan</option>
+                            <option value="makam_baru" @selected(old('jenis_permohonan', $permohonan->jenis_permohonan) === 'makam_baru')>Makam Baru</option>
+                            <option value="perpanjangan" @selected(old('jenis_permohonan', $permohonan->jenis_permohonan) === 'perpanjangan')>Perpanjangan</option>
+                            <option value="darurat" @selected(old('jenis_permohonan', $permohonan->jenis_permohonan) === 'darurat')>Darurat</option>
+                        </select>
+                        <small class="text-muted d-block mt-1">Mengubah jenis permohonan dapat memengaruhi field Data Pemakaman di bawah.</small>
+                        @error('jenis_permohonan')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+                </div>
+
+                <div class="row g-3 mt-3">
                     <div class="col-12">
                         <h6 class="fw-bold mb-0">Data Jenazah</h6>
                     </div>
@@ -89,51 +117,55 @@
                     </div>
                 </div>
 
-                @if($isPerpanjangan)
-                    <div class="row g-3 mt-3">
-                        <div class="col-12">
-                            <h6 class="fw-bold mb-0">Data Pemakaman</h6>
-                        </div>
+                <div class="row g-3 mt-3" id="data-pemakaman-section" style="{{ $showDataPemakaman ? '' : 'display:none;' }}">
+                    <div class="col-12">
+                        <h6 class="fw-bold mb-0">Data Pemakaman</h6>
+                    </div>
 
-                        <div class="col-12">
-                            <div class="p-3 rounded-4" style="background:#f8fafc;border:1px solid #d0d5dd;">
-                                <div class="row g-3">
-                                    <div class="col-md-6">
-                                        <div class="small text-muted">Kode Makam</div>
-                                        <div class="fw-semibold">{{ $linkedMakam?->kode_makam ?? $permohonan->kode_makam ?? '-' }}</div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="small text-muted">Blok</div>
-                                        <div class="fw-semibold">{{ $linkedMakam?->blok ?? $permohonan->blok ?? '-' }}</div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="small text-muted">Zona</div>
-                                        <div class="fw-semibold">{{ $linkedMakam?->zona ?? $permohonan->zona ?? '-' }}</div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="small text-muted">Nomor Makam</div>
-                                        <div class="fw-semibold">{{ $linkedMakam?->nomor ?? $permohonan->nomor_makam ?? '-' }}</div>
-                                    </div>
-                                    <div class="col-12">
-                                        <div class="small text-muted">Keterangan Makam</div>
-                                        <div class="fw-semibold">{{ $linkedMakam?->keterangan ?? $permohonan->keterangan ?? '-' }}</div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="small text-muted">Tenggat Sewa Saat Ini</div>
-                                        <div class="fw-semibold">{{ $renewalDueAt ? $renewalDueAt->format('d F Y') : '-' }}</div>
-                                    </div>
+                    <div class="col-12">
+                        <div class="p-3 rounded-4" style="background:#f8fafc;border:1px solid #d0d5dd;">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="small text-muted">Kode Makam</div>
+                                    <div class="fw-semibold">{{ $linkedMakam?->kode_makam ?? $permohonan->kode_makam ?? '-' }}</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="small text-muted">Blok</div>
+                                    <div class="fw-semibold">{{ $linkedMakam?->blok ?? $permohonan->blok ?? '-' }}</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="small text-muted">Zona</div>
+                                    <div class="fw-semibold">{{ $linkedMakam?->zona ?? $permohonan->zona ?? '-' }}</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="small text-muted">Nomor Makam</div>
+                                    <div class="fw-semibold">{{ $linkedMakam?->nomor ?? $permohonan->nomor_makam ?? '-' }}</div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="small text-muted">Keterangan Makam</div>
+                                    <div class="fw-semibold">{{ $linkedMakam?->keterangan ?? $permohonan->keterangan ?? '-' }}</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="small text-muted">Tenggat Sewa Saat Ini</div>
+                                    <div class="fw-semibold">{{ $renewalDueAt ? $renewalDueAt->format('d F Y') : '-' }}</div>
                                 </div>
                             </div>
                         </div>
-
-                        <div class="col-md-6">
-                            <label class="form-label">Tenggat Sewa Baru <span class="text-danger">*</span></label>
-                            <input type="date" name="tenggat_sewa_makam" class="form-control @error('tenggat_sewa_makam') is-invalid @enderror" value="{{ old('tenggat_sewa_makam', optional($permohonan->tenggat_sewa_makam)->format('Y-m-d')) }}">
-                            <small class="text-muted d-block mt-1">Tanggal ini akan digunakan sebagai tenggat sewa terbaru setelah disimpan.</small>
-                            @error('tenggat_sewa_makam')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                        </div>
                     </div>
-                @endif
+
+                    <div class="col-md-6">
+                        <label class="form-label">Tenggat Sewa Makam <span class="text-danger">*</span></label>
+                        <input type="date" name="tenggat_sewa_makam" class="form-control @error('tenggat_sewa_makam') is-invalid @enderror" value="{{ old('tenggat_sewa_makam', optional($permohonan->tenggat_sewa_makam)->format('Y-m-d')) }}">
+                        <small class="text-muted d-block mt-1">
+                            @if($isDarurat)
+                                Mengisi tanggal ini menandakan administrasi darurat sudah diverifikasi dan lengkap. Status permohonan akan otomatis menjadi "Selesai" setelah semua data dan dokumen lengkap.
+                            @else
+                                Tanggal ini akan digunakan sebagai tenggat sewa terbaru setelah disimpan.
+                            @endif
+                        </small>
+                        @error('tenggat_sewa_makam')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+                </div>
 
                 <div class="row g-3 mt-3">
                     <div class="col-12">
@@ -167,7 +199,7 @@
 
                 <div class="row g-3 mt-3">
                     <div class="col-12">
-                        <h6 class="fw-bold mb-0">Upload Dokumen</h6>
+                        <h6 class="fw-bold mb-0">Upload Dokumen (maks 2MB)</h6>
                     </div>
 
                     <div class="col-md-4">
@@ -208,4 +240,23 @@
         </div>
     </div>
 </div>
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const jenisSelect = document.getElementById('jenis_permohonan');
+        const pemakamanSection = document.getElementById('data-pemakaman-section');
+
+        function toggleDataPemakaman() {
+            if (jenisSelect.value === 'perpanjangan' || jenisSelect.value === 'darurat') {
+                pemakamanSection.style.display = '';
+            } else {
+                pemakamanSection.style.display = 'none';
+            }
+        }
+
+        jenisSelect.addEventListener('change', toggleDataPemakaman);
+    });
+</script>
+@endpush
 @endsection

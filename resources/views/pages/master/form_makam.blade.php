@@ -63,11 +63,11 @@
                         @error('blok')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
 
-                    <div class="col-md-4">
+                    <!-- <div class="col-md-4">
                         <label class="form-label">Zona</label>
                         <input type="text" name="zona" class="form-control @error('zona') is-invalid @enderror" value="{{ old('zona', $makam->zona) }}">
                         @error('zona')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                    </div>
+                    </div> -->
 
                     <div class="col-md-4">
                         <label class="form-label">Nomor</label>

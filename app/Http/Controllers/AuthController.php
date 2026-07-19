@@ -137,7 +137,7 @@ class AuthController extends Controller
         if (now()->lt($cooldownUntil)) {
             $detik = now()->diffInSeconds($cooldownUntil);
 
-            return back()->with('error', "Mohon tunggu {$detik} detik sebelum mengirim ulang email verifikasi.");
+            return back()->with('error', "Mohon tunggu 1 menit sebelum mengirim ulang email verifikasi.");
         }
 
         $this->sendVerificationEmailWithCooldown($user);

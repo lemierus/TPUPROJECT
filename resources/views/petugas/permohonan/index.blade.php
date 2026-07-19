@@ -482,6 +482,31 @@
         </div>
 
         <div class="p-3 p-lg-4">
+            <form action="{{ route('petugas.permohonan') }}" method="GET" class="mb-3">
+                <div class="input-group" style="max-width: 420px;">
+                    <span class="input-group-text bg-white border-2" style="border-color:#111827;">
+                        <i class="bi bi-search"></i>
+                    </span>
+                    <input
+                        type="text"
+                        name="search"
+                        value="{{ $search ?? '' }}"
+                        class="form-control border-2"
+                        style="border-color:#111827;"
+                        placeholder="Cari nama, jenazah, status..."
+                    >
+                    @if(!empty($search))
+                        <a href="{{ route('petugas.permohonan') }}" class="btn btn-outline-secondary border-2">
+                            <i class="bi bi-x-lg"></i>
+                        </a>
+                    @endif
+                    <button type="submit" class="btn" style="background:#1E3E62;color:#fff;">
+                        Cari
+                    </button>
+                </div>
+            </form>
+
+    <div class="table-responsive">          
             <div class="table-responsive">
                 <table class="table petugas-table align-middle mb-0">
                     <thead>
@@ -497,7 +522,9 @@
                     <tbody>
                         @forelse($processedPermohonans as $item)
                             @php
-                                $processedBadgeClass = strtolower($item->status) === 'disetujui'
+                                $statusLower = strtolower($item->status);
+                                $isPositiveStatus = in_array($statusLower, ['disetujui', 'selesai'], true);
+                                $processedBadgeClass = $isPositiveStatus
                                     ? 'petugas-pill-success'
                                     : 'petugas-pill-danger';
                             @endphp
@@ -532,7 +559,7 @@
                                 </td>
                                 <td>
                                     <span class="petugas-pill {{ $processedBadgeClass }}">
-                                        <i class="bi {{ strtolower($item->status) === 'disetujui' ? 'bi-check-circle' : 'bi-x-circle' }}"></i>
+                                        <i class="bi {{ $isPositiveStatus ? 'bi-check-circle' : 'bi-x-circle' }}"></i>
                                         {{ ucfirst($item->status) }}
                                     </span>
                                 </td>

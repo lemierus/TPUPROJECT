@@ -27,7 +27,7 @@ class Permohonan extends Model
     public const STATUS_DITOLAK = 'ditolak';
     public const STATUS_SELESAI = 'selesai';
 
-    // ===== TAMBAHAN: konstanta tipe pemakaman (baru / tumpang sari) =====
+    // Tipe pemakaman (baru / tumpang sari)
     public const TIPE_PEMAKAMAN_BARU = 'baru';
     public const TIPE_PEMAKAMAN_TUMPANG_SARI = 'tumpang_sari';
 
@@ -52,7 +52,7 @@ class Permohonan extends Model
         'surat_kematian',
         'jenazah_id',
         'makam_id',
-        'tipe_pemakaman', // TAMBAHAN
+        'tipe_pemakaman',
         'tahun_pemakaman',
         'tenggat_sewa_makam',
         'status',
@@ -116,7 +116,6 @@ class Permohonan extends Model
         return $this->belongsTo(Makam::class);
     }
 
-    // ===== TAMBAHAN: helper untuk mengecek apakah permohonan ini tumpang sari =====
     public function isTumpangSari(): bool
     {
         return $this->tipe_pemakaman === self::TIPE_PEMAKAMAN_TUMPANG_SARI;
@@ -197,6 +196,44 @@ class Permohonan extends Model
         };
     }
 
+    public function missingAdministrativeFields(): array
+    {
+        $fields = [
+            'nama_jenazah' => 'Nama jenazah',
+            'nik_jenazah' => 'NIK jenazah',
+            'jenis_kelamin' => 'Jenis kelamin',
+            'agama' => 'Agama',
+            'tanggal_wafat' => 'Tanggal wafat',
+            'nama_ahli_waris' => 'Nama ahli waris',
+            'no_hp_ahli_waris' => 'Nomor HP ahli waris',
+            'hubungan_keluarga' => 'Hubungan keluarga',
+            'tpu' => 'TPU tujuan',
+            'catatan' => 'Catatan permohonan',
+            'tempat_lahir' => 'Tempat lahir',
+            'tanggal_lahir' => 'Tanggal lahir',
+            'alamat' => 'Alamat',
+            'scan_ktp_ahli_waris' => 'Scan KTP ahli waris',
+            'scan_kk' => 'Scan KK',
+            'surat_kematian' => 'Surat kematian',
+            'makam_id' => 'Data makam',
+        ];
+
+        $missing = [];
+
+        foreach ($fields as $attribute => $label) {
+            if (! filled($this->{$attribute})) {
+                $missing[] = $label;
+            }
+        }
+
+        return $missing;
+    }
+
+    public function hasCompleteAdministrativeData(): bool
+    {
+        return $this->missingAdministrativeFields() === [];
+    }
+
     public function approvedAt(): ?CarbonInterface
     {
         if ($this->approved_at) {
@@ -256,11 +293,21 @@ class Permohonan extends Model
         return 'safe';
     }
 
+    /**
+     * Simpan / update baris jenazah untuk permohonan ini.
+     *
+     * PENTING (perbaikan tumpang sari): method ini HANYA boleh menimpa baris
+     * jenazah yang sudah pasti merujuk pada ORANG yang sama (lewat jenazah_id
+     * eksplisit atau NIK yang identik). Method ini TIDAK BOLEH menimpa jenazah
+     * lain hanya karena kebetulan berbagi makam_id yang sama — itu justru
+     * skenario normal untuk tumpang sari (satu makam, banyak jenazah), dan
+     * kalau ditimpa maka data jenazah lama akan hilang.
+     */
     public function persistJenazahRecord(): Jenazah
     {
         $makam = $this->resolveLinkedMakam();
 
-        $jenazah = $this->resolveLinkedJenazah() ?? Jenazah::where('nik', $this->nik_jenazah)->first();
+        $jenazah = $this->resolveLinkedJenazah();
 
         if (! $jenazah) {
             $jenazah = new Jenazah();
@@ -313,6 +360,26 @@ class Permohonan extends Model
         return $this->makam ?: ($this->makam_id ? Makam::find($this->makam_id) : null);
     }
 
+    /**
+     * PERBAIKAN: pencocokan berdasarkan makam_id DIHAPUS.
+     *
+     * Sebelumnya method ini mencari jenazah lain yang kebetulan menempati
+     * makam_id yang sama ("Jenazah::where('makam_id', $this->makam_id)->latest('id')->first()")
+     * lalu jenazah tersebut dipakai ulang (di-update) oleh persistJenazahRecord().
+     * Untuk permohonan tumpang sari, makam_id sengaja diarahkan ke makam yang
+     * SUDAH terisi jenazah lain -> baris lama otomatis ketemu -> data jenazah
+     * lama tertimpa data jenazah baru. Itu penyebab data jenazah lama hilang.
+     *
+     * Pencocokan berdasarkan nama juga dihapus karena berisiko sama: dua
+     * jenazah berbeda kebetulan bernama sama bisa saling menimpa data.
+     *
+     * Sekarang pencocokan HANYA lewat identitas yang pasti unik untuk orang
+     * yang sama: jenazah_id (link eksplisit) atau NIK (identik = orang yang
+     * sama). Kalau tidak ketemu keduanya, method ini mengembalikan null dan
+     * persistJenazahRecord() akan membuat baris jenazah BARU — inilah yang
+     * membuat satu makam bisa punya banyak baris jenazah (tumpang sari) tanpa
+     * saling menimpa.
+     */
     private function resolveLinkedJenazah(): ?Jenazah
     {
         if ($this->relationLoaded('jenazah') && $this->jenazah) {
@@ -323,24 +390,12 @@ class Permohonan extends Model
             return Jenazah::find($this->jenazah_id);
         }
 
-        if ($this->makam_id) {
-            $byMakam = Jenazah::where('makam_id', $this->makam_id)->latest('id')->first();
-
-            if ($byMakam) {
-                return $byMakam;
-            }
-        }
-
         if ($this->nik_jenazah) {
             $byNik = Jenazah::where('nik', $this->nik_jenazah)->first();
 
             if ($byNik) {
                 return $byNik;
             }
-        }
-
-        if ($this->nama_jenazah) {
-            return Jenazah::where('nama', $this->nama_jenazah)->latest('id')->first();
         }
 
         return null;
@@ -355,9 +410,9 @@ class Permohonan extends Model
                 && $permohonan->hasCompleteJenazahData()
                 && ! $permohonan->jenazah_id
             ) {
-            $permohonan->persistJenazahRecord();
-        }
-    });
+                $permohonan->persistJenazahRecord();
+            }
+        });
 
         static::saving(function (Permohonan $permohonan) {
             if ($permohonan->jenazah_deleted_at && $permohonan->isDirty('jenazah_deleted_at')) {

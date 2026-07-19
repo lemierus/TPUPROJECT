@@ -293,7 +293,7 @@
                 <div>
                     <h4 class="petugas-section-title">Pengingat Perpanjangan Sewa Makam</h4>
                     <p class="text-muted mb-0">
-                        Permohonan makam baru yang sudah disetujui dan akan memasuki batas 2 tahun.
+                        Pengingat ini mengikuti data tenggat sewa pada halaman data jenazah TPU Anda.
                     </p>
                 </div>
                 <span class="petugas-pill petugas-pill-warning">
@@ -321,6 +321,8 @@
                                 @php
                                     $dueAt = $item->renewalDueAt();
                                     $level = $item->renewalAlertLevel();
+                                    $pendingRenewal = $item->pending_renewal_permohonan ?? null;
+                                    $targetPermohonan = $item->reminder_target_permohonan ?? null;
                                 @endphp
                                 <tr>
                                     <td class="fw-semibold">{{ $loop->iteration }}</td>
@@ -328,7 +330,7 @@
                                         <div class="fw-semibold">{{ $item->nama_ahli_waris ?? '-' }}</div>
                                         <small class="text-muted">{{ $item->no_hp_ahli_waris ?? '-' }}</small>
                                     </td>
-                                    <td>{{ $item->nama_jenazah ?? $item->jenazah?->nama ?? '-' }}</td>
+                                    <td>{{ $item->nama ?? '-' }}</td>
                                     <td>{{ $item->tpu ?? '-' }}</td>
                                     <td class="text-nowrap">{{ $dueAt?->format('d-m-Y') ?? '-' }}</td>
                                     <td>
@@ -350,10 +352,14 @@
                                         @endif
                                     </td>
                                     <td>
-                                        <a href="{{ route('petugas.permohonan.show', $item) }}" class="petugas-btn-inline">
-                                            <i class="bi bi-arrow-right-circle"></i>
-                                            Proses
-                                        </a>
+                                        @if($targetPermohonan)
+                                            <a href="{{ route('petugas.permohonan.show', $targetPermohonan) }}" class="petugas-btn-inline">
+                                                <i class="bi bi-arrow-right-circle"></i>
+                                                Proses
+                                            </a>
+                                        @else
+                                            <span class="text-muted small">Permohonan tidak ditemukan</span>
+                                        @endif
                                     </td>
                                 </tr>
                             @endforeach
@@ -479,6 +485,30 @@
         </div>
 
         <div class="p-3 p-lg-4">
+                <form action="{{ route('petugas.dashboard') }}" method="GET" class="mb-3">
+                    <div class="input-group" style="max-width: 420px;">
+                        <span class="input-group-text bg-white border-2" style="border-color:#111827;">
+                            <i class="bi bi-search"></i>
+                        </span>
+                        <input
+                            type="text"
+                            name="search"
+                            value="{{ $search ?? '' }}"
+                            class="form-control border-2"
+                            style="border-color:#111827;"
+                            placeholder="Cari nama pemohon, jenazah, status..."
+                        >
+                        @if(!empty($search))
+                            <a href="{{ route('petugas.dashboard') }}" class="btn btn-outline-secondary border-2">
+                                <i class="bi bi-x-lg"></i>
+                            </a>
+                        @endif
+                        <button type="submit" class="btn" style="background:#1E3E62;color:#fff;">
+                            Cari
+                        </button>
+                    </div>
+                </form>
+    <div class="table-responsive">          
             <div class="table-responsive">
                 <table class="table petugas-table align-middle mb-0">
                     <thead>
@@ -515,7 +545,7 @@
                                             Darurat
                                         </span>
                                     @elseif($item->jenis_permohonan === 'perpanjangan')
-                                        <span class="petugas-pill petugas-pill-primary">
+                                        <span class="petugas-pill petugas-pill-warning">
                                             <i class="bi bi-arrow-repeat"></i>
                                             Perpanjangan
                                         </span>
@@ -528,7 +558,7 @@
                                 </td>
                                 <td class="text-nowrap">{{ $item->tanggal_permohonan?->format('d-m-Y') ?? $item->created_at?->format('d-m-Y') }}</td>
                                 <td>
-                                    @if($status === 'disetujui')
+                                    @if(in_array($status, ['disetujui', 'selesai']))
                                         <span class="petugas-pill petugas-pill-success">{{ $statusLabel }}</span>
                                     @elseif($status === 'ditolak')
                                         <span class="petugas-pill petugas-pill-danger">{{ $statusLabel }}</span>

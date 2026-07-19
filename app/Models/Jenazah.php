@@ -55,6 +55,18 @@ class Jenazah extends Model
 
     public function renewalDueAt(): ?CarbonInterface
     {
+        if ($this->isTumpangSari() && $this->makam) {
+            if ($this->makam->tenggat_sewa_makam) {
+                return $this->makam->tenggat_sewa_makam;
+            }
+
+            $latestJenazah = $this->latestJenazahInSameMakam();
+
+            if ($latestJenazah?->tenggat_sewa_makam) {
+                return $latestJenazah->tenggat_sewa_makam;
+            }
+        }
+
         if ($this->tenggat_sewa_makam) {
             return $this->tenggat_sewa_makam;
         }
@@ -76,6 +88,43 @@ class Jenazah extends Model
         }
 
         return null;
+    }
+
+    public function isTumpangSari(): bool
+    {
+        if (! $this->makam_id) {
+            return false;
+        }
+
+        if ($this->relationLoaded('makam') && $this->makam?->relationLoaded('jenazahs')) {
+            return $this->makam->jenazahs->count() > 1;
+        }
+
+        return static::where('makam_id', $this->makam_id)->count() > 1;
+    }
+
+    private function latestJenazahInSameMakam(): ?self
+    {
+        if (! $this->makam_id) {
+            return null;
+        }
+
+        if ($this->relationLoaded('makam') && $this->makam?->relationLoaded('jenazahs')) {
+            return $this->makam->jenazahs
+                ->sortByDesc(function (self $jenazah) {
+                    return sprintf(
+                        '%s-%010d',
+                        optional($jenazah->tanggal_wafat)->format('Ymd') ?? '00000000',
+                        $jenazah->id
+                    );
+                })
+                ->first();
+        }
+
+        return static::where('makam_id', $this->makam_id)
+            ->orderByDesc('tanggal_wafat')
+            ->orderByDesc('id')
+            ->first();
     }
 
     public function renewalAlertLevel(int $warningDays = 90): ?string
@@ -120,17 +169,17 @@ class Jenazah extends Model
                     });
                 }
 
-                $makam->syncStatusFromJenazah();
+                $makam->syncFromJenazah();
             }
 
             if ($jenazah->wasChanged('makam_id') && $jenazah->getOriginal('makam_id')) {
-                Makam::find($jenazah->getOriginal('makam_id'))?->syncStatusFromJenazah();
+                Makam::find($jenazah->getOriginal('makam_id'))?->syncFromJenazah();
             }
         });
 
         static::deleted(function (Jenazah $jenazah) {
             if ($jenazah->makam_id) {
-                Makam::find($jenazah->makam_id)?->syncStatusFromJenazah();
+                Makam::find($jenazah->makam_id)?->syncFromJenazah();
             }
         });
     }

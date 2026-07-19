@@ -223,6 +223,13 @@ class PermohonanController extends Controller
             ]);
             $permohonan->save();
             $permohonan->syncLinkedJenazahData();
+
+            // Setelah ahli waris melengkapi dokumen, sinkronkan juga ke record
+            // jenazah yang sudah dibuat saat pemakaman darurat agar detail
+            // permohonan petugas selalu menampilkan data terbaru yang sama.
+            if ($permohonan->jenazah_id || filled($permohonan->nik_jenazah)) {
+                $permohonan->persistJenazahRecord();
+            }
         });
 
         return redirect()->route('user.dashboard')

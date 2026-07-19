@@ -164,10 +164,25 @@
                         <label class="form-label">Hubungan dengan Jenazah <span class="text-danger">*</span></label>
                         <input type="text" name="hubungan_keluarga" class="form-control" value="{{ old('hubungan_keluarga') }}">
                     </div>
-                    <div class="col-12">
-                        <label class="form-label"> Keterangan / Catatan <span class="text-danger">*</span></label>
-                        <textarea name="catatan" class="form-control" rows="3">{{ old('catatan') }}</textarea>
-                    </div>
+                <div class="col-12">
+                    <label class="form-label">
+                        Keterangan / Catatan <span class="text-danger">*</span>
+                    </label>
+
+                    <textarea
+                        name="catatan"
+                        class="form-control"
+                        rows="3"
+                        placeholder="Masukkan keterangan atau catatan tambahan terkait permohonan...">{{ old('catatan') }}</textarea>
+
+                    <small class="text-muted d-block mt-2">
+                        <i class="fas fa-info-circle text-primary me-1"></i>
+                        <strong>Informasi:</strong> Apabila Anda ingin mengajukan <strong>pemakaman tumpang sari</strong>,
+                        silakan tuliskan pada kolom keterangan dengan kalimat
+                        <strong>"Ingin melakukan pemakaman tumpang sari."</strong>
+                        Permohonan akan diproses sesuai dengan ketentuan yang berlaku.
+                    </small>
+                </div>
                 </div>
 
                 <!--

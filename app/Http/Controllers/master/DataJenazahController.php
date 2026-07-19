@@ -28,7 +28,7 @@ class DataJenazahController extends Controller
         }
 
     $jenazahQuery = $this->accessibleJenazah()
-        ->with(['makam', 'permohonan'])
+        ->with(['makam.jenazahs', 'permohonan'])
         ->when((auth()->user()?->isAdmin() || auth()->user()?->isKdlh() || auth()->user()?->isKepala()) && filled($selectedTpu) && in_array($selectedTpu, $tpuOptions, true), function ($query) use ($selectedTpu) {
             $query->where('tpu', $selectedTpu);
         })
@@ -108,7 +108,12 @@ class DataJenazahController extends Controller
             $data['tpu'] = $data['tpu'] ?? $request->input('tpu');
         }
 
-        Jenazah::create($data);
+        $jenazah = Jenazah::create($data);
+
+        // Makam tumpang sari: setelah jenazah baru ditambahkan ke sebuah makam,
+        // tenggat_sewa_makam pada makam tersebut harus mengikuti jenazah
+        // TERBARU (bisa jadi jenazah yang baru ini), bukan jenazah lama.
+        $this->syncMakamTenggat($jenazah->makam_id);
 
         return redirect()->route($this->routePrefix() . '.data-jenazah')
             ->with('success', 'Data jenazah berhasil ditambahkan');
@@ -172,6 +177,10 @@ class DataJenazahController extends Controller
             $data['tpu'] = $data['tpu'] ?? $request->input('tpu');
         }
 
+        // Makam lama sebelum update, dipakai untuk sinkronisasi ulang
+        // jika jenazah ini dipindahkan ke makam lain.
+        $previousMakamId = $jenazah->makam_id;
+
         DB::transaction(function () use ($jenazah, $data) {
             $jenazah->load('permohonan');
             $jenazah->update($data);
@@ -187,6 +196,18 @@ class DataJenazahController extends Controller
             }
         });
 
+        $newMakamId = $jenazah->fresh()->makam_id;
+
+        // Sinkronkan makam tujuan (yang sekarang ditempati jenazah ini).
+        $this->syncMakamTenggat($newMakamId);
+
+        // Kalau makam berpindah, makam lama juga perlu disinkronkan ulang
+        // (misalnya jadi kosong, atau tenggat sewanya harus mengikuti
+        // jenazah lain yang masih tersisa di sana).
+        if ($previousMakamId && $previousMakamId !== $newMakamId) {
+            $this->syncMakamTenggat($previousMakamId);
+        }
+
         return redirect()->route($this->routePrefix() . '.data-jenazah')
             ->with('success', 'Data berhasil diupdate');
     }
@@ -194,6 +215,7 @@ class DataJenazahController extends Controller
     public function destroy($id)
     {
         $jenazah = $this->findAccessibleJenazahOrFail($id);
+        $makamId = $jenazah->makam_id;
 
         DB::transaction(function () use ($jenazah) {
             Permohonan::where('jenazah_id', $jenazah->id)->delete();
@@ -209,6 +231,12 @@ class DataJenazahController extends Controller
 
             $jenazah->delete();
         });
+
+        // Setelah jenazah dihapus, makam tumpang sari yang tadinya ia
+        // tempati harus disinkronkan ulang: status bisa kembali "kosong"
+        // (kalau tidak ada jenazah lain), atau tenggat_sewa_makam mengikuti
+        // jenazah lain yang masih tersisa di makam tersebut.
+        $this->syncMakamTenggat($makamId);
 
         return redirect()->route($this->routePrefix() . '.data-jenazah')
             ->with('success', 'Data berhasil dihapus');
@@ -333,6 +361,26 @@ class DataJenazahController extends Controller
         foreach (['nama_ahli_waris', 'hubungan_keluarga', 'no_hp_ahli_waris', 'catatan'] as $field) {
             $data[$field] = $data[$field] ?? null;
         }
+    }
+
+    /**
+     * Sinkronkan ulang status & tenggat_sewa_makam sebuah Makam berdasarkan
+     * data jenazah yang menempatinya saat ini. Aman dipanggil dengan
+     * makam_id null (misal jenazah tanpa makam terdaftar).
+     */
+    private function syncMakamTenggat(?int $makamId): void
+    {
+        if (! $makamId) {
+            return;
+        }
+
+        $makam = Makam::find($makamId);
+
+        if (! $makam) {
+            return;
+        }
+
+        $makam->syncFromJenazah();
     }
 
     private function syncApprovedPermohonanJenazah(): void

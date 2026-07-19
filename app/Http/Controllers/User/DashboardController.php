@@ -6,11 +6,22 @@ use App\Http\Controllers\Controller;
 use App\Models\Makam;
 use App\Models\Permohonan;
 use App\Models\Tpu;
+use App\Models\Jenazah;
 
 class DashboardController extends Controller
 {
     public function index()
     {
+        $permohonanSaya = Permohonan::with(['jenazah.makam', 'makam'])
+            ->where('user_id', auth()->id())
+            ->where(function ($query) {
+                $query->where('jenis_permohonan', '!=', Permohonan::JENIS_PERPANJANGAN)
+                    ->orWhere('status', '!=', Permohonan::STATUS_DISETUJUI);
+            })
+            ->latest()
+            ->paginate(5, ['*'], 'permohonan_page')
+            ->withQueryString();
+
         $daftarTpu = Tpu::query()
             ->with('waPetugas')
             ->orderBy('nama')
@@ -42,41 +53,79 @@ class DashboardController extends Controller
             ->filter(fn (Permohonan $permohonan) => $permohonan->needsDocumentCompletion())
             ->values();
 
-        $permohonanSaya = $permohonanSemua
+        $pendingRenewals = $permohonanSemua
             ->filter(function (Permohonan $permohonan) {
-                return ! ($permohonan->jenis_permohonan === 'perpanjangan' && $permohonan->status === 'disetujui');
+                return $permohonan->jenis_permohonan === Permohonan::JENIS_PERPANJANGAN
+                    && in_array($permohonan->status, [
+                        Permohonan::STATUS_PENDING,
+                        Permohonan::STATUS_MENUNGGU,
+                        Permohonan::STATUS_MENUNGGU_KONFIRMASI,
+                        Permohonan::STATUS_DIPROSES_DARURAT,
+                        Permohonan::STATUS_ADMINISTRASI_BELUM_LENGKAP,
+                        Permohonan::STATUS_MENUNGGU_VERIFIKASI_DOKUMEN,
+                        Permohonan::STATUS_PERLU_PERBAIKAN_DOKUMEN,
+                    ], true);
             })
             ->values();
 
-        $pengingatSewaMakam = $permohonanSemua
+        $sourcePermohonans = $permohonanSemua
             ->filter(function (Permohonan $permohonan) {
-                if ($permohonan->jenis_permohonan !== 'makam_baru') {
-                    return false;
-                }
-
-                // Tampilkan pengingat untuk semua item yang memiliki tenggat mendekati/terlewat
-                if (! in_array($permohonan->renewalAlertLevel(), ['soon', 'expired'], true)) {
-                    return false;
-                }
-
-                if ($permohonan->status !== 'disetujui' || ! $permohonan->jenazah_id) {
-                    return false;
-                }
-                
-                return true;
+                return in_array($permohonan->jenis_permohonan, [
+                        Permohonan::JENIS_MAKAM_BARU,
+                        Permohonan::JENIS_DARURAT,
+                    ], true)
+                    && in_array($permohonan->status, [
+                        Permohonan::STATUS_DISETUJUI,
+                        Permohonan::STATUS_SELESAI,
+                    ], true)
+                    && filled($permohonan->jenazah_id)
+                    && $permohonan->jenazah;
             })
-            ->filter(function (Permohonan $permohonan) use ($permohonanSemua) {
-                return ! $permohonanSemua->contains(function (Permohonan $other) use ($permohonan) {
-                    return $other->id !== $permohonan->id
-                        && $other->jenis_permohonan === 'perpanjangan'
-                        && $other->jenazah_id === $permohonan->jenazah_id
-                        && in_array($other->status, ['pending', 'menunggu'], true);
+            ->sortByDesc(function (Permohonan $permohonan) {
+                $jenazah = $permohonan->jenazah;
+
+                return sprintf(
+                    '%s-%010d',
+                    optional($jenazah?->tanggal_wafat)->format('Ymd') ?? '00000000',
+                    $jenazah?->id ?? 0
+                );
+            })
+            ->unique(function (Permohonan $permohonan) {
+                $jenazah = $permohonan->jenazah;
+
+                if ($jenazah?->makam_id && $jenazah->isTumpangSari()) {
+                    return 'makam:' . $jenazah->makam_id;
+                }
+
+                return 'jenazah:' . $permohonan->jenazah_id;
+            })
+            ->filter(function (Permohonan $permohonan) {
+                return in_array($permohonan->jenazah?->renewalAlertLevel(), ['soon', 'expired'], true);
+            })
+            ->map(function (Permohonan $permohonan) use ($pendingRenewals) {
+                $jenazah = $permohonan->jenazah;
+
+                $pendingRenewal = $pendingRenewals->first(function (Permohonan $other) use ($permohonan, $jenazah) {
+                    if ($other->jenazah_id === $permohonan->jenazah_id) {
+                        return true;
+                    }
+
+                    return $jenazah?->makam_id
+                        && $other->makam_id === $jenazah->makam_id;
                 });
+
+                $permohonan->pending_renewal_permohonan = $pendingRenewal;
+
+                return $permohonan;
             })
             ->sortBy(function (Permohonan $permohonan) {
-                return $permohonan->renewalDueAt()?->timestamp ?? PHP_INT_MAX;
+                return $permohonan->jenazah?->renewalDueAt()?->timestamp
+                    ?? $permohonan->renewalDueAt()?->timestamp
+                    ?? PHP_INT_MAX;
             })
             ->values();
+
+        $pengingatSewaMakam = $sourcePermohonans;
 
         $totalPermohonan = $permohonanSemua->count();
         $permohonanMenunggu = $permohonanSemua->filter(function (Permohonan $permohonan) {

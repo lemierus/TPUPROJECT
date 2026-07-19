@@ -310,19 +310,19 @@
                         <i class="bi bi-stars"></i>
                         Dashboard Ahli Waris
                     </div>
-                    <h1 class="user-hero-title mb-3">Pantau TPU, ajukan permohonan, dan cek status dengan lebih cepat.</h1>
+                    <h1 class="user-hero-title mb-3">Pantau TPU, ajukan permohonan, dan cek status lebih cepat.</h1>
                     <p class="user-hero-text mb-0">
                         Pilih TPU tujuan terlebih dahulu, lalu ajukan dan pantau status permohonan makam Anda.
                         Semua informasi penting ditata lebih ringkas agar mudah dibaca.
                     </p>
                 </div>
 
-                <div class="text-lg-end">
+                <!-- <div class="text-lg-end">
                     <span class="user-role-badge mb-3">
                         <i class="bi bi-shield-check"></i>
                         {{ strtoupper(auth()->user()->role) }}
                     </span>
-                </div>
+                </div> -->
             </div>
         </div>
     </div>
@@ -386,13 +386,14 @@
             <div class="p-3 p-lg-4">
                 @foreach($pengingatSewaMakam as $item)
                     @php
-                        $dueAt = $item->renewalDueAt();
-                        $level = $item->renewalAlertLevel();
+                        $dueAt = $item->jenazah?->renewalDueAt() ?? $item->renewalDueAt();
+                        $level = $item->jenazah?->renewalAlertLevel() ?? $item->renewalAlertLevel();
+                        $pendingRenewal = $item->pending_renewal_permohonan ?? null;
                     @endphp
                     <div class="user-notice-item {{ $loop->first ? '' : '' }}">
                         <div class="flex-grow-1">
                             <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-                                <strong class="text-dark">{{ $item->nama_jenazah ?? '-' }}</strong>
+                                <strong class="text-dark">{{ $item->jenazah?->nama ?? $item->nama_jenazah ?? '-' }}</strong>
                                 @if($level === 'expired')
                                     <span class="user-pill user-pill-danger">
                                         <i class="bi bi-exclamation-octagon"></i>
@@ -413,9 +414,15 @@
                             </div>
                         </div>
                         <div class="text-end">
-                            <a href="{{ route('user.permohonan.summary', $item) }}" class="btn btn-sm btn-outline-dark">
-                                Lihat Ringkasan
-                            </a>
+                            @if($pendingRenewal)
+                                <span class="btn btn-sm btn-outline-secondary disabled">
+                                    Sedang diproses
+                                </span>
+                            @else
+                                <a href="{{ route('user.permohonan.summary', $item) }}" class="btn btn-sm btn-outline-dark">
+                                    Lihat Ringkasan
+                                </a>
+                            @endif
                         </div>
                     </div>
                 @endforeach
@@ -511,6 +518,7 @@
 
                     <div class="user-tpu-card-body">
                         <p class="mb-3 small text-muted">{{ $tpu['ringkasan'] }}</p>
+                        <p class="fw-semibold text-dark mb-3 small">{{ $tpu['highlight'] }}</p>                        
 
                         <div class="d-flex align-items-center gap-2 flex-wrap">
                             <span class="badge rounded-pill text-bg-light border border-dark-subtle py-3 px-6">
@@ -534,7 +542,7 @@
             </div>
             <span class="user-pill user-pill-primary">
                 <i class="bi bi-file-earmark-text"></i>
-                {{ $totalPermohonan }} data
+                {{ method_exists($permohonanSaya, 'total') ? $permohonanSaya->total() : $totalPermohonan }} data
             </span>
         </div>
 
@@ -560,7 +568,7 @@
                                 $statusLabel = $item->statusLabel();
                             @endphp
                             <tr>
-                                <td class="fw-semibold">{{ $loop->iteration }}</td>
+                                <td class="fw-semibold">{{ method_exists($permohonanSaya, 'firstItem') ? (($permohonanSaya->firstItem() ?? 1) + $loop->index) : $loop->iteration }}</td>
                                 <td class="fw-semibold">{{ $item->tpu ?? '-' }}</td>
                                 <td>
                                     @if($item->jenis_permohonan === 'perpanjangan')
@@ -650,6 +658,20 @@
                     </tbody>
                 </table>
             </div>
+            @if(method_exists($permohonanSaya, 'hasPages') && $permohonanSaya->hasPages())
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3 pt-3 border-top">
+                    <small class="text-muted">
+                        Menampilkan {{ $permohonanSaya->firstItem() }} - {{ $permohonanSaya->lastItem() }} dari {{ $permohonanSaya->total() }} data
+                    </small>
+                    {{ $permohonanSaya->onEachSide(1)->links('pagination::bootstrap-5') }}
+                </div>
+            @elseif(method_exists($permohonanSaya, 'count') && $permohonanSaya->count() > 0)
+                <div class="mt-3 pt-3 border-top">
+                    <small class="text-muted">
+                        Menampilkan {{ $permohonanSaya->count() }} data
+                    </small>
+                </div>
+            @endif
         </div>
     </div>
 

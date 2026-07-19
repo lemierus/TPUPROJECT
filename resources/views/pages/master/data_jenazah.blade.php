@@ -20,11 +20,11 @@
             </p>
         </div>
         <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end">
-            <!-- @if($canManage)
+            @if($canManage)
                 <a href="{{ route($routePrefix.'.data-jenazah.create', request()->only('tpu')) }}" class="btn btn-sm me-2" style="background-color:#1E3E62;color:white;">
                     <i class="bi bi-plus-circle"></i> Tambah Jenazah
                 </a>
-            @endif -->
+            @endif
             <span class="badge px-3 py-2" style="background-color: #1E3E62; color: white;">
                 {{ now()->translatedFormat('l, d F Y') }}
             </span>
@@ -113,10 +113,30 @@
                             </thead>
                             <tbody>
                                 @foreach($items as $item)
+                                    @php
+                                        $relatedMakam = $item->jenazah->makam ?? $item->makam ?? null;
+                                        $currentJenazahId = $item->jenazah_id ?? $item->jenazah?->id;
+
+                                        // Jenazah lain yang berbagi makam yang sama (tumpang sari).
+                                        $coOccupants = $relatedMakam
+                                            ? $relatedMakam->jenazahs
+                                                ->when($currentJenazahId, fn($c) => $c->where('id', '!=', $currentJenazahId))
+                                                ->pluck('nama')
+                                                ->filter()
+                                            : collect();
+                                        $isTumpangSari = $coOccupants->isNotEmpty();
+                                    @endphp
                                     <tr>
                                         <td class="text-muted">{{ $loop->iteration }}</td>
                                         <td>
-                                            <div class="fw-semibold text-dark">{{ $item->nama_jenazah ?: ($item->jenazah->nama ?? '-') }}</div>
+                                            <div class="fw-semibold text-dark">
+                                                {{ $item->nama_jenazah ?: ($item->jenazah->nama ?? '-') }}
+                                                @if($isTumpangSari)
+                                                    <span class="badge rounded-pill bg-info text-dark ms-1" title="Makam ini dipakai tumpang sari">
+                                                        <i class="bi bi-people-fill"></i> Tumpang Sari
+                                                    </span>
+                                                @endif
+                                            </div>
                                             <div class="small text-muted">NIK: {{ $item->nik_jenazah ?: ($item->jenazah->nik ?? '-') }}</div>
                                             <div class="small text-muted">Tempat Lahir: {{ $item->tempat_lahir ?: ($item->jenazah->tempat_lahir ?? '-') ?: '-' }}</div>
                                             <div class="small text-muted">Jenis Kelamin: {{ $item->jenis_kelamin ?: ($item->jenazah->jenis_kelamin ?? '-') }}</div>
@@ -146,12 +166,17 @@
                                             @endif
                                         </td>
                                         <td>
-                                            @php $relatedMakam = $item->jenazah->makam ?? $item->makam ?? null; @endphp
                                             <div class="fw-semibold text-dark">{{ $relatedMakam->kode_makam ?? '-' }}</div>
                                             <div class="small text-muted">Blok: {{ $relatedMakam->blok ?? '-' }}</div>
                                             <div class="small text-muted">Zona: {{ $relatedMakam->zona ?? '-' }}</div>
                                             <div class="small text-muted">Nomor: {{ $relatedMakam->nomor_makam ?? $relatedMakam->nomor ?? '-' }}</div>
                                             <div class="small text-muted">Keterangan: {{ $relatedMakam->keterangan ?? '-' }}</div>
+                                            @if($isTumpangSari)
+                                                <div class="makam-cooccupant-note mt-1">
+                                                    <i class="bi bi-info-circle"></i>
+                                                    Bersama: {{ $coOccupants->join(', ') }}
+                                                </div>
+                                            @endif
                                         </td>
                                         <td>
                                             <div class="d-flex flex-wrap gap-1">
@@ -225,10 +250,27 @@
                         </thead>
                         <tbody>
                             @forelse($jenazah as $item)
+                                @php
+                                    // Jenazah lain yang berbagi makam yang sama (tumpang sari).
+                                    $coOccupants = $item->makam
+                                        ? $item->makam->jenazahs
+                                            ->where('id', '!=', $item->id)
+                                            ->pluck('nama')
+                                            ->filter()
+                                        : collect();
+                                    $isTumpangSari = $coOccupants->isNotEmpty();
+                                @endphp
                                 <tr>
                                     <td class="text-muted">{{ ($jenazah->firstItem() ?? 1) + $loop->index }}</td>
                                     <td>
-                                        <div class="fw-semibold text-dark">{{ $item->nama }}</div>
+                                        <div class="fw-semibold text-dark">
+                                            {{ $item->nama }}
+                                            @if($isTumpangSari)
+                                                <span class="badge rounded-pill bg-info text-dark ms-1" title="Makam ini dipakai tumpang sari">
+                                                    <i class="bi bi-people-fill"></i> Tumpang Sari
+                                                </span>
+                                            @endif
+                                        </div>
                                         <div class="small text-muted">NIK: {{ $item->nik }}</div>
                                         <div class="small text-muted">
                                             TTL: {{ $item->tempat_lahir ?: '-' }}
@@ -248,6 +290,12 @@
                                         <div class="small text-muted">
                                             {{ $item->makam->blok ?? '-' }} / {{ $item->makam->zona ?? '-' }}
                                         </div>
+                                        @if($isTumpangSari)
+                                            <div class="makam-cooccupant-note mt-1">
+                                                <i class="bi bi-info-circle"></i>
+                                                Bersama: {{ $coOccupants->join(', ') }}
+                                            </div>
+                                        @endif
                                     </td>
                                     <td>
                                         @php
@@ -340,6 +388,17 @@
         font-size: 0.75rem;
         padding: 0.28rem 0.55rem;
         line-height: 1.2;
+    }
+
+    /* Indikator tumpang sari: badge nama jenazah + catatan di kolom Makam */
+    .makam-cooccupant-note {
+        font-size: 0.75rem;
+        color: #0c5f7a;
+        background-color: #e7f6fb;
+        border: 1px solid #bfe6f2;
+        border-radius: 8px;
+        padding: 0.3rem 0.55rem;
+        line-height: 1.35;
     }
 </style>
 @endpush

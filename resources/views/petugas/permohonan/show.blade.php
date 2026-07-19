@@ -224,7 +224,8 @@
         box-shadow: 0 0 0 3px rgba(30, 62, 98, 0.1);
     }
 
-    /* Tumpang sari toggle di Modal Approve */
+    /* Toggle tipe pemakaman (dipakai di modal approve DAN di form selesaikan
+       pemakaman darurat) */
     .tipe-pemakaman-toggle .form-check {
         border: 2px solid #d0d5dd;
         border-radius: 10px;
@@ -305,20 +306,6 @@
         </div>
     </div>
 
-    <!-- @if($isOutOfOrder ?? false)
-        <div class="alert alert-warning border-2 border-dark shadow-sm mb-4">
-            <i class="bi bi-exclamation-triangle-fill me-2"></i>
-            <strong>Peringatan FIFO:</strong> permohonan ini belum berada di urutan paling awal.
-            Saat ini masih ada permohonan yang lebih dulu masuk dan sebaiknya diproses terlebih dahulu.
-            Permohonan ini sudah menunggu selama <strong>{{ $waitingDays ?? 0 }} hari</strong>.
-        </div>
-    @elseif(in_array(strtolower($permohonan->status ?? ''), ['pending', 'menunggu'], true))
-        <div class="alert alert-info border-2 border-dark shadow-sm mb-4">
-            <i class="bi bi-info-circle-fill me-2"></i>
-            Permohonan ini berada dalam antrian aktif dan sudah menunggu selama <strong>{{ $waitingDays ?? 0 }} hari</strong>.
-        </div>
-    @endif -->
-
     @if($permohonan->jenis_permohonan === 'makam_baru' && $permohonan->status === 'disetujui')
         <div class="alert {{ $permohonan->jenazah_id ? 'alert-info' : 'alert-warning' }} border-2 border-dark shadow-sm mb-4">
             <i class="bi {{ $permohonan->jenazah_id ? 'bi-info-circle-fill' : 'bi-exclamation-triangle-fill' }} me-2"></i>
@@ -345,6 +332,13 @@
         }
         $displayMakamNomor = $permohonan->no_makam ?? $linkedMakam?->nomor ?? '-';
         $displayMakamKeterangan = $permohonan->keterangan ?? $linkedMakam?->keterangan ?? '-';
+
+        // Jenazah lain yang berbagi makam yang sama (relevan untuk tumpang sari).
+        $otherJenazahsInMakam = $linkedMakam
+            ? $linkedMakam->jenazahs()
+                ->when($linkedJenazah, fn($q) => $q->where('id', '!=', $linkedJenazah->id))
+                ->get(['id', 'nama', 'tanggal_wafat'])
+            : collect();
     @endphp
 
     @if($renewalDueAt)
@@ -431,6 +425,14 @@
                     @endif
                 </div>
             </div>
+            @if($permohonan->tipe_pemakaman)
+                <div>
+                    <div class="detail-label">Tipe Pemakaman</div>
+                    <div class="detail-badge {{ $permohonan->tipe_pemakaman === 'tumpang_sari' ? 'detail-badge-primary' : 'detail-badge-success' }}">
+                        {{ $permohonan->tipe_pemakaman === 'tumpang_sari' ? 'Tumpang Sari' : 'Makam Baru' }}
+                    </div>
+                </div>
+            @endif
         </div>
     </div>
 
@@ -524,6 +526,22 @@
                 <div class="detail-value">{{ $displayMakamKeterangan }}</div>
             </div>
         </div>
+
+        {{-- Daftar jenazah lain yang berbagi makam ini (tumpang sari) --}}
+        @if($otherJenazahsInMakam->isNotEmpty())
+            <hr class="my-3">
+            <div class="detail-label mb-2">Jenazah Lain di Makam Ini (Tumpang Sari)</div>
+            <ul class="mb-0">
+                @foreach($otherJenazahsInMakam as $other)
+                    <li>
+                        {{ $other->nama ?? '-' }}
+                        @if($other->tanggal_wafat)
+                            &mdash; wafat {{ \Carbon\Carbon::parse($other->tanggal_wafat)->format('d F Y') }}
+                        @endif
+                    </li>
+                @endforeach
+            </ul>
+        @endif
     </div>
 
     <!-- Status Integrasi Data Jenazah -->
@@ -653,6 +671,30 @@
         </div>
     @endif
 
+    @if($permohonan->isDarurat())
+        @php
+            $missingAdministrativeFields = $permohonan->missingAdministrativeFields();
+        @endphp
+        <div class="detail-section">
+            <div class="detail-section-title">
+                <i class="bi bi-clipboard2-check"></i>
+                Status Kelengkapan Administrasi Darurat
+            </div>
+            @if(empty($missingAdministrativeFields))
+                <div class="alert alert-success border-2 border-dark shadow-sm mb-0">
+                    <i class="bi bi-check-circle-fill me-2"></i>
+                    Seluruh data dan dokumen utama sudah lengkap. Permohonan darurat ini siap diselesaikan oleh petugas.
+                </div>
+            @else
+                <div class="alert alert-warning border-2 border-dark shadow-sm mb-0">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    Data belum lengkap. Bagian yang masih perlu dilengkapi:
+                    <strong>{{ implode(', ', $missingAdministrativeFields) }}</strong>.
+                </div>
+            @endif
+        </div>
+    @endif
+
     <!-- Action Buttons (hanya jika status masih menunggu) -->
     @if($permohonan->jenis_permohonan === 'darurat' && $permohonan->status === 'menunggu_konfirmasi')
         <div class="detail-section">
@@ -687,17 +729,59 @@
             </div>
             <form action="{{ route('petugas.permohonan.selesaikan-pemakaman', $permohonan) }}" method="POST">
                 @csrf
-                <div class="mb-3">
-                    <label class="form-label">Pilih Makam Kosong</label>
-                    <select name="makam_id" class="form-select form-control-custom" required>
-                        <option value="">Pilih makam kosong</option>
-                        @foreach($makamKosong as $makam)
-                            <option value="{{ $makam->id }}" @selected($permohonan->makam_id == $makam->id)>
-                                {{ $makam->kode_makam }} - {{ $makam->blok ?? '-' }} / No {{ $makam->nomor ?? '-' }} / {{ $makam->keterangan ?? '-' }} 
-                            </option>
-                        @endforeach
-                    </select>
+
+                {{-- ===== TAMBAHAN: Jenis Pemakaman (Baru / Tumpang Sari) untuk darurat =====
+                     Sebelumnya form ini hanya bisa memilih makam kosong. Sekarang petugas
+                     bisa memilih tumpang sari jika makam yang cocok sudah terisi
+                     (misalnya makam keluarga). --}}
+                <div class="mb-3 tipe-pemakaman-toggle-group">
+                    <label class="form-label">Jenis Pemakaman</label>
+                    <div class="d-flex gap-2 tipe-pemakaman-toggle">
+                        <div class="form-check">
+                            <input class="form-check-input js-tipe-radio" type="radio" name="tipe_pemakaman"
+                                   id="tipeBaruDarurat" value="baru" checked>
+                            <label class="form-check-label" for="tipeBaruDarurat">Makam Baru</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input js-tipe-radio" type="radio" name="tipe_pemakaman"
+                                   id="tipeTumpangSariDarurat" value="tumpang_sari">
+                            <label class="form-check-label" for="tipeTumpangSariDarurat">Tumpang Sari</label>
+                        </div>
+                    </div>
+
+                    <div class="mb-3 mt-3 js-makam-baru-wrapper">
+                        <label class="form-label">Pilih Makam Kosong</label>
+                        <select name="makam_id" class="form-select form-control-custom js-makam-baru-select">
+                            <option value="">Pilih makam kosong</option>
+                            @foreach($makamKosong as $makam)
+                                <option value="{{ $makam->id }}" @selected($permohonan->makam_id == $makam->id)>
+                                    {{ $makam->kode_makam }} - {{ $makam->blok ?? '-' }} / No {{ $makam->nomor ?? '-' }} / {{ $makam->keterangan ?? '-' }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="mb-3 mt-3 d-none js-makam-tumpang-sari-wrapper">
+                        <label class="form-label">Pilih Makam Tujuan (Tumpang Sari)</label>
+                        <select name="makam_id" class="form-select form-control-custom js-makam-tumpang-sari-select" disabled>
+                            <option value="">-- Pilih makam yang sudah terisi --</option>
+                            @foreach($makamTerisi as $makam)
+                                <option value="{{ $makam->id }}">
+                                    {{ $makam->kode_makam }} - {{ $makam->blok ?? '-' }} / No {{ $makam->nomor ?? '-' }}
+                                    @if($makam->jenazahs->isNotEmpty())
+                                        (sudah berisi: {{ $makam->jenazahs->pluck('nama')->join(', ') }})
+                                    @endif
+                                </option>
+                            @endforeach
+                        </select>
+                        <small class="text-muted d-block mt-1">
+                            Gunakan opsi ini jika ahli waris meminta pemakaman darurat digabungkan
+                            dengan makam keluarga yang sudah terisi.
+                        </small>
+                    </div>
                 </div>
+                {{-- ===== AKHIR TAMBAHAN ===== --}}
+
                 <div class="mb-3">
                     <label class="form-label">Catatan Petugas</label>
                     <textarea name="catatan" class="form-control form-control-custom" rows="3">{{ old('catatan', $permohonan->catatan) }}</textarea>
@@ -803,20 +887,20 @@
                 <div class="modal-body">
                     <p class="text-muted mb-3">Anda akan menyetujui permohonan ini. Apakah ada catatan untuk ahli waris?</p>
 
-                    {{-- ===== TAMBAHAN: Jenis Pemakaman (Baru / Tumpang Sari) =====
-                         Hanya relevan untuk permohonan makam baru. Perpanjangan/darurat
-                         punya alurnya sendiri dan tidak perlu opsi ini. --}}
+                    {{-- Jenis Pemakaman (Baru / Tumpang Sari). Hanya relevan untuk
+                         permohonan makam baru. Perpanjangan/darurat punya alurnya
+                         sendiri dan tidak perlu opsi ini di sini. --}}
                     @if($permohonan->jenis_permohonan === 'makam_baru')
-                        <div class="mb-3">
+                        <div class="mb-3 tipe-pemakaman-toggle-group">
                             <label class="form-label">Jenis Pemakaman</label>
                             <div class="d-flex gap-2 tipe-pemakaman-toggle">
                                 <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="tipe_pemakaman"
+                                    <input class="form-check-input js-tipe-radio" type="radio" name="tipe_pemakaman"
                                            id="tipeBaru" value="baru" checked>
                                     <label class="form-check-label" for="tipeBaru">Makam Baru</label>
                                 </div>
                                 <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="tipe_pemakaman"
+                                    <input class="form-check-input js-tipe-radio" type="radio" name="tipe_pemakaman"
                                            id="tipeTumpangSari" value="tumpang_sari">
                                     <label class="form-check-label" for="tipeTumpangSari">Tumpang Sari</label>
                                 </div>
@@ -825,40 +909,39 @@
                                 Cek catatan ahli waris di atas &mdash; jika berisi permintaan tumpang sari,
                                 pilih "Tumpang Sari" lalu tentukan makam tujuannya di bawah.
                             </small>
-                        </div>
 
-                        <div class="mb-3" id="makamBaruWrapper">
-                            <label class="form-label">Pilih Makam Kosong</label>
-                            <select name="makam_id" class="form-select form-control-custom" id="makamBaruSelect">
-                                <option value="">-- Tidak mengubah makam saat ini --</option>
-                                @foreach($makamKosong as $makam)
-                                    <option value="{{ $makam->id }}" @selected($permohonan->makam_id == $makam->id)>
-                                        {{ $makam->kode_makam }} - {{ $makam->blok ?? '-' }} / No {{ $makam->nomor ?? '-' }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
+                            <div class="mb-3 mt-3 js-makam-baru-wrapper">
+                                <label class="form-label">Pilih Makam Kosong</label>
+                                <select name="makam_id" class="form-select form-control-custom js-makam-baru-select">
+                                    <option value="">-- Tidak mengubah makam saat ini --</option>
+                                    @foreach($makamKosong as $makam)
+                                        <option value="{{ $makam->id }}" @selected($permohonan->makam_id == $makam->id)>
+                                            {{ $makam->kode_makam }} - {{ $makam->blok ?? '-' }} / No {{ $makam->nomor ?? '-' }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
 
-                        <div class="mb-3 d-none" id="makamTumpangSariWrapper">
-                            <label class="form-label">Pilih Makam Tujuan (Tumpang Sari)</label>
-                            <select name="makam_id" class="form-select form-control-custom" id="makamTumpangSariSelect" disabled>
-                                <option value="">-- Pilih makam yang sudah terisi --</option>
-                                @foreach($makamTerisi as $makam)
-                                    <option value="{{ $makam->id }}">
-                                        {{ $makam->kode_makam }} - {{ $makam->blok ?? '-' }} / No {{ $makam->nomor ?? '-' }}
-                                        @if($makam->jenazahs->isNotEmpty())
-                                            (sudah berisi: {{ $makam->jenazahs->pluck('nama')->join(', ') }})
-                                        @endif
-                                    </option>
-                                @endforeach
-                            </select>
-                            <small class="text-muted d-block mt-1">
-                                Daftar ini hanya menampilkan makam yang sudah terisi, beserta nama jenazah
-                                yang sudah dimakamkan, untuk memudahkan pencocokan dengan permintaan ahli waris.
-                            </small>
+                            <div class="mb-3 mt-3 d-none js-makam-tumpang-sari-wrapper">
+                                <label class="form-label">Pilih Makam Tujuan (Tumpang Sari)</label>
+                                <select name="makam_id" class="form-select form-control-custom js-makam-tumpang-sari-select" disabled>
+                                    <option value="">-- Pilih makam yang sudah terisi --</option>
+                                    @foreach($makamTerisi as $makam)
+                                        <option value="{{ $makam->id }}">
+                                            {{ $makam->kode_makam }} - {{ $makam->blok ?? '-' }} / No {{ $makam->nomor ?? '-' }}
+                                            @if($makam->jenazahs->isNotEmpty())
+                                                (sudah berisi: {{ $makam->jenazahs->pluck('nama')->join(', ') }})
+                                            @endif
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <small class="text-muted d-block mt-1">
+                                    Daftar ini hanya menampilkan makam yang sudah terisi, beserta nama jenazah
+                                    yang sudah dimakamkan, untuk memudahkan pencocokan dengan permintaan ahli waris.
+                                </small>
+                            </div>
                         </div>
                     @endif
-                    {{-- ===== AKHIR TAMBAHAN ===== --}}
 
                     <div class="mb-3">
                         <label class="form-label">Tenggat Sewa Baru</label>
@@ -927,39 +1010,52 @@
     </div>
 </div>
 
-{{-- ===== TAMBAHAN: script toggle tipe pemakaman ===== --}}
+{{-- ===== Script toggle tipe pemakaman (digeneralisasi) =====
+     Sebelumnya script ini hanya mengenali satu grup toggle lewat ID tetap
+     (tipeBaru/tipeTumpangSari/dst), sehingga tidak bisa dipakai ulang di form
+     "Selesaikan Pemakaman Darurat". Sekarang script bekerja dengan men-scan
+     SETIAP elemen ".tipe-pemakaman-toggle-group" di halaman dan mengatur
+     toggle-nya masing-masing secara independen, sehingga aman dipakai di
+     modal approve maupun form darurat sekaligus. --}}
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        var radios = document.querySelectorAll('input[name="tipe_pemakaman"]');
-        var makamBaruWrapper = document.getElementById('makamBaruWrapper');
-        var makamTumpangSariWrapper = document.getElementById('makamTumpangSariWrapper');
-        var makamBaruSelect = document.getElementById('makamBaruSelect');
-        var makamTumpangSariSelect = document.getElementById('makamTumpangSariSelect');
+        var groups = document.querySelectorAll('.tipe-pemakaman-toggle-group');
 
-        if (!radios.length) return;
+        groups.forEach(function (group) {
+            var radios = group.querySelectorAll('.js-tipe-radio');
+            var makamBaruWrapper = group.querySelector('.js-makam-baru-wrapper');
+            var makamTumpangSariWrapper = group.querySelector('.js-makam-tumpang-sari-wrapper');
+            var makamBaruSelect = group.querySelector('.js-makam-baru-select');
+            var makamTumpangSariSelect = group.querySelector('.js-makam-tumpang-sari-select');
 
-        function toggleTipePemakaman() {
-            var tipe = document.querySelector('input[name="tipe_pemakaman"]:checked').value;
-
-            if (tipe === 'tumpang_sari') {
-                makamBaruWrapper.classList.add('d-none');
-                makamTumpangSariWrapper.classList.remove('d-none');
-                makamBaruSelect.disabled = true;
-                makamTumpangSariSelect.disabled = false;
-            } else {
-                makamBaruWrapper.classList.remove('d-none');
-                makamTumpangSariWrapper.classList.add('d-none');
-                makamBaruSelect.disabled = false;
-                makamTumpangSariSelect.disabled = true;
+            if (!radios.length || !makamBaruWrapper || !makamTumpangSariWrapper) {
+                return;
             }
-        }
 
-        radios.forEach(function (radio) {
-            radio.addEventListener('change', toggleTipePemakaman);
+            function toggleTipePemakaman() {
+                var checked = group.querySelector('.js-tipe-radio:checked');
+                var tipe = checked ? checked.value : 'baru';
+
+                if (tipe === 'tumpang_sari') {
+                    makamBaruWrapper.classList.add('d-none');
+                    makamTumpangSariWrapper.classList.remove('d-none');
+                    if (makamBaruSelect) makamBaruSelect.disabled = true;
+                    if (makamTumpangSariSelect) makamTumpangSariSelect.disabled = false;
+                } else {
+                    makamBaruWrapper.classList.remove('d-none');
+                    makamTumpangSariWrapper.classList.add('d-none');
+                    if (makamBaruSelect) makamBaruSelect.disabled = false;
+                    if (makamTumpangSariSelect) makamTumpangSariSelect.disabled = true;
+                }
+            }
+
+            radios.forEach(function (radio) {
+                radio.addEventListener('change', toggleTipePemakaman);
+            });
+
+            toggleTipePemakaman();
         });
-
-        toggleTipePemakaman();
     });
 </script>
 @endpush
