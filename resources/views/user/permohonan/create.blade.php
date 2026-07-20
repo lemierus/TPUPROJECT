@@ -70,18 +70,26 @@
                                 <option value="">Pilih jenazah</option>
                                 @foreach($perpanjanganJenazahs as $item)
                                     <option
-                                        value="{{ $item->jenazah_id }}"
-                                        @selected((string) old('jenazah_id', $selectedRenewalJenazahId ?? '') === (string) $item->jenazah_id)
+                                        value="{{ $item->id }}"
+                                        @selected((string) old('jenazah_id', $selectedRenewalJenazahId ?? '') === (string) $item->id)
                                     >
-                                        {{ $item->nama_jenazah ?? $item->jenazah?->nama ?? '-' }}
+                                        {{ $item->nama ?? '-' }}
                                         @if($item->makam)
                                             - {{ $item->makam->kode_makam }}
+                                        @endif
+                                        @if($item->makam && $item->makam->jumlahJenazah() > 1)
+                                            (tumpang sari - {{ $item->makam->jumlahJenazah() }} jenazah)
                                         @endif
                                     </option>
                                 @endforeach
                             </select>
-                            @if(old('source_permohonan_id', $selectedSourcePermohonanId ?? null))
-                                <input type="hidden" name="source_permohonan_id" value="{{ old('source_permohonan_id', $selectedSourcePermohonanId ?? null) }}">
+                            <small class="text-muted d-block mt-2">
+                                Untuk makam tumpang sari, perpanjangan dilakukan atas nama jenazah yang paling terakhir dimakamkan pada makam tersebut.
+                            </small>
+                            @if($perpanjanganJenazahs->isEmpty())
+                                <small class="text-muted d-block mt-1">
+                                    Tidak ditemukan data jenazah yang berhak diperpanjang pada TPU ini.
+                                </small>
                             @endif
                         </div>
                     </div>
