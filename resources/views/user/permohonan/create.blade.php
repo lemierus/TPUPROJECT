@@ -172,11 +172,42 @@
                         <label class="form-label">Hubungan dengan Jenazah <span class="text-danger">*</span></label>
                         <input type="text" name="hubungan_keluarga" class="form-control" value="{{ old('hubungan_keluarga') }}">
                     </div>
-                <div class="col-12">
+
+                    {{-- Biaya Sewa: makam_baru / darurat pakai daftar tetap --}}
+                    <div class="col-md-4" id="biaya-static-wrapper" style="{{ $isPerpanjangan ? 'display:none;' : '' }}">
+                        <label class="form-label">Biaya Sewa <span class="text-danger">*</span></label>
+                        <select name="biaya" class="form-select" id="biaya-static" @if($isPerpanjangan) disabled @endif>
+                            <option value="">Pilih</option>
+                            @foreach(['0Rp', '50Rp', '100Rp'] as $biayaOpt)
+                                <option value="{{ $biayaOpt }}" @selected(old('biaya') === $biayaOpt)>{{ $biayaOpt }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    {{-- Biaya Sewa: perpanjangan pakai daftar dinamis dari kepala dinas lingkungan hidup --}}
+                    <div class="col-md-4" id="biaya-dynamic-wrapper" style="{{ $isPerpanjangan ? '' : 'display:none;' }}">
+                        <label class="form-label">Biaya Sewa Perpanjangan <span class="text-danger">*</span></label>
+                        <select name="biaya" class="form-select" id="biaya-dynamic" @if(! $isPerpanjangan) disabled @endif>
+                            <option value="">Pilih</option>
+                            @foreach($tpuBiayaSewas ?? [] as $item)
+                                <option value="{{ $item->label }}" @selected(old('biaya') === $item->label)>
+                                    {{ $item->label }} — Rp {{ number_format($item->harga, 0, ',', '.') }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @if(($tpuBiayaSewas ?? collect())->isEmpty())
+                            <small class="text-muted d-block mt-1">
+                                Belum ada data biaya sewa untuk TPU ini. Silakan hubungi kepala dinas lingkungan hidup.
+                            </small>
+                        @endif
+                    </div>
+
+                    <div class="col-12">
                     <label class="form-label">
                         Keterangan / Catatan <span class="text-danger">*</span>
                     </label>
 
+                    
                     <textarea
                         name="catatan"
                         class="form-control"
@@ -194,22 +225,6 @@
                     </small>
                 </div>
                 </div>
-
-                <!--
-                <div class="row g-3 mt-1">
-                    <div class="col-md-6">
-                        <label class="form-label">Pilih Makam</label>
-                        <select name="makam_id" class="form-select">
-                            <option value="">Pilih makam</option>
-                            @foreach($makams as $makam)
-                                <option value="{{ $makam->id }}" @selected(old('makam_id') == $makam->id)>
-                                    {{ $makam->kode_makam }} - {{ $makam->blok ?? '-' }} / {{ $makam->zona ?? '-' }} / No {{ $makam->nomor ?? '-' }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-                </div>
-                -->
 
                 <div id="section-dokumen" class="row g-3 mt-1" style="{{ $isPerpanjangan ? 'display:none;' : '' }}">
                     <div class="col-12">
@@ -262,12 +277,28 @@ document.addEventListener('DOMContentLoaded', function () {
     const reqMakamBaru = document.querySelectorAll('.req-makam-baru');
     const reqDarurat = document.querySelectorAll('.req-darurat');
 
+    const biayaStaticWrapper = document.getElementById('biaya-static-wrapper');
+    const biayaDynamicWrapper = document.getElementById('biaya-dynamic-wrapper');
+    const biayaStaticSelect = document.getElementById('biaya-static');
+    const biayaDynamicSelect = document.getElementById('biaya-dynamic');
+
     function refreshSection() {
         const selected = document.querySelector('input[name="jenis_permohonan"]:checked')?.value || 'makam_baru';
-        perpanjangan.style.display = selected === 'perpanjangan' ? '' : 'none';
-        dataJenazah.style.display = selected === 'perpanjangan' ? 'none' : '';
+        const isPerpanjangan = selected === 'perpanjangan';
+
+        perpanjangan.style.display = isPerpanjangan ? '' : 'none';
+        dataJenazah.style.display = isPerpanjangan ? 'none' : '';
         daruratAlert.style.display = selected === 'darurat' ? '' : 'none';
-        dokumen.style.display = selected === 'perpanjangan' ? 'none' : '';
+        dokumen.style.display = isPerpanjangan ? 'none' : '';
+
+        // Biaya Sewa: tukar antara dropdown statis (makam_baru/darurat) dan
+        // dropdown dinamis (perpanjangan, dari data kepala dinas lingkungan
+        // hidup). Select yang disembunyikan di-disable agar tidak ikut
+        // terkirim ke server (hindari dua field "biaya" bentrok).
+        biayaStaticWrapper.style.display = isPerpanjangan ? 'none' : '';
+        biayaDynamicWrapper.style.display = isPerpanjangan ? '' : 'none';
+        biayaStaticSelect.disabled = isPerpanjangan;
+        biayaDynamicSelect.disabled = ! isPerpanjangan;
 
         reqMakamBaru.forEach((el) => {
             el.style.display = selected === 'makam_baru' ? '' : 'none';

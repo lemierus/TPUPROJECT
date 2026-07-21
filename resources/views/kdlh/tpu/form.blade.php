@@ -38,11 +38,53 @@
                         <textarea name="highlight" class="form-control @error('highlight') is-invalid @enderror" rows="3">{{ old('highlight', $tpu->highlight) }}</textarea>
                         @error('highlight')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
-                    <!-- <div class="col-md-12">
-                        <label class="form-label">Deskripsi</label>
-                        <textarea name="deskripsi" class="form-control @error('deskripsi') is-invalid @enderror" rows="4">{{ old('deskripsi', $tpu->deskripsi) }}</textarea>
-                        @error('deskripsi')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                    </div> -->
+
+                    <div class="col-md-12">
+                        <label class="form-label">Biaya Sewa Makam</label>
+                        <p class="text-muted small mb-2">
+                            Tambahkan satu baris untuk setiap jenis biaya sewa (misal: Reguler, VIP, Tumpang Sari).
+                            Daftar ini akan muncul sebagai pilihan dropdown di halaman permohonan perpanjangan makam milik ahli waris.
+                        </p>
+
+                        <div id="biaya-sewa-wrapper">
+                            @php
+                                $existingBiayaSewa = old('biaya_sewa', $tpu->biayaSewas ?? []);
+                            @endphp
+                            @forelse($existingBiayaSewa as $i => $item)
+                                <div class="row g-2 mb-2 biaya-row align-items-center">
+                                    <div class="col-md-5">
+                                        <input type="text" name="biaya_sewa[{{ $i }}][label]"
+                                               class="form-control @error('biaya_sewa.'.$i.'.label') is-invalid @enderror"
+                                               placeholder="Nama biaya (mis. Reguler)"
+                                               value="{{ is_array($item) ? ($item['label'] ?? '') : $item->label }}">
+                                        @error('biaya_sewa.'.$i.'.label')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                    </div>
+                                    <div class="col-md-5">
+                                        <div class="input-group">
+                                            <span class="input-group-text">Rp</span>
+                                            <input type="number" min="0" step="1" name="biaya_sewa[{{ $i }}][harga]"
+                                                   class="form-control @error('biaya_sewa.'.$i.'.harga') is-invalid @enderror"
+                                                   placeholder="Harga"
+                                                   value="{{ is_array($item) ? ($item['harga'] ?? '') : $item->harga }}">
+                                        </div>
+                                        @error('biaya_sewa.'.$i.'.harga')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                    </div>
+                                    <div class="col-md-2">
+                                        <button type="button" class="btn btn-outline-danger w-100 btn-remove-biaya">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            @empty
+                                {{-- Sengaja dikosongkan; user bisa klik "+ Tambah Biaya" untuk memulai baris pertama --}}
+                            @endforelse
+                        </div>
+
+                        <button type="button" id="btn-add-biaya" class="btn btn-sm btn-outline-primary mt-1">
+                            <i class="bi bi-plus-lg"></i> Tambah Biaya
+                        </button>
+                    </div>
+
                     <div class="col-md-6">
                         <label class="form-label">Nomor WhatsApp Petugas <i class="bi bi-whatsapp text-success"></i></label>
                         <select name="wa_petugas_id" class="form-select @error('wa_petugas_id') is-invalid @enderror">
@@ -67,4 +109,43 @@
         </div>
     </div>
 </div>
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const wrapper = document.getElementById('biaya-sewa-wrapper');
+    const addBtn = document.getElementById('btn-add-biaya');
+    let idx = wrapper.querySelectorAll('.biaya-row').length;
+
+    addBtn.addEventListener('click', function () {
+        const row = document.createElement('div');
+        row.className = 'row g-2 mb-2 biaya-row align-items-center';
+        row.innerHTML = `
+            <div class="col-md-5">
+                <input type="text" name="biaya_sewa[${idx}][label]" class="form-control" placeholder="Nama biaya (mis. Reguler)">
+            </div>
+            <div class="col-md-5">
+                <div class="input-group">
+                    <span class="input-group-text">Rp</span>
+                    <input type="number" min="0" step="1" name="biaya_sewa[${idx}][harga]" class="form-control" placeholder="Harga">
+                </div>
+            </div>
+            <div class="col-md-2">
+                <button type="button" class="btn btn-outline-danger w-100 btn-remove-biaya">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>`;
+        wrapper.appendChild(row);
+        idx++;
+    });
+
+    wrapper.addEventListener('click', function (e) {
+        const btn = e.target.closest('.btn-remove-biaya');
+        if (btn) {
+            btn.closest('.biaya-row').remove();
+        }
+    });
+});
+</script>
+@endpush
 @endsection

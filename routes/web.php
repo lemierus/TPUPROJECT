@@ -297,6 +297,14 @@ Route::middleware(['auth', 'user', 'verified'])->prefix('user')->name('user.')->
     Route::put('/permohonan/{permohonan}/lengkapi-dokumen', [UserPermohonanController::class, 'updateDokumen'])->name('permohonan.update-dokumen');
     Route::get('/permohonan/{permohonan}/edit', [UserPermohonanController::class, 'edit'])->name('permohonan.edit');
     Route::put('/permohonan/{permohonan}', [UserPermohonanController::class, 'update'])->name('permohonan.update');
+
+    Route::get('/permohonan/{permohonan}/surat-pernyataan', [UserPermohonanController::class, 'suratPernyataan'])
+        ->name('permohonan.suratPernyataan');
+
+    Route::get('/permohonan/{permohonan}/lengkapi-dokumen', [UserPermohonanController::class, 'lengkapiDokumen'])->name('permohonan.lengkapi-dokumen');
+    Route::put('/permohonan/{permohonan}/lengkapi-dokumen', [UserPermohonanController::class, 'updateDokumen'])->name('permohonan.update-dokumen');
+    Route::get('/permohonan/{permohonan}/edit', [UserPermohonanController::class, 'edit'])->name('permohonan.edit');
+    Route::put('/permohonan/{permohonan}', [UserPermohonanController::class, 'update'])->name('permohonan.update');
 });
 
 require __DIR__ . '/settings.php';

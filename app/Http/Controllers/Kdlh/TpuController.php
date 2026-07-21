@@ -30,7 +30,12 @@ class TpuController extends Controller
 
     public function store(Request $request)
     {
-        Tpu::create($this->validatedData($request));
+        $data = $this->validatedData($request);
+        $biayaSewaItems = $this->validatedBiayaSewa($request);
+
+        $tpu = Tpu::create($data);
+
+        $this->syncBiayaSewa($tpu, $biayaSewaItems);
 
         return redirect()->route('kdlh.tpu.index')->with('success', 'Data TPU berhasil ditambahkan');
     }
@@ -38,7 +43,7 @@ class TpuController extends Controller
     public function edit(Tpu $tpu)
     {
         return view('kdlh.tpu.form', [
-            'tpu' => $tpu,
+            'tpu' => $tpu->load('biayaSewas'),
             'petugasList' => User::where('role', User::ROLE_PETUGAS)
                 ->whereNotNull('no_hp')
                 ->orderBy('name')
@@ -48,7 +53,12 @@ class TpuController extends Controller
 
     public function update(Request $request, Tpu $tpu)
     {
-        $tpu->update($this->validatedData($request, $tpu->id));
+        $data = $this->validatedData($request, $tpu->id);
+        $biayaSewaItems = $this->validatedBiayaSewa($request);
+
+        $tpu->update($data);
+
+        $this->syncBiayaSewa($tpu, $biayaSewaItems);
 
         return redirect()->route('kdlh.tpu.index')->with('success', 'Data TPU berhasil diperbarui');
     }
@@ -70,5 +80,43 @@ class TpuController extends Controller
             'deskripsi' => ['nullable', 'string'],
             'wa_petugas_id' => ['nullable', 'exists:users,id'],
         ]);
+    }
+
+    /**
+     * Validasi baris-baris "Biaya Sewa Makam" yang diinput kepala dinas.
+     * Baris kosong (tanpa label atau harga) diabaikan agar repeater di sisi
+     * client bisa bebas menambah/menghapus baris tanpa memicu error validasi.
+     */
+    private function validatedBiayaSewa(Request $request): array
+    {
+        $validated = $request->validate([
+            'biaya_sewa' => ['nullable', 'array'],
+            'biaya_sewa.*.label' => ['nullable', 'string', 'max:255'],
+            'biaya_sewa.*.harga' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        return collect($validated['biaya_sewa'] ?? [])
+            ->filter(fn ($item) => filled($item['label'] ?? null) && $item['harga'] !== null && $item['harga'] !== '')
+            ->map(fn ($item) => [
+                'label' => trim($item['label']),
+                'harga' => (int) $item['harga'],
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Sinkronkan daftar biaya sewa TPU dengan pola replace-all: hapus semua
+     * baris lama lalu buat ulang dari input terbaru. Aman karena baris biaya
+     * sewa tidak direferensikan oleh tabel lain lewat foreign key (permohonan
+     * hanya menyimpan label sebagai teks, bukan relasi ke baris ini).
+     */
+    private function syncBiayaSewa(Tpu $tpu, array $items): void
+    {
+        $tpu->biayaSewas()->delete();
+
+        foreach ($items as $item) {
+            $tpu->biayaSewas()->create($item);
+        }
     }
 }

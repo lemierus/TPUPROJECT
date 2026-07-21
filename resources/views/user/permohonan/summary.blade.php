@@ -121,6 +121,27 @@
         color: #475467;
     }
 
+    .summary-doc-card {
+        border: 2px solid #111827;
+        border-radius: 18px;
+        background: #fff;
+        box-shadow: 0 10px 0 rgba(17, 24, 39, 0.08);
+        padding: 1.1rem 1.25rem;
+    }
+
+    .summary-doc-icon {
+        width: 46px;
+        height: 46px;
+        border-radius: 14px;
+        background: #fee2e2;
+        color: #dc2626;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.4rem;
+        flex-shrink: 0;
+    }
+
     @media (max-width: 767.98px) {
         .summary-hero,
         .summary-card {
@@ -138,6 +159,13 @@
     $renewalDueAt = $permohonan->renewalDueAt();
     $renewalLevel = $permohonan->renewalAlertLevel();
     $renewalJenazahId = $jenazahData?->id ?? $permohonan->jenazah_id;
+
+    // Surat pernyataan kepemilikan makam hanya bisa diunduh apabila
+    // permohonan sudah disetujui/selesai dan datanya lengkap (jenazah & makam sudah tersambung).
+    $statusForDoc = strtolower((string) $permohonan->status);
+    $canDownloadSuratPernyataan = in_array($statusForDoc, ['disetujui', 'selesai'], true)
+        && $jenazahData
+        && $makamData;
 @endphp
 
 <div class="container-fluid py-4 summary-shell">
@@ -240,6 +268,40 @@
             </div>
         </div>
     @endif
+
+    {{-- === Kartu unduh Surat Pernyataan Kepemilikan Makam === --}}
+    <div class="summary-doc-card mb-4">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
+            <div class="d-flex align-items-start gap-3">
+                <div class="summary-doc-icon">
+                    <i class="bi bi-file-earmark-pdf-fill"></i>
+                </div>
+                <div>
+                    <div class="fw-bold text-dark mb-1">Surat Pernyataan Kepemilikan Makam</div>
+                    <div class="text-secondary" style="font-size:.92rem;">
+                        Dokumen ini menyatakan bahwa Anda selaku ahli waris tercatat berhak atas makam
+                        {{ $jenazahData->nama ?? $permohonan->nama_jenazah ?? '-' }} di {{ $permohonan->tpu }}.
+                        @unless($canDownloadSuratPernyataan)
+                            Surat baru dapat diunduh setelah permohonan berstatus <strong>disetujui</strong> dan data jenazah/makam telah dilengkapi petugas.
+                        @endunless
+                    </div>
+                </div>
+            </div>
+            <div class="flex-shrink-0">
+                @if($canDownloadSuratPernyataan)
+                    <a href="{{ route('user.permohonan.suratPernyataan', $permohonan->id) }}"
+                       target="_blank"
+                       class="btn btn-dark">
+                        <i class="bi bi-download me-1"></i> Unduh PDF
+                    </a>
+                @else
+                    <button type="button" class="btn btn-outline-secondary" disabled>
+                        <i class="bi bi-download me-1"></i> Belum Tersedia
+                    </button>
+                @endif
+            </div>
+        </div>
+    </div>
 
     <div class="row g-3 g-lg-4">
         <div class="col-lg-4">

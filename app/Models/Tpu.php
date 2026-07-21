@@ -23,6 +23,11 @@ class Tpu extends Model
         return $this->belongsTo(User::class, 'wa_petugas_id');
     }
 
+    public function biayaSewas()
+    {
+        return $this->hasMany(TpuBiayaSewa::class);
+    }
+
     public static function options(): array
     {
         $names = static::query()

@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Jenazah;
 use App\Models\Makam;
 use App\Models\Permohonan;
+use App\Models\Tpu;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -14,6 +15,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Dompdf\Dompdf;
 
 class PermohonanController extends Controller
 {
@@ -48,6 +50,11 @@ class PermohonanController extends Controller
             ? collect([$renewalSource])
             : $this->eligibleRenewalJenazahs($tpu);
 
+        // Daftar "Biaya Sewa Makam" yang diinput kepala dinas lingkungan
+        // hidup untuk TPU ini. Dipakai sebagai sumber dropdown biaya saat
+        // jenis_permohonan = perpanjangan (lihat create.blade.php).
+        $tpuBiayaSewas = Tpu::where('nama', $tpu)->first()?->biayaSewas ?? collect();
+
         return view('user.permohonan.create', [
             'tpu' => $tpu,
             'selectedJenis' => $selectedJenis,
@@ -56,6 +63,7 @@ class PermohonanController extends Controller
             'makams' => Makam::where('tpu', $tpu)->orderBy('kode_makam')->get(),
             'assignedPetugas' => $assignedPetugas,
             'perpanjanganJenazahs' => $perpanjanganJenazahs,
+            'tpuBiayaSewas' => $tpuBiayaSewas,
         ]);
     }
 
@@ -102,6 +110,7 @@ class PermohonanController extends Controller
                 'tanggal_wafat' => $renewalJenazah?->tanggal_wafat ?? ($data['tanggal_wafat'] ?? null),
                 'jenis_kelamin' => $renewalJenazah?->jenis_kelamin ?? ($data['jenis_kelamin'] ?? null),
                 'agama' => $renewalJenazah?->agama ?? ($data['agama'] ?? null),
+                'biaya' => $renewalJenazah?->biaya ?? ($data['biaya'] ?? null),
                 'nama_ahli_waris' => $data['nama_ahli_waris'],
                 'no_hp_ahli_waris' => $data['no_hp_ahli_waris'],
                 'hubungan_keluarga' => $data['hubungan_keluarga'],
@@ -148,6 +157,7 @@ class PermohonanController extends Controller
             'makams' => Makam::where('tpu', $permohonan->tpu)->orderBy('kode_makam')->get(),
             'assignedPetugas' => $permohonan->assignedPetugas(),
             'perpanjanganJenazahs' => $this->eligibleRenewalJenazahs($permohonan->tpu),
+            'tpuBiayaSewas' => Tpu::where('nama', $permohonan->tpu)->first()?->biayaSewas ?? collect(),
         ]);
     }
 
@@ -167,6 +177,47 @@ class PermohonanController extends Controller
             'ahliWaris' => $permohonan,
         ]);
     }
+
+    /**
+     * Unduh Surat Pernyataan Kepemilikan Makam (PDF).
+     *
+     * Syarat unduh (harus sama persis dengan $canDownloadSuratPernyataan
+     * di summary.blade.php agar tombol & endpoint tidak pernah berbeda logika):
+     * 1. Permohonan milik user yang login.
+     * 2. Status permohonan sudah 'disetujui' atau 'selesai'.
+     * 3. Data jenazah & makam sudah tersambung (bukan null).
+     */
+public function suratPernyataan(Permohonan $permohonan)
+{
+    $this->ensureOwnedByCurrentUser($permohonan);
+
+    $permohonan->load(['jenazah.makam', 'makam']);
+
+    $jenazah = $permohonan->jenazah;
+    $makam = $jenazah?->makam ?? $permohonan->makam;
+
+    $statusOk = in_array(strtolower((string) $permohonan->status), ['disetujui', 'selesai'], true);
+
+    abort_unless($statusOk && $jenazah && $makam, 403, 'Surat pernyataan belum dapat diunduh. Pastikan permohonan sudah disetujui dan data jenazah/makam lengkap.');
+
+    $html = view('user.permohonan.surat-pernyataan', [
+        'permohonan' => $permohonan,
+        'jenazah' => $jenazah,
+        'makam' => $makam,
+    ])->render();
+
+    $dompdf = new Dompdf();
+    $dompdf->loadHtml($html);
+    $dompdf->setPaper('a4', 'portrait');
+    $dompdf->render();
+
+    $filename = 'surat-pernyataan-kepemilikan-makam-' . str_pad($permohonan->id, 4, '0', STR_PAD_LEFT) . '.pdf';
+
+    return response($dompdf->output(), 200, [
+        'Content-Type' => 'application/pdf',
+        'Content-Disposition' => 'inline; filename="' . $filename . '"',
+    ]);
+}
 
     public function lengkapiDokumen(Permohonan $permohonan)
     {
@@ -249,6 +300,14 @@ class PermohonanController extends Controller
             'tanggal_wafat' => ['nullable', 'date'],
             'jenis_kelamin' => ['nullable', Rule::in(['Laki-laki', 'Perempuan'])],
             'agama' => ['nullable', 'string', 'max:255'],
+            'biaya' => [
+                Rule::requiredIf(function () use ($request, $permohonan) {
+                    return $request->jenis_permohonan === Permohonan::JENIS_PERPANJANGAN
+                        && ! empty($this->allowedBiayaOptions($permohonan->tpu, $request->jenis_permohonan));
+                }),
+                'nullable',
+                Rule::in($this->allowedBiayaOptions($permohonan->tpu, $request->jenis_permohonan)),
+            ],
             'nama_ahli_waris' => ['required', 'string', 'max:255'],
             'no_hp_ahli_waris' => ['required', 'string', 'max:30'],
             'hubungan_keluarga' => ['required', 'string', 'max:255'],
@@ -297,6 +356,7 @@ class PermohonanController extends Controller
                 'tanggal_wafat' => $renewalJenazah?->tanggal_wafat ?? $data['tanggal_wafat'] ?? null,
                 'jenis_kelamin' => $renewalJenazah?->jenis_kelamin ?? $data['jenis_kelamin'] ?? null,
                 'agama' => $renewalJenazah?->agama ?? $data['agama'] ?? null,
+                'biaya' => $renewalJenazah?->biaya ?? $data['biaya'] ?? null,
                 'nama_ahli_waris' => $data['nama_ahli_waris'],
                 'no_hp_ahli_waris' => $data['no_hp_ahli_waris'],
                 'hubungan_keluarga' => $data['hubungan_keluarga'],
@@ -326,6 +386,18 @@ class PermohonanController extends Controller
             'tanggal_wafat' => [Rule::requiredIf(fn () => in_array($request->jenis_permohonan, [Permohonan::JENIS_MAKAM_BARU, Permohonan::JENIS_DARURAT], true)), 'nullable', 'date'],
             'jenis_kelamin' => [Rule::requiredIf(fn () => in_array($request->jenis_permohonan, [Permohonan::JENIS_MAKAM_BARU, Permohonan::JENIS_DARURAT], true)), 'nullable', Rule::in(['Laki-laki', 'Perempuan'])],
             'agama' => [Rule::requiredIf(fn () => in_array($request->jenis_permohonan, [Permohonan::JENIS_MAKAM_BARU, Permohonan::JENIS_DARURAT], true)), 'nullable', 'string', 'max:255'],
+            'biaya' => [
+                Rule::requiredIf(function () use ($request) {
+                    if (in_array($request->jenis_permohonan, [Permohonan::JENIS_MAKAM_BARU, Permohonan::JENIS_DARURAT], true)) {
+                        return true;
+                    }
+
+                    return $request->jenis_permohonan === Permohonan::JENIS_PERPANJANGAN
+                        && ! empty($this->allowedBiayaOptions($request->tpu, $request->jenis_permohonan));
+                }),
+                'nullable',
+                Rule::in($this->allowedBiayaOptions($request->tpu, $request->jenis_permohonan)),
+            ],
             'nama_ahli_waris' => ['required', 'string', 'max:255'],
             'no_hp_ahli_waris' => ['required', 'string', 'max:30'],
             'hubungan_keluarga' => ['required', 'string', 'max:255'],
@@ -368,6 +440,8 @@ class PermohonanController extends Controller
             'tanggal_wafat.required' => 'Tanggal meninggal wajib diisi.',
             'jenis_kelamin.required' => 'Jenis kelamin wajib dipilih.',
             'agama.required' => 'Agama wajib dipilih.',
+            'biaya.required' => 'Biaya sewa wajib dipilih.',
+            'biaya.in' => 'Biaya sewa yang dipilih tidak tersedia untuk TPU ini.',
             'nama_ahli_waris.required' => 'Nama ahli waris wajib diisi.',
             'no_hp_ahli_waris.required' => 'Nomor HP ahli waris wajib diisi.',
             'hubungan_keluarga.required' => 'Hubungan dengan jenazah wajib diisi.',
@@ -376,6 +450,33 @@ class PermohonanController extends Controller
             'scan_kk.required' => 'Scan Kartu Keluarga wajib diunggah.',
             'surat_kematian.required' => 'Surat kematian wajib diunggah.',
         ]);
+    }
+
+    /**
+     * Daftar nilai valid untuk field "biaya" berdasarkan TPU & jenis permohonan.
+     *
+     * - makam_baru & darurat: tetap memakai daftar tetap (perilaku lama,
+     *   tidak diubah supaya alur yang sudah berjalan tidak terganggu).
+     * - perpanjangan: memakai daftar "Biaya Sewa Makam" yang diinput kepala
+     *   dinas lingkungan hidup (KDLH) khusus untuk TPU terkait, lewat relasi
+     *   Tpu::biayaSewas(). Jika KDLH belum mengisi data untuk TPU ini, daftar
+     *   dikembalikan kosong.
+     */
+    private function allowedBiayaOptions(?string $tpu, ?string $jenisPermohonan): array
+    {
+        if ($jenisPermohonan === Permohonan::JENIS_PERPANJANGAN) {
+            if (! $tpu) {
+                return [];
+            }
+
+            return Tpu::where('nama', $tpu)
+                ->first()
+                ?->biayaSewas
+                ->pluck('label')
+                ->all() ?? [];
+        }
+
+        return ['0Rp', '50Rp', '100Rp'];
     }
 
     private function storeUploadedFile(Request $request, string $field, string $directory): ?string
