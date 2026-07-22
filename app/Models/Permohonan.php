@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use App\Models\User;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
+use App\Models\BiayaRetribusi;
 
 class Permohonan extends Model
 {
@@ -52,6 +53,9 @@ class Permohonan extends Model
         'surat_kematian',
         'jenazah_id',
         'makam_id',
+        'biaya_retribusi_id',
+        'bukti_transfer',
+        'status_pembayaran',
         'tipe_pemakaman',
         'tahun_pemakaman',
         'tenggat_sewa_makam',
@@ -61,6 +65,7 @@ class Permohonan extends Model
         'petugas_id',
         'catatan',
         'catatan_revisi',
+        'tpu_biaya_sewa',
     ];
 
     protected $casts = [
@@ -116,6 +121,11 @@ class Permohonan extends Model
         return $this->belongsTo(Makam::class);
     }
 
+    public function biayaRetribusi()
+    {
+        return $this->belongsTo(BiayaRetribusi::class, 'biaya_retribusi_id');
+    }
+
     public function isTumpangSari(): bool
     {
         return $this->tipe_pemakaman === self::TIPE_PEMAKAMAN_TUMPANG_SARI;
@@ -161,6 +171,24 @@ class Permohonan extends Model
     public function isDarurat(): bool
     {
         return $this->jenis_permohonan === self::JENIS_DARURAT;
+    }
+
+    public function wajibBuktiTransfer(): bool
+    {
+        return $this->jenis_permohonan === self::JENIS_PERPANJANGAN
+            && $this->biayaRetribusi
+            && ! $this->biayaRetribusi->isGratis();
+    }
+
+    public function statusPembayaranLabel(): string
+    {
+        return match ($this->status_pembayaran) {
+            'menunggu_verifikasi' => 'Menunggu Verifikasi',
+            'terverifikasi' => 'Terverifikasi',
+            'ditolak' => 'Ditolak',
+            'tidak_ada_biaya' => 'Tidak Ada Biaya',
+            default => '-',
+        };
     }
 
     public function isPendingQueue(): bool

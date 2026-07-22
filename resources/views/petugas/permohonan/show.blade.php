@@ -588,20 +588,49 @@
         <div class="detail-row">
             <div>
                 <div class="detail-label">Nama</div>
-                <div class="detail-value">{{ $permohonan->nama_ahli_waris ?? '-' }}</div>
+                <div class="detail-value">
+                    {{ $permohonan->nama_ahli_waris ?? '-' }}
+                </div>
             </div>
+
             <div>
                 <div class="detail-label">No. HP</div>
-                <div class="detail-value">{{ $permohonan->no_hp_ahli_waris ?? '-' }}</div>
+                <div class="detail-value">
+                    {{ $permohonan->no_hp_ahli_waris ?? '-' }}
+                </div>
             </div>
+
             <div>
                 <div class="detail-label">Hubungan Keluarga</div>
-                <div class="detail-value">{{ $permohonan->hubungan_keluarga ?? '-' }}</div>
+                <div class="detail-value">
+                    {{ $permohonan->hubungan_keluarga ?? '-' }}
+                </div>
             </div>
+
+            @if($permohonan->jenis_permohonan === 'perpanjangan')
+                <div>
+                    <div class="detail-label">Biaya Sewa Makam</div>
+
+                    <div class="detail-value">
+                        @if($permohonan->tpu_biaya_sewa)
+                            <span class="detail-badge detail-badge-primary">
+                                <i class="bi bi-cash-stack"></i>
+                                {{ $permohonan->tpu_biaya_sewa }}
+                            </span>
+                        @else
+                            -
+                        @endif
+                    </div>
+                </div>
+            @endif
+
             <div>
                 <div class="detail-label">Alamat</div>
-                <div class="detail-value">{{ $permohonan->alamat ?? '-' }}</div>
+                <div class="detail-value">
+                    {{ $permohonan->alamat ?? '-' }}
+                </div>
             </div>
+
             <div>
                 <div class="detail-label">Akun Pemohon</div>
                 <div class="detail-value">
@@ -612,6 +641,90 @@
             </div>
         </div>
     </div>
+
+    @if($permohonan->jenis_permohonan === 'perpanjangan' && $permohonan->biayaRetribusi)
+        <div class="detail-section">
+            <div class="detail-section-title">
+                <i class="bi bi-cash-coin"></i>
+                Biaya Retribusi
+            </div>
+            <div class="detail-row">
+                <div>
+                    <div class="detail-label">Nama Biaya</div>
+                    <div class="detail-value">{{ $permohonan->biayaRetribusi->nama_biaya }}</div>
+                </div>
+                <div>
+                    <div class="detail-label">Nominal</div>
+                    <div class="detail-value">Rp {{ number_format($permohonan->biayaRetribusi->nominal, 0, ',', '.') }}</div>
+                </div>
+                <div>
+                    <div class="detail-label">Rekening Tujuan</div>
+                    <div class="detail-value">
+                        {{ $permohonan->biayaRetribusi->nomor_rekening }}<br>
+                        <small class="text-muted">{{ $permohonan->biayaRetribusi->nama_bank }} a.n. {{ $permohonan->biayaRetribusi->atas_nama_rekening }}</small>
+                    </div>
+                </div>
+                <div>
+                    <div class="detail-label">Status Pembayaran</div>
+                    <div class="detail-value">
+                        @php
+                            $paymentBadgeClass = match($permohonan->status_pembayaran) {
+                                'terverifikasi', 'tidak_ada_biaya' => 'detail-badge-success',
+                                'ditolak' => 'detail-badge-danger',
+                                default => 'detail-badge-warning',
+                            };
+                        @endphp
+                        <span class="detail-badge {{ $paymentBadgeClass }}">
+                            {{ $permohonan->statusPembayaranLabel() }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            @if(! $permohonan->biayaRetribusi->isGratis())
+                <div class="detail-row mt-3">
+                    <div>
+                        <div class="detail-label">Bukti Transfer</div>
+                        <div class="detail-value">
+                            @if($permohonan->bukti_transfer)
+                                <a href="{{ asset('storage/' . $permohonan->bukti_transfer) }}" target="_blank" class="doc-link">
+                                    <i class="bi bi-receipt"></i> Lihat Bukti Transfer
+                                </a>
+                            @else
+                                -
+                            @endif
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="my-3">
+                <form action="{{ route('petugas.permohonan.status-pembayaran', $permohonan) }}" method="POST">
+                    @csrf
+                    @method('PATCH')
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-4">
+                            <label class="form-label">Update Status Pembayaran</label>
+                            <select name="status_pembayaran" class="form-select form-control-custom">
+                                <option value="menunggu_verifikasi" @selected(old('status_pembayaran', $permohonan->status_pembayaran) === 'menunggu_verifikasi')>Menunggu Verifikasi</option>
+                                <option value="terverifikasi" @selected(old('status_pembayaran', $permohonan->status_pembayaran) === 'terverifikasi')>Terverifikasi</option>
+                                <option value="ditolak" @selected(old('status_pembayaran', $permohonan->status_pembayaran) === 'ditolak')>Ditolak</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <button type="submit" class="action-btn action-btn-approve w-100">
+                                <i class="bi bi-check2-square me-2"></i> Simpan Status
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            @else
+                <div class="alert alert-success border-2 border-dark shadow-sm mb-0 mt-3">
+                    <i class="bi bi-check-circle-fill me-2"></i>
+                    Permohonan perpanjangan ini tidak dikenakan biaya retribusi. Status pembayaran otomatis dianggap selesai.
+                </div>
+            @endif
+        </div>
+    @endif
 
     <!-- Dokumen -->
     <div class="detail-section">

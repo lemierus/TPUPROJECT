@@ -27,7 +27,7 @@ class PermohonanController extends Controller
     // pending apa pun) selalu diletakkan di atas antrian, baru permohonan
     // jenis lain. Tie-breaker berikutnya tetap 'created_at' ASC (FIFO)
     // baik di antara sesama darurat maupun sesama non-darurat.
-    $pendingPermohonans = Permohonan::with(['user', 'jenazah.makam', 'makam'])
+    $pendingPermohonans = Permohonan::with(['user', 'jenazah.makam', 'makam', 'biayaRetribusi'])
         ->where('tpu', $petugas->tpu)
         ->whereIn('status', $this->pendingStatuses())
         ->orderByRaw("
@@ -42,7 +42,7 @@ class PermohonanController extends Controller
     // === PENCARIAN: server-side search untuk tabel "Riwayat Permohonan Diproses" ===
     $search = trim((string) $request->query('search', ''));
 
-    $processedPermohonans = Permohonan::with(['user', 'jenazah.makam', 'makam'])
+    $processedPermohonans = Permohonan::with(['user', 'jenazah.makam', 'makam', 'biayaRetribusi'])
         ->where('tpu', $petugas->tpu)
         ->whereNotIn('status', $this->pendingStatuses())
         ->when($search !== '', function ($query) use ($search) {
@@ -80,7 +80,7 @@ class PermohonanController extends Controller
 
         $oldestPendingPermohonanId = $pendingPermohonans->first()?->id;
 
-        $perpanjanganPerluDiingatkan = Permohonan::with(['user', 'jenazah.makam', 'makam'])
+        $perpanjanganPerluDiingatkan = Permohonan::with(['user', 'jenazah.makam', 'makam', 'biayaRetribusi'])
             ->where('tpu', $petugas->tpu)
             ->where('status', 'disetujui')
             ->where('jenis_permohonan', 'makam_baru')
@@ -149,6 +149,7 @@ class PermohonanController extends Controller
             'scan_kk' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
             'surat_kematian' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
             'catatan' => ['nullable', 'string'],
+            'tpu_biaya_sewa' => ['nullable', 'string', 'max:255'],
         ]);
 
         $validator->sometimes(['nama_jenazah', 'nik_jenazah', 'tanggal_wafat', 'jenis_kelamin', 'agama', 'tempat_lahir', 'tanggal_lahir', 'alamat'], 'required', function ($input) {
@@ -190,6 +191,7 @@ class PermohonanController extends Controller
             'makam_id' => $selectedMakam?->id ?? null,
             'tahun_pemakaman' => $data['tahun_pemakaman'] ?? null,
             'tenggat_sewa_makam' => null,
+            'tpu_biaya_sewa' => $data['tpu_biaya_sewa'] ?? null,
         ]));
 
         return redirect()->route('petugas.permohonan.show', $permohonan)
@@ -199,7 +201,7 @@ class PermohonanController extends Controller
     public function show(Permohonan $permohonan)
     {
         $this->authorizePermohonan($permohonan);
-        $permohonan->loadMissing(['user', 'makam', 'jenazah.makam']);
+        $permohonan->loadMissing(['user', 'makam', 'jenazah.makam', 'biayaRetribusi']);
         $permohonan->syncLinkedJenazahData();
 
         $oldestPendingPermohonanId = $this->oldestPendingPermohonanIdForTpu(auth()->user()->tpu);
@@ -242,7 +244,7 @@ class PermohonanController extends Controller
     public function edit(Permohonan $permohonan)
     {
         $this->authorizePermohonan($permohonan);
-        $permohonan->loadMissing(['user', 'makam', 'jenazah.makam']);
+        $permohonan->loadMissing(['user', 'makam', 'jenazah.makam', 'biayaRetribusi']);
         $permohonan->syncLinkedJenazahData();
 
         return view('petugas.permohonan.edit', compact('permohonan'));
@@ -272,6 +274,7 @@ class PermohonanController extends Controller
             'scan_kk' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
             'surat_kematian' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
             'catatan' => ['nullable', 'string'],
+            'tpu_biaya_sewa' => ['nullable', 'string', 'max:255'],
         ]);
 
         $validator->sometimes(['nama_jenazah', 'nik_jenazah', 'tanggal_wafat', 'jenis_kelamin', 'agama', 'tempat_lahir', 'tanggal_lahir', 'alamat'], 'required', function ($input) {
@@ -310,6 +313,7 @@ class PermohonanController extends Controller
             'makam_id' => $selectedMakam?->id ?? $permohonan->makam_id,
             'tahun_pemakaman' => $data['tahun_pemakaman'] ?? $permohonan->tahun_pemakaman,
             'tenggat_sewa_makam' => $data['tenggat_sewa_makam'] ?? $permohonan->tenggat_sewa_makam ?? null,
+            'tpu_biaya_sewa' => $data['tpu_biaya_sewa'] ?? $permohonan->biaya,
         ]));
         $permohonan->save();
         $permohonan->syncLinkedJenazahData();
@@ -696,6 +700,34 @@ class PermohonanController extends Controller
 
         return redirect()->route('petugas.permohonan')
             ->with('success', $successMsg);
+    }
+
+    public function updateStatusPembayaran(Request $request, Permohonan $permohonan)
+    {
+        $this->authorizePermohonan($permohonan);
+
+        if ($permohonan->jenis_permohonan !== Permohonan::JENIS_PERPANJANGAN || ! $permohonan->biayaRetribusi) {
+            return redirect()->route('petugas.permohonan.show', $permohonan)
+                ->with('error', 'Status pembayaran hanya tersedia untuk permohonan perpanjangan makam dengan biaya retribusi.');
+        }
+
+        $data = $request->validate([
+            'status_pembayaran' => ['required', Rule::in(['menunggu_verifikasi', 'terverifikasi', 'ditolak', 'tidak_ada_biaya'])],
+        ], [
+            'status_pembayaran.required' => 'Status pembayaran wajib dipilih.',
+            'status_pembayaran.in' => 'Status pembayaran tidak valid.',
+        ]);
+
+        if ($permohonan->biayaRetribusi->isGratis()) {
+            $data['status_pembayaran'] = 'tidak_ada_biaya';
+        }
+
+        $permohonan->update([
+            'status_pembayaran' => $data['status_pembayaran'],
+        ]);
+
+        return redirect()->route('petugas.permohonan.show', $permohonan)
+            ->with('success', 'Status pembayaran retribusi berhasil diperbarui.');
     }
 
     private function authorizePermohonan(Permohonan $permohonan): void

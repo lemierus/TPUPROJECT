@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Kdlh\DashboardController as KdlhDashboardController;
+use App\Http\Controllers\Kdlh\BiayaRetribusiController as KdlhBiayaRetribusiController;
 use App\Http\Controllers\Kdlh\TpuController as KdlhTpuController;
 use App\Http\Controllers\Kepala\DashboardController as KepalaDashboardController;
 use App\Http\Controllers\Master\DataJenazahController;
@@ -185,6 +186,7 @@ Route::middleware(['auth', 'petugas'])->prefix('petugas')->name('petugas.')->gro
     Route::post('/permohonan/{permohonan}/verifikasi-dokumen', [PetugasPermohonanController::class, 'verifikasiDokumen'])->name('permohonan.verifikasi-dokumen');
     Route::post('/permohonan/{permohonan}/approve', [PetugasPermohonanController::class, 'approve'])->name('permohonan.approve');
     Route::post('/permohonan/{permohonan}/reject', [PetugasPermohonanController::class, 'reject'])->name('permohonan.reject');
+    Route::patch('/permohonan/{permohonan}/status-pembayaran', [PetugasPermohonanController::class, 'updateStatusPembayaran'])->name('permohonan.status-pembayaran');
 
     // Data Jenazah
     Route::get('/data-jenazah', [DataJenazahController::class, 'index'])->name('data-jenazah');
@@ -267,6 +269,15 @@ Route::middleware(['auth', 'kdlh'])->prefix('kdlh')->name('kdlh.')->group(functi
 
     // Manajemen TPU
     Route::resource('tpu', KdlhTpuController::class)->except(['show']);
+
+    // Biaya Retribusi
+    Route::get('/biaya-retribusi', [KdlhBiayaRetribusiController::class, 'index'])->name('biaya-retribusi.index');
+    Route::get('/biaya-retribusi/create', [KdlhBiayaRetribusiController::class, 'create'])->name('biaya-retribusi.create');
+    Route::post('/biaya-retribusi', [KdlhBiayaRetribusiController::class, 'store'])->name('biaya-retribusi.store');
+    Route::get('/biaya-retribusi/{biayaRetribusi}/edit', [KdlhBiayaRetribusiController::class, 'edit'])->name('biaya-retribusi.edit');
+    Route::put('/biaya-retribusi/{biayaRetribusi}', [KdlhBiayaRetribusiController::class, 'update'])->name('biaya-retribusi.update');
+    Route::delete('/biaya-retribusi/{biayaRetribusi}', [KdlhBiayaRetribusiController::class, 'destroy'])->name('biaya-retribusi.destroy');
+    Route::patch('/biaya-retribusi/{biayaRetribusi}/toggle', [KdlhBiayaRetribusiController::class, 'toggle'])->name('biaya-retribusi.toggle');
 
     // Data Jenazah (View Only)
     Route::get('/data-jenazah', [DataJenazahController::class, 'index'])->name('data-jenazah');

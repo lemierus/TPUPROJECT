@@ -156,6 +156,10 @@
             <a href="{{ route('kdlh.tpu.index') }}">
                 <i class="bi bi-map me-2"></i> Kelola TPU
             </a>
+
+            <a href="{{ route('kdlh.biaya-retribusi.index') }}">
+                <i class="bi bi-cash-coin me-2"></i> Biaya Retribusi
+            </a>
         @endif
 
         @if($currentUser?->isAdmin() || $currentUser?->isKepala() || $currentUser?->isKdlh())

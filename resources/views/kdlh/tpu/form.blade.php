@@ -39,7 +39,7 @@
                         @error('highlight')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
 
-                    <div class="col-md-12">
+                    <!-- <div class="col-md-12">
                         <label class="form-label">Biaya Sewa Makam</label>
                         <p class="text-muted small mb-2">
                             Tambahkan satu baris untuk setiap jenis biaya sewa (misal: Reguler, VIP, Tumpang Sari).
@@ -82,7 +82,7 @@
 
                         <button type="button" id="btn-add-biaya" class="btn btn-sm btn-outline-primary mt-1">
                             <i class="bi bi-plus-lg"></i> Tambah Biaya
-                        </button>
+                        </button> -->
                     </div>
 
                     <div class="col-md-6">

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\User;
 
 use App\Concerns\WhatsAppNotifiable;
 use App\Http\Controllers\Controller;
+use App\Models\BiayaRetribusi;
 use App\Models\Jenazah;
 use App\Models\Makam;
 use App\Models\Permohonan;
@@ -50,11 +51,6 @@ class PermohonanController extends Controller
             ? collect([$renewalSource])
             : $this->eligibleRenewalJenazahs($tpu);
 
-        // Daftar "Biaya Sewa Makam" yang diinput kepala dinas lingkungan
-        // hidup untuk TPU ini. Dipakai sebagai sumber dropdown biaya saat
-        // jenis_permohonan = perpanjangan (lihat create.blade.php).
-        $tpuBiayaSewas = Tpu::where('nama', $tpu)->first()?->biayaSewas ?? collect();
-
         return view('user.permohonan.create', [
             'tpu' => $tpu,
             'selectedJenis' => $selectedJenis,
@@ -63,7 +59,7 @@ class PermohonanController extends Controller
             'makams' => Makam::where('tpu', $tpu)->orderBy('kode_makam')->get(),
             'assignedPetugas' => $assignedPetugas,
             'perpanjanganJenazahs' => $perpanjanganJenazahs,
-            'tpuBiayaSewas' => $tpuBiayaSewas,
+            'biayaRetribusis' => $this->activeBiayaRetribusis(),
         ]);
     }
 
@@ -78,6 +74,7 @@ class PermohonanController extends Controller
 
             $renewalJenazah = null;
             $selectedMakam = null;
+            $selectedBiayaRetribusi = null;
 
             if ($data['jenis_permohonan'] === Permohonan::JENIS_PERPANJANGAN) {
                 $renewalJenazah = $this->resolveRenewalJenazah($data['jenazah_id'] ?? null, $data['tpu']);
@@ -89,6 +86,7 @@ class PermohonanController extends Controller
                 }
 
                 $selectedMakam = $renewalJenazah->makam;
+                $selectedBiayaRetribusi = $this->resolveBiayaRetribusi((int) ($data['biaya_retribusi_id'] ?? 0));
             } else {
                 $selectedMakam = ($data['makam_id'] ?? null) ? Makam::find($data['makam_id']) : null;
             }
@@ -111,6 +109,11 @@ class PermohonanController extends Controller
                 'jenis_kelamin' => $renewalJenazah?->jenis_kelamin ?? ($data['jenis_kelamin'] ?? null),
                 'agama' => $renewalJenazah?->agama ?? ($data['agama'] ?? null),
                 'biaya' => $renewalJenazah?->biaya ?? ($data['biaya'] ?? null),
+                'biaya_retribusi_id' => $selectedBiayaRetribusi?->id,
+                'bukti_transfer' => $this->storeUploadedFile($request, 'bukti_transfer', 'bukti_transfer'),
+                'status_pembayaran' => $data['jenis_permohonan'] === Permohonan::JENIS_PERPANJANGAN
+                    ? ($selectedBiayaRetribusi?->isGratis() ? 'tidak_ada_biaya' : 'menunggu_verifikasi')
+                    : null,
                 'nama_ahli_waris' => $data['nama_ahli_waris'],
                 'no_hp_ahli_waris' => $data['no_hp_ahli_waris'],
                 'hubungan_keluarga' => $data['hubungan_keluarga'],
@@ -157,7 +160,7 @@ class PermohonanController extends Controller
             'makams' => Makam::where('tpu', $permohonan->tpu)->orderBy('kode_makam')->get(),
             'assignedPetugas' => $permohonan->assignedPetugas(),
             'perpanjanganJenazahs' => $this->eligibleRenewalJenazahs($permohonan->tpu),
-            'tpuBiayaSewas' => Tpu::where('nama', $permohonan->tpu)->first()?->biayaSewas ?? collect(),
+            'biayaRetribusis' => $this->activeBiayaRetribusis(),
         ]);
     }
 
@@ -300,14 +303,8 @@ public function suratPernyataan(Permohonan $permohonan)
             'tanggal_wafat' => ['nullable', 'date'],
             'jenis_kelamin' => ['nullable', Rule::in(['Laki-laki', 'Perempuan'])],
             'agama' => ['nullable', 'string', 'max:255'],
-            'biaya' => [
-                Rule::requiredIf(function () use ($request, $permohonan) {
-                    return $request->jenis_permohonan === Permohonan::JENIS_PERPANJANGAN
-                        && ! empty($this->allowedBiayaOptions($permohonan->tpu, $request->jenis_permohonan));
-                }),
-                'nullable',
-                Rule::in($this->allowedBiayaOptions($permohonan->tpu, $request->jenis_permohonan)),
-            ],
+            'biaya_retribusi_id' => ['nullable', 'exists:biaya_retribusi,id'],
+            'bukti_transfer' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
             'nama_ahli_waris' => ['required', 'string', 'max:255'],
             'no_hp_ahli_waris' => ['required', 'string', 'max:30'],
             'hubungan_keluarga' => ['required', 'string', 'max:255'],
@@ -320,6 +317,30 @@ public function suratPernyataan(Permohonan $permohonan)
             'surat_kematian' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
         ]);
 
+        $selectedBiayaRetribusi = null;
+
+        if (($data['jenis_permohonan'] ?? null) === Permohonan::JENIS_PERPANJANGAN) {
+            if (blank($data['biaya_retribusi_id'] ?? null)) {
+                throw ValidationException::withMessages([
+                    'biaya_retribusi_id' => 'Biaya retribusi wajib dipilih untuk permohonan perpanjangan makam.',
+                ]);
+            }
+
+            $selectedBiayaRetribusi = $this->resolveBiayaRetribusi((int) $data['biaya_retribusi_id']);
+
+            if (! $selectedBiayaRetribusi || ! $selectedBiayaRetribusi->is_aktif) {
+                throw ValidationException::withMessages([
+                    'biaya_retribusi_id' => 'Biaya retribusi yang dipilih tidak aktif atau tidak tersedia.',
+                ]);
+            }
+
+            if (! $selectedBiayaRetribusi->isGratis() && ! $request->hasFile('bukti_transfer') && blank($permohonan->bukti_transfer)) {
+                throw ValidationException::withMessages([
+                    'bukti_transfer' => 'Bukti transfer wajib diunggah jika nominal biaya retribusi lebih dari Rp0.',
+                ]);
+            }
+        }
+
         DB::transaction(function () use ($request, $permohonan, $data) {
             foreach (['scan_ktp_ahli_waris', 'scan_kk', 'surat_kematian'] as $fileKey) {
                 if ($request->hasFile($fileKey)) {
@@ -329,6 +350,7 @@ public function suratPernyataan(Permohonan $permohonan)
 
             $renewalJenazah = null;
             $selectedMakam = null;
+            $selectedBiayaRetribusi = null;
 
             if ($data['jenis_permohonan'] === Permohonan::JENIS_PERPANJANGAN) {
                 $renewalJenazah = $this->resolveRenewalJenazah(
@@ -342,6 +364,7 @@ public function suratPernyataan(Permohonan $permohonan)
                     ]);
                 }
                 $selectedMakam = $renewalJenazah->makam;
+                $selectedBiayaRetribusi = $this->resolveBiayaRetribusi((int) ($data['biaya_retribusi_id'] ?? 0));
             } else {
                 $selectedMakam = ($data['makam_id'] ?? null) ? Makam::find($data['makam_id']) : null;
             }
@@ -356,7 +379,7 @@ public function suratPernyataan(Permohonan $permohonan)
                 'tanggal_wafat' => $renewalJenazah?->tanggal_wafat ?? $data['tanggal_wafat'] ?? null,
                 'jenis_kelamin' => $renewalJenazah?->jenis_kelamin ?? $data['jenis_kelamin'] ?? null,
                 'agama' => $renewalJenazah?->agama ?? $data['agama'] ?? null,
-                'biaya' => $renewalJenazah?->biaya ?? $data['biaya'] ?? null,
+                'biaya_retribusi_id' => $selectedBiayaRetribusi?->id,
                 'nama_ahli_waris' => $data['nama_ahli_waris'],
                 'no_hp_ahli_waris' => $data['no_hp_ahli_waris'],
                 'hubungan_keluarga' => $data['hubungan_keluarga'],
@@ -364,7 +387,28 @@ public function suratPernyataan(Permohonan $permohonan)
                 'makam_id' => $selectedMakam?->id ?? ($data['makam_id'] ?? null),
                 'tahun_pemakaman' => $data['tahun_pemakaman'] ?? $permohonan->tahun_pemakaman,
                 'catatan' => $data['catatan'] ?? null,
+                'status_pembayaran' => ($data['jenis_permohonan'] ?? null) === Permohonan::JENIS_PERPANJANGAN
+                    ? ($selectedBiayaRetribusi?->isGratis() ? 'tidak_ada_biaya' : ($permohonan->status_pembayaran === 'terverifikasi' ? 'terverifikasi' : 'menunggu_verifikasi'))
+                    : null,
             ]);
+
+            if (($data['jenis_permohonan'] ?? null) === Permohonan::JENIS_PERPANJANGAN) {
+                if ($request->hasFile('bukti_transfer')) {
+                    $permohonan->bukti_transfer = $this->replaceUploadedFile($request, $permohonan->bukti_transfer, 'bukti_transfer', 'bukti_transfer');
+                } elseif ($selectedBiayaRetribusi?->isGratis()) {
+                    if ($permohonan->bukti_transfer) {
+                        Storage::disk('public')->delete($permohonan->bukti_transfer);
+                    }
+                    $permohonan->bukti_transfer = null;
+                }
+            } else {
+                if ($permohonan->bukti_transfer) {
+                    Storage::disk('public')->delete($permohonan->bukti_transfer);
+                }
+                $permohonan->bukti_transfer = null;
+                $permohonan->biaya_retribusi_id = null;
+                $permohonan->status_pembayaran = null;
+            }
 
             $permohonan->save();
             $permohonan->syncLinkedJenazahData();
@@ -375,7 +419,7 @@ public function suratPernyataan(Permohonan $permohonan)
 
     private function validateStoreRequest(Request $request): array
     {
-        return $request->validate([
+        $data = $request->validate([
             'tpu' => ['required', Rule::in(User::tpuOptions())],
             'jenis_permohonan' => ['required', Rule::in([Permohonan::JENIS_MAKAM_BARU, Permohonan::JENIS_PERPANJANGAN, Permohonan::JENIS_DARURAT])],
             'jenazah_id' => ['required_if:jenis_permohonan,' . Permohonan::JENIS_PERPANJANGAN, 'nullable', 'exists:jenazah,id'],
@@ -386,18 +430,9 @@ public function suratPernyataan(Permohonan $permohonan)
             'tanggal_wafat' => [Rule::requiredIf(fn () => in_array($request->jenis_permohonan, [Permohonan::JENIS_MAKAM_BARU, Permohonan::JENIS_DARURAT], true)), 'nullable', 'date'],
             'jenis_kelamin' => [Rule::requiredIf(fn () => in_array($request->jenis_permohonan, [Permohonan::JENIS_MAKAM_BARU, Permohonan::JENIS_DARURAT], true)), 'nullable', Rule::in(['Laki-laki', 'Perempuan'])],
             'agama' => [Rule::requiredIf(fn () => in_array($request->jenis_permohonan, [Permohonan::JENIS_MAKAM_BARU, Permohonan::JENIS_DARURAT], true)), 'nullable', 'string', 'max:255'],
-            'biaya' => [
-                Rule::requiredIf(function () use ($request) {
-                    if (in_array($request->jenis_permohonan, [Permohonan::JENIS_MAKAM_BARU, Permohonan::JENIS_DARURAT], true)) {
-                        return true;
-                    }
-
-                    return $request->jenis_permohonan === Permohonan::JENIS_PERPANJANGAN
-                        && ! empty($this->allowedBiayaOptions($request->tpu, $request->jenis_permohonan));
-                }),
-                'nullable',
-                Rule::in($this->allowedBiayaOptions($request->tpu, $request->jenis_permohonan)),
-            ],
+            'biaya' => ['nullable', 'string', 'max:255'],
+            'biaya_retribusi_id' => ['nullable', 'exists:biaya_retribusi,id'],
+            'bukti_transfer' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
             'nama_ahli_waris' => ['required', 'string', 'max:255'],
             'no_hp_ahli_waris' => ['required', 'string', 'max:30'],
             'hubungan_keluarga' => ['required', 'string', 'max:255'],
@@ -440,8 +475,7 @@ public function suratPernyataan(Permohonan $permohonan)
             'tanggal_wafat.required' => 'Tanggal meninggal wajib diisi.',
             'jenis_kelamin.required' => 'Jenis kelamin wajib dipilih.',
             'agama.required' => 'Agama wajib dipilih.',
-            'biaya.required' => 'Biaya sewa wajib dipilih.',
-            'biaya.in' => 'Biaya sewa yang dipilih tidak tersedia untuk TPU ini.',
+            'biaya_retribusi_id.exists' => 'Biaya retribusi yang dipilih tidak ditemukan.',
             'nama_ahli_waris.required' => 'Nama ahli waris wajib diisi.',
             'no_hp_ahli_waris.required' => 'Nomor HP ahli waris wajib diisi.',
             'hubungan_keluarga.required' => 'Hubungan dengan jenazah wajib diisi.',
@@ -450,6 +484,32 @@ public function suratPernyataan(Permohonan $permohonan)
             'scan_kk.required' => 'Scan Kartu Keluarga wajib diunggah.',
             'surat_kematian.required' => 'Surat kematian wajib diunggah.',
         ]);
+
+        if (($data['jenis_permohonan'] ?? null) === Permohonan::JENIS_PERPANJANGAN) {
+            if (blank($data['biaya_retribusi_id'] ?? null)) {
+                throw ValidationException::withMessages([
+                    'biaya_retribusi_id' => 'Biaya retribusi wajib dipilih untuk permohonan perpanjangan makam.',
+                ]);
+            }
+
+            $selectedBiayaRetribusi = $this->resolveBiayaRetribusi((int) $data['biaya_retribusi_id']);
+
+            if (! $selectedBiayaRetribusi || ! $selectedBiayaRetribusi->is_aktif) {
+                throw ValidationException::withMessages([
+                    'biaya_retribusi_id' => 'Biaya retribusi yang dipilih tidak aktif atau tidak tersedia.',
+                ]);
+            }
+
+            if (! $selectedBiayaRetribusi->isGratis() && ! $request->hasFile('bukti_transfer')) {
+                throw ValidationException::withMessages([
+                    'bukti_transfer' => 'Bukti transfer wajib diunggah jika nominal biaya retribusi lebih dari Rp0.',
+                ]);
+            }
+        } else {
+            $data['biaya_retribusi_id'] = null;
+        }
+
+        return $data;
     }
 
     /**
@@ -497,6 +557,23 @@ public function suratPernyataan(Permohonan $permohonan)
         }
 
         return $request->file($field)->store($directory, 'public');
+    }
+
+    private function activeBiayaRetribusis()
+    {
+        return BiayaRetribusi::query()
+            ->where('is_aktif', true)
+            ->orderBy('nama_biaya')
+            ->get();
+    }
+
+    private function resolveBiayaRetribusi(?int $id): ?BiayaRetribusi
+    {
+        if (! $id) {
+            return null;
+        }
+
+        return BiayaRetribusi::find($id);
     }
 
     /**

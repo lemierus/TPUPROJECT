@@ -4,7 +4,10 @@
 
 @section('content')
 @php
-    $isPerpanjangan = false;
+    $isPerpanjangan = old(
+        'jenis_permohonan',
+        $permohonan->jenis_permohonan
+    ) === \App\Models\Permohonan::JENIS_PERPANJANGAN;
 @endphp
 
 <div class="container-fluid py-4">
@@ -30,7 +33,7 @@
                 @method('PUT')
 
                 <input type="hidden" name="tpu" value="{{ $permohonan->tpu }}">
-                <input type="hidden" name="jenis_permohonan" value="makam_baru">
+                <input type="hidden" name="jenis_permohonan" value="{{ $permohonan->jenis_permohonan }}">
 
                 <div class="row g-3 mt-1">
                     <div class="col-12">
@@ -102,6 +105,57 @@
                         <input type="text" name="hubungan_keluarga" class="form-control" value="{{ old('hubungan_keluarga', $permohonan->hubungan_keluarga) }}">
                     </div>
 
+                    @if($isPerpanjangan)
+                        <div class="col-12">
+                            <div class="border rounded-3 p-3 bg-light">
+                                <h6 class="fw-bold mb-3">Biaya Retribusi Perpanjangan</h6>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Pilih Biaya Retribusi</label>
+                                        <select name="biaya_retribusi_id" class="form-select" id="edit-biaya-retribusi-select">
+                                            <option value="">Pilih biaya retribusi</option>
+                                            @foreach($biayaRetribusis ?? [] as $item)
+                                                <option value="{{ $item->id }}"
+                                                        data-nominal="{{ $item->nominal }}"
+                                                        data-rekening="{{ $item->nomor_rekening }}"
+                                                        data-bank="{{ $item->nama_bank }}"
+                                                        data-atas-nama="{{ $item->atas_nama_rekening }}"
+                                                        @selected((string) old('biaya_retribusi_id', $permohonan->biaya_retribusi_id) === (string) $item->id)>
+                                                    {{ $item->nama_biaya }} - Rp {{ number_format($item->nominal, 0, ',', '.') }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Nominal</label>
+                                        <input type="text" class="form-control" id="edit-biaya-retribusi-nominal" value="-" readonly>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Nomor Rekening Tujuan</label>
+                                        <input type="text" class="form-control" id="edit-biaya-retribusi-rekening" value="-" readonly>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Nama Bank</label>
+                                        <input type="text" class="form-control" id="edit-biaya-retribusi-bank" value="-" readonly>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Atas Nama Rekening</label>
+                                        <input type="text" class="form-control" id="edit-biaya-retribusi-atas-nama" value="-" readonly>
+                                    </div>
+                                    <div class="col-md-6" id="edit-bukti-transfer-wrapper" style="display:none;">
+                                        <label class="form-label">Upload Bukti Transfer</label>
+                                        <input type="file" name="bukti_transfer" id="edit-bukti-transfer-input" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
+                                        @if($permohonan->bukti_transfer)
+                                            <small class="text-muted d-block mt-1">
+                                                Saat ini: <a href="{{ asset('storage/' . $permohonan->bukti_transfer) }}" target="_blank">Lihat bukti transfer</a>
+                                            </small>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+
                     <div class="col-12">
                         <label class="form-label">Catatan Tambahan</label>
                         <textarea name="catatan" class="form-control" rows="3">{{ old('catatan', $permohonan->catatan) }}</textarea>
@@ -159,4 +213,43 @@
         </div>
     </div>
 </div>
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const select = document.getElementById('edit-biaya-retribusi-select');
+    const nominalInput = document.getElementById('edit-biaya-retribusi-nominal');
+    const rekeningInput = document.getElementById('edit-biaya-retribusi-rekening');
+    const bankInput = document.getElementById('edit-biaya-retribusi-bank');
+    const atasNamaInput = document.getElementById('edit-biaya-retribusi-atas-nama');
+    const buktiWrapper = document.getElementById('edit-bukti-transfer-wrapper');
+    const buktiInput = document.getElementById('edit-bukti-transfer-input');
+
+    if (!select) {
+        return;
+    }
+
+    function formatRupiah(nominal) {
+        const value = Number(nominal || 0);
+        return 'Rp ' + value.toLocaleString('id-ID');
+    }
+
+    function refreshRetribusiDetail() {
+        const option = select.options[select.selectedIndex];
+        const nominal = Number(option?.dataset?.nominal || 0);
+
+        nominalInput.value = option?.value ? formatRupiah(nominal) : '-';
+        rekeningInput.value = option?.value ? (option.dataset.rekening || '-') : '-';
+        bankInput.value = option?.value ? (option.dataset.bank || '-') : '-';
+        atasNamaInput.value = option?.value ? (option.dataset.atasNama || '-') : '-';
+
+        const wajibBukti = option?.value && nominal > 0;
+        buktiWrapper.style.display = wajibBukti ? '' : 'none';
+        buktiInput.required = !!wajibBukti;
+    }
+
+    select.addEventListener('change', refreshRetribusiDetail);
+    refreshRetribusiDetail();
+});
+</script>
+@endpush
 @endsection

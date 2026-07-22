@@ -173,33 +173,80 @@
                         <input type="text" name="hubungan_keluarga" class="form-control" value="{{ old('hubungan_keluarga') }}">
                     </div>
 
-                    {{-- Biaya Sewa: makam_baru / darurat pakai daftar tetap --}}
-                    <div class="col-md-4" id="biaya-static-wrapper" style="{{ $isPerpanjangan ? 'display:none;' : '' }}">
-                        <label class="form-label">Biaya Sewa <span class="text-danger">*</span></label>
-                        <select name="biaya" class="form-select" id="biaya-static" @if($isPerpanjangan) disabled @endif>
-                            <option value="">Pilih</option>
-                            @foreach(['0Rp', '50Rp', '100Rp'] as $biayaOpt)
-                                <option value="{{ $biayaOpt }}" @selected(old('biaya') === $biayaOpt)>{{ $biayaOpt }}</option>
-                            @endforeach
-                        </select>
-                    </div>
+                    <!-- {{-- Biaya Sewa: makam_baru / darurat pakai daftar tetap --}}
+                    <div class="col-md-4" id="biaya-wrapper" style="{{ $isPerpanjangan ? '' : 'display:none;' }}">
+                        <label class="form-label">
+                            Biaya Sewa Perpanjangan
+                            <span class="text-danger">*</span>
+                        </label>
 
-                    {{-- Biaya Sewa: perpanjangan pakai daftar dinamis dari kepala dinas lingkungan hidup --}}
-                    <div class="col-md-4" id="biaya-dynamic-wrapper" style="{{ $isPerpanjangan ? '' : 'display:none;' }}">
-                        <label class="form-label">Biaya Sewa Perpanjangan <span class="text-danger">*</span></label>
-                        <select name="biaya" class="form-select" id="biaya-dynamic" @if(! $isPerpanjangan) disabled @endif>
+                        <select
+                            name="biaya"
+                            class="form-select"
+                            id="biaya"
+                            @if(! $isPerpanjangan) disabled @endif>
+
                             <option value="">Pilih</option>
+
                             @foreach($tpuBiayaSewas ?? [] as $item)
-                                <option value="{{ $item->label }}" @selected(old('biaya') === $item->label)>
-                                    {{ $item->label }} — Rp {{ number_format($item->harga, 0, ',', '.') }}
+                                <option
+                                    value="{{ $item->label }}"
+                                    @selected(old('biaya') === $item->label)>
+                                    {{ $item->label }} — Rp {{ number_format($item->harga,0,',','.') }}
                                 </option>
                             @endforeach
                         </select>
+
                         @if(($tpuBiayaSewas ?? collect())->isEmpty())
-                            <small class="text-muted d-block mt-1">
-                                Belum ada data biaya sewa untuk TPU ini. Silakan hubungi kepala dinas lingkungan hidup.
+                            <small class="text-muted">
+                                Belum ada biaya sewa yang ditetapkan.
                             </small>
                         @endif
+                    </div> -->
+
+                    <div class="col-12" id="biaya-retribusi-section" style="{{ $isPerpanjangan ? '' : 'display:none;' }}">
+                        <div class="border rounded-3 p-3 bg-light">
+                            <h6 class="fw-bold mb-3">Biaya Retribusi Perpanjangan Makam</h6>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Pilih Biaya Retribusi <span class="text-danger">*</span></label>
+                                    <select name="biaya_retribusi_id" class="form-select" id="biaya-retribusi-select" @if(! $isPerpanjangan) disabled @endif>
+                                        <option value="">Pilih biaya retribusi</option>
+                                        @foreach($biayaRetribusis ?? [] as $item)
+                                            <option value="{{ $item->id }}"
+                                                    data-nominal="{{ $item->nominal }}"
+                                                    data-rekening="{{ $item->nomor_rekening }}"
+                                                    data-bank="{{ $item->nama_bank }}"
+                                                    data-atas-nama="{{ $item->atas_nama_rekening }}"
+                                                    @selected((string) old('biaya_retribusi_id') === (string) $item->id)>
+                                                {{ $item->nama_biaya }} - Rp {{ number_format($item->nominal, 0, ',', '.') }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Nominal</label>
+                                    <input type="text" class="form-control" id="biaya-retribusi-nominal" value="-" readonly>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Nomor Rekening Tujuan</label>
+                                    <input type="text" class="form-control" id="biaya-retribusi-rekening" value="-" readonly>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Nama Bank</label>
+                                    <input type="text" class="form-control" id="biaya-retribusi-bank" value="-" readonly>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Atas Nama Rekening</label>
+                                    <input type="text" class="form-control" id="biaya-retribusi-atas-nama" value="-" readonly>
+                                </div>
+                                <div class="col-md-6" id="bukti-transfer-wrapper" style="display:none;">
+                                    <label class="form-label">Upload Bukti Transfer <span class="text-danger">*</span></label>
+                                    <input type="file" name="bukti_transfer" id="bukti-transfer-input" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
+                                    <small class="text-muted d-block mt-1">Wajib diisi jika nominal biaya retribusi lebih dari Rp0.</small>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="col-12">
@@ -276,11 +323,39 @@ document.addEventListener('DOMContentLoaded', function () {
     const dokumen = document.getElementById('section-dokumen');
     const reqMakamBaru = document.querySelectorAll('.req-makam-baru');
     const reqDarurat = document.querySelectorAll('.req-darurat');
+    const biayaRetribusiSection = document.getElementById('biaya-retribusi-section');
+    const biayaRetribusiSelect = document.getElementById('biaya-retribusi-select');
+    const biayaRetribusiNominal = document.getElementById('biaya-retribusi-nominal');
+    const biayaRetribusiRekening = document.getElementById('biaya-retribusi-rekening');
+    const biayaRetribusiBank = document.getElementById('biaya-retribusi-bank');
+    const biayaRetribusiAtasNama = document.getElementById('biaya-retribusi-atas-nama');
+    const buktiTransferWrapper = document.getElementById('bukti-transfer-wrapper');
+    const buktiTransferInput = document.getElementById('bukti-transfer-input');
 
-    const biayaStaticWrapper = document.getElementById('biaya-static-wrapper');
-    const biayaDynamicWrapper = document.getElementById('biaya-dynamic-wrapper');
-    const biayaStaticSelect = document.getElementById('biaya-static');
-    const biayaDynamicSelect = document.getElementById('biaya-dynamic');
+    function formatRupiah(nominal) {
+        const value = Number(nominal || 0);
+        return 'Rp ' + value.toLocaleString('id-ID');
+    }
+
+    function refreshBiayaRetribusi() {
+        if (!biayaRetribusiSelect) {
+            return;
+        }
+
+        const selectedOption = biayaRetribusiSelect.options[biayaRetribusiSelect.selectedIndex];
+        const nominal = Number(selectedOption?.dataset?.nominal || 0);
+
+        biayaRetribusiNominal.value = selectedOption?.value ? formatRupiah(nominal) : '-';
+        biayaRetribusiRekening.value = selectedOption?.value ? (selectedOption.dataset.rekening || '-') : '-';
+        biayaRetribusiBank.value = selectedOption?.value ? (selectedOption.dataset.bank || '-') : '-';
+        biayaRetribusiAtasNama.value = selectedOption?.value ? (selectedOption.dataset.atasNama || '-') : '-';
+
+        const wajibBukti = selectedOption?.value && nominal > 0;
+        buktiTransferWrapper.style.display = wajibBukti ? '' : 'none';
+        if (buktiTransferInput) {
+            buktiTransferInput.required = !!wajibBukti;
+        }
+    }
 
     function refreshSection() {
         const selected = document.querySelector('input[name="jenis_permohonan"]:checked')?.value || 'makam_baru';
@@ -291,14 +366,15 @@ document.addEventListener('DOMContentLoaded', function () {
         daruratAlert.style.display = selected === 'darurat' ? '' : 'none';
         dokumen.style.display = isPerpanjangan ? 'none' : '';
 
-        // Biaya Sewa: tukar antara dropdown statis (makam_baru/darurat) dan
-        // dropdown dinamis (perpanjangan, dari data kepala dinas lingkungan
-        // hidup). Select yang disembunyikan di-disable agar tidak ikut
-        // terkirim ke server (hindari dua field "biaya" bentrok).
-        biayaStaticWrapper.style.display = isPerpanjangan ? 'none' : '';
-        biayaDynamicWrapper.style.display = isPerpanjangan ? '' : 'none';
-        biayaStaticSelect.disabled = isPerpanjangan;
-        biayaDynamicSelect.disabled = ! isPerpanjangan;
+        if (biayaRetribusiSection) {
+            biayaRetribusiSection.style.display = isPerpanjangan ? '' : 'none';
+        }
+        if (biayaRetribusiSelect) {
+            biayaRetribusiSelect.disabled = !isPerpanjangan;
+        }
+        if (!isPerpanjangan && buktiTransferInput) {
+            buktiTransferInput.required = false;
+        }
 
         reqMakamBaru.forEach((el) => {
             el.style.display = selected === 'makam_baru' ? '' : 'none';
@@ -306,9 +382,14 @@ document.addEventListener('DOMContentLoaded', function () {
         reqDarurat.forEach((el) => {
             el.style.display = selected === 'darurat' ? '' : 'none';
         });
+
+        refreshBiayaRetribusi();
     }
 
     radios.forEach((radio) => radio.addEventListener('change', refreshSection));
+    if (biayaRetribusiSelect) {
+        biayaRetribusiSelect.addEventListener('change', refreshBiayaRetribusi);
+    }
     refreshSection();
 });
 </script>
