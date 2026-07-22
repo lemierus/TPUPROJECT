@@ -11,7 +11,9 @@
                 <p class="text-muted mb-0">Isi data TPU yang akan tampil di seluruh sistem.</p>
             </div>
 
-            <form method="POST" action="{{ $tpu->exists ? route('kdlh.tpu.update', $tpu) : route('kdlh.tpu.store') }}">
+            <form method="POST"
+                action="{{ $tpu->exists ? route('kdlh.tpu.update', $tpu) : route('kdlh.tpu.store') }}"
+                enctype="multipart/form-data">
                 @csrf
                 @if($tpu->exists)
                     @method('PUT')
@@ -83,8 +85,25 @@
                         <button type="button" id="btn-add-biaya" class="btn btn-sm btn-outline-primary mt-1">
                             <i class="bi bi-plus-lg"></i> Tambah Biaya
                         </button> -->
-                    </div>
+                    <!-- </div> -->
 
+                    <div class="col-md-4">
+                        <label class="form-label">Latitude</label>
+                        <input type="text" name="latitude" class="form-control @error('latitude') is-invalid @enderror" value="{{ old('latitude', $tpu->latitude) }}" required>
+                        @error('latitude')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Longitude</label>
+                        <input type="text" name="longitude" class="form-control @error('longitude') is-invalid @enderror" value="{{ old('longitude', $tpu->longitude) }}">
+                        @error('longitude')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Foto Denah</label>
+                        <input type="file" name="foto_denah" class="form-control @error('foto_denah') is-invalid @enderror" accept=".jpg,.jpeg,.png">
+                        @if($tpu->foto_denah)
+                            <small class="text-muted d-block mt-1">Saat ini: <a href="{{ asset('storage/' . $tpu->foto_denah) }}" target="_blank">Lihat file</a></small>
+                        @endif
+                    </div>
                     <div class="col-md-6">
                         <label class="form-label">Nomor WhatsApp Petugas <i class="bi bi-whatsapp text-success"></i></label>
                         <select name="wa_petugas_id" class="form-select @error('wa_petugas_id') is-invalid @enderror">

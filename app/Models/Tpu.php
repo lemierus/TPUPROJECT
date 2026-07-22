@@ -14,6 +14,9 @@ class Tpu extends Model
         'lokasi',
         'ringkasan',
         'highlight',
+        'latitude',
+        'longitude',
+        'foto_denah',
         'deskripsi',
         'wa_petugas_id',
     ];

@@ -35,6 +35,8 @@ class PermohonanController extends Controller
             ->where('tpu', $tpu)
             ->first();
 
+        $tpuData = Tpu::where('nama', $tpu)->first();
+
         if ($selectedJenis === Permohonan::JENIS_PERPANJANGAN && $selectedRenewalJenazahId) {
             $renewalSource = $this->resolveRenewalJenazah((int) $selectedRenewalJenazahId, $tpu);
 
@@ -43,16 +45,13 @@ class PermohonanController extends Controller
             }
         }
 
-        // Jika user datang lewat tombol "perpanjang" untuk jenazah tertentu,
-        // dropdown dikunci hanya ke jenazah itu. Jika tidak, tampilkan semua
-        // jenazah (termasuk rekan tumpang sari di makam yang sama) yang
-        // berhak diperpanjang oleh user ini.
         $perpanjanganJenazahs = $renewalSource
             ? collect([$renewalSource])
             : $this->eligibleRenewalJenazahs($tpu);
 
         return view('user.permohonan.create', [
             'tpu' => $tpu,
+            'tpuData' => $tpuData,
             'selectedJenis' => $selectedJenis,
             'selectedRenewalJenazahId' => $selectedRenewalJenazahId,
             'renewalSource' => $renewalSource,

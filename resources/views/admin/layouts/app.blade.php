@@ -10,6 +10,9 @@
 
     {{-- Bootstrap Icons --}}
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    
+    {{-- Leaflet map --}}
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 
 <style>
     body {
@@ -96,6 +99,17 @@
 
     .navbar-user-meta {
         line-height: 1.1;
+    }
+
+    #map{
+        height: 600px;
+    }
+
+    .img-denah{
+        width:100%;
+        height:600px;
+        object-fit:contain;
+        display:block;
     }
 </style>
 

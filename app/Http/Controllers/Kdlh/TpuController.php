@@ -33,11 +33,16 @@ class TpuController extends Controller
         $data = $this->validatedData($request);
         $biayaSewaItems = $this->validatedBiayaSewa($request);
 
+        if ($path = $this->storeUploadedFile($request, 'foto_denah', 'tpu/denah')) {
+            $data['foto_denah'] = $path;
+        }
+
         $tpu = Tpu::create($data);
 
         $this->syncBiayaSewa($tpu, $biayaSewaItems);
 
-        return redirect()->route('kdlh.tpu.index')->with('success', 'Data TPU berhasil ditambahkan');
+        return redirect()->route('kdlh.tpu.index')
+            ->with('success', 'Data TPU berhasil ditambahkan');
     }
 
     public function edit(Tpu $tpu)
@@ -56,11 +61,27 @@ class TpuController extends Controller
         $data = $this->validatedData($request, $tpu->id);
         $biayaSewaItems = $this->validatedBiayaSewa($request);
 
+        if ($request->hasFile('foto_denah')) {
+
+            // Hapus file lama
+            if ($tpu->foto_denah && Storage::disk('public')->exists($tpu->foto_denah)) {
+                Storage::disk('public')->delete($tpu->foto_denah);
+            }
+
+            // Upload file baru
+            $data['foto_denah'] = $this->storeUploadedFile(
+                $request,
+                'foto_denah',
+                'tpu/denah'
+            );
+        }
+
         $tpu->update($data);
 
         $this->syncBiayaSewa($tpu, $biayaSewaItems);
 
-        return redirect()->route('kdlh.tpu.index')->with('success', 'Data TPU berhasil diperbarui');
+        return redirect()->route('kdlh.tpu.index')
+            ->with('success', 'Data TPU berhasil diperbarui');
     }
 
     public function destroy(Tpu $tpu)
@@ -79,6 +100,14 @@ class TpuController extends Controller
             'highlight' => ['nullable', 'string'],
             'deskripsi' => ['nullable', 'string'],
             'wa_petugas_id' => ['nullable', 'exists:users,id'],
+            'latitude' => ['nullable', 'string'],
+            'longitude' => ['nullable', 'string'],
+            'foto_denah' => [
+                'nullable',
+                'file',
+                'mimes:jpg,jpeg,png,pdf',
+                'max:5120', // 5 MB
+            ]
         ]);
     }
 
@@ -118,5 +147,12 @@ class TpuController extends Controller
         foreach ($items as $item) {
             $tpu->biayaSewas()->create($item);
         }
+    }
+
+    private function storeUploadedFile(Request $request, string $field, string $directory): ?string
+    {
+        return $request->hasFile($field)
+            ? $request->file($field)->store($directory, 'public')
+            : null;
     }
 }

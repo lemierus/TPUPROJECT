@@ -26,6 +26,30 @@
         </div>
     @endif
 
+    @if($tpuData->foto_denah && $tpuData->latitude && $tpuData->longitude)
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body p-4">
+            <div id="section-map">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <h6 class="fw-bold mb-2">Lokasi</h6>
+                        <div id="map"></div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <h6 class="fw-bold mb-2">Denah</h6>
+                        <img
+                            id="img-denah"
+                            class="img-fluid rounded border"
+                            src="{{ $tpuData && $tpuData->foto_denah ? asset('storage/'.$tpuData->foto_denah) : '' }}"
+                            alt="Denah TPU">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+
     <div class="card border-0 shadow-sm">
         <div class="card-body p-4">
             <small class="text-muted d-block mb-3">
@@ -332,6 +356,21 @@ document.addEventListener('DOMContentLoaded', function () {
     const buktiTransferWrapper = document.getElementById('bukti-transfer-wrapper');
     const buktiTransferInput = document.getElementById('bukti-transfer-input');
 
+    function renderMap() {
+        const latitude = {{ $tpuData->latitude ?? -6.9175 }};
+        const longitude = {{ $tpuData->longitude ?? 107.6191 }};
+
+        const map = L.map('map').setView([latitude, longitude], 17);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap Contributors'
+        }).addTo(map);
+
+        L.marker([latitude, longitude]).addTo(map);
+
+        map.invalidateSize()
+    }
+
     function formatRupiah(nominal) {
         const value = Number(nominal || 0);
         return 'Rp ' + value.toLocaleString('id-ID');
@@ -391,7 +430,10 @@ document.addEventListener('DOMContentLoaded', function () {
         biayaRetribusiSelect.addEventListener('change', refreshBiayaRetribusi);
     }
     refreshSection();
+    renderMap();
 });
 </script>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 @endpush
 @endsection
