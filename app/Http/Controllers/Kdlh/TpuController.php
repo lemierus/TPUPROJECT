@@ -63,11 +63,6 @@ class TpuController extends Controller
 
         if ($request->hasFile('foto_denah')) {
 
-            // Hapus file lama
-            if ($tpu->foto_denah && Storage::disk('public')->exists($tpu->foto_denah)) {
-                Storage::disk('public')->delete($tpu->foto_denah);
-            }
-
             // Upload file baru
             $data['foto_denah'] = $this->storeUploadedFile(
                 $request,

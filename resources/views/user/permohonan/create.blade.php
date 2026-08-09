@@ -368,6 +368,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
         L.marker([latitude, longitude]).addTo(map);
 
+        map.on('click', function (e) {
+
+            console.log("Latitude :", e.latlng.lat);
+            console.log("Longitude:", e.latlng.lng);
+
+        });
+
         map.invalidateSize()
     }
 
